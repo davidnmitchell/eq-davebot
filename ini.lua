@@ -1,7 +1,6 @@
 local mq = require('mq')
-local common = require('common')
+local str = require('str')
 
-local ini = {}
 
 local function FilterEmpty(table)
 	local filtered = {}
@@ -11,42 +10,6 @@ local function FilterEmpty(table)
 		end
 	end
 	return filtered
-end
-
-function ini.HasSection(filename, section_name)
-	return mq.TLO.Ini(filename, section_name)() ~= nil
-end
-
-function ini.IniSectionToTable(filename,sectionname)
-	local rawkeys = mq.TLO.Ini(filename, sectionname)()
-	local t = {}
-
-	if rawkeys ~= nil then
-		local keys = FilterEmpty(common.split(rawkeys, '|'))
-		for i,v in ipairs(keys) do
-			local value = mq.TLO.Ini(filename, sectionname, v)()
-			t[v] = value
-		end
-	end
-		
-	return t
-end
-
-function ini.IniSectionToArray(filename,sectionname)
-	local rawkeys = mq.TLO.Ini(filename, sectionname)()
-	local list = {}
-
-	if rawkeys == nil then
-		print('Invalid section name ' .. sectionname)
-	end
-
-	local keys = FilterEmpty(common.split(rawkeys, '|'))
-
-	for i,v in ipairs(keys) do
-		table.insert(list, mq.TLO.Ini(filename, sectionname, v)())
-	end
-
-	return list
 end
 
 Section = {}
@@ -67,7 +30,7 @@ function Section:ToTable()
 	local t = {}
 
 	if rawkeys ~= nil then
-		local keys = FilterEmpty(common.split(rawkeys, '|'))
+		local keys = FilterEmpty(str.Split(rawkeys, '|'))
 		for i,v in ipairs(keys) do
 			local value = mq.TLO.Ini(self.Filename, self.SectionName, v)()
 			t[v] = value
@@ -85,7 +48,7 @@ function Section:ToArray()
 		print('Invalid section name ' .. self.SectionName)
 	end
 
-	local keys = FilterEmpty(common.split(rawkeys, '|'))
+	local keys = FilterEmpty(str.Split(rawkeys, '|'))
 
 	for i,v in ipairs(keys) do
 		table.insert(list, mq.TLO.Ini(self.Filename, self.SectionName, v)())
@@ -95,7 +58,7 @@ function Section:ToArray()
 end
 
 function Section:IsMissing(key)
-	return common.EmptyString(mq.TLO.Ini(self.Filename, self.SectionName, key)())
+	return str.IsEmpty(mq.TLO.Ini(self.Filename, self.SectionName, key)())
 end
 
 function Section:LoadValueOrDefault(key, default)
@@ -162,7 +125,7 @@ function Ini:SectionToArray(section_name)
 end
 
 function Ini:IsMissing(section, key)
-	return common.EmptyString(mq.TLO.Ini(self.Filename, section, key)())
+	return str.IsEmpty(mq.TLO.Ini(self.Filename, section, key)())
 end
 
 function Ini:String(section, key, default)

@@ -1,21 +1,29 @@
 local mq = require('mq')
 local str = require('str')
 local mychar = require('mychar')
-local spawn = require('spawn')
+local target = require('target')
 local spells = require('spells')
 
 
-local queue = {}
-local casting = {}
+--
+-- Globals
+--
 
-local running = true
-local paused = false
+Running = true
+Paused = false
 
+Queue = {}
+Casting = {}
+
+
+--
+-- Functions
+--
 
 local function add_to_queue(spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
 	print('Queueing ' .. spell .. ' with priority ' .. priority)
 	table.insert(
-		queue,
+		Queue,
 		{
 			spell=spell,
 			gem=gem,
@@ -28,7 +36,7 @@ local function add_to_queue(spell, gem, target_id, msg, min_mana_pct, min_target
 		}
 	)
 	table.sort(
-		queue,
+		Queue,
 		function (spell1, spell2)
 			if spell1.priority == spell2.priority then
 				return spell1.spell:upper() > spell2.spell:upper()
@@ -40,10 +48,10 @@ local function add_to_queue(spell, gem, target_id, msg, min_mana_pct, min_target
 end
 
 local function add_unique_to_queue(spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
-	if casting ~= nil and spell == casting.spell and target_id == casting.target_id then
+	if Casting ~= nil and spell == Casting.spell and target_id == Casting.target_id then
 		return
 	end
-	for i, sinfo in ipairs(queue) do
+	for i, sinfo in ipairs(Queue) do
 		if spell == sinfo.spell and target_id == sinfo.target_id then
 			return
 		end
@@ -54,8 +62,8 @@ end
 local function highest_priority_spell_idx()
 	local idx = 0
 	local priority = 10
-	for i, sinfo in ipairs(queue) do
-		if sinfo.priority < priority and spawn.IsAlive(sinfo.target_id) then
+	for i, sinfo in ipairs(Queue) do
+		if sinfo.priority < priority and target.IsAlive(sinfo.target_id) then
 		
 			local range = mq.TLO.Me.Spell(sinfo.spell).Range()
 			if range == nil then range = 200 end
@@ -64,7 +72,7 @@ local function highest_priority_spell_idx()
 			
 			local in_range = range == 0 or distance <= range
 			local is_invisibility_on_me = sinfo.spell == 'Invisibility' and sinfo.target_id == mq.TLO.Me.ID()
-			if in_range and (not is_invisibility_on_me or #queue == 1) then
+			if in_range and (not is_invisibility_on_me or #Queue == 1) then
 				idx = i
 				priority = sinfo.priority
 			end
@@ -75,11 +83,11 @@ local function highest_priority_spell_idx()
 end
 
 local function has_spell_in_queue()
-	return #queue > 0
+	return #Queue > 0
 end
 
 local function next_spell()
-	return table.remove(queue, highest_priority_spell_idx())
+	return table.remove(Queue, highest_priority_spell_idx())
 end
 
 local function remove_all_from_queue()
@@ -90,11 +98,11 @@ local function do_casting()
 	local ready = mychar.ReadyToCast()
 	if ready then
 		local result = mq.TLO.Cast.Result()
-		if result ~= nil and casting ~= nil and result == 'CAST_IMMUNE' then
+		if result ~= nil and Casting ~= nil and result == 'CAST_IMMUNE' then
 			print('IMMUNE!!!!')
-			print(mq.TLO.Spawn(casting.target_id).Name())
+			print(mq.TLO.Spawn(Casting.target_id).Name())
 		end
-		casting = nil
+		Casting = nil
 	end
 	if ready and has_spell_in_queue() then
 		local me_id = mq.TLO.Me.ID()
@@ -103,7 +111,7 @@ local function do_casting()
 		local target_hp_pct = mq.TLO.Spawn(spell.target_id).PctHPs()
 
 		if spell ~= nil then
-			if not spawn.IsAlive(spell.target_id) then
+			if not target.IsAlive(spell.target_id) then
 				mq.cmd('/g (cast_queue)Skipping "' .. spell.msg .. '" because target is dead')
 			elseif target_hp_pct ~= nil and target_hp_pct < spell.min_target_hp_pct then
 				mq.cmd('/g (cast_queue)Skipping "' .. spell.msg .. '" because target hit points are lower than ' .. spell.min_target_hp_pct)
@@ -118,31 +126,31 @@ local function do_casting()
 				local in_range = range == 0 or distance <= range
 				
 				if enough_mana and in_range and not mq.TLO.Me.Invis('ANY')() then
-					casting = spell
-					mq.cmd('/g (cast_queue)' .. casting.msg)
+					Casting = spell
+					mq.cmd('/g (cast_queue)' .. Casting.msg)
 
-					if casting.target_id ~= me_id then
-						mq.cmd('/target id ' .. casting.target_id)
+					if Casting.target_id ~= me_id then
+						mq.cmd('/target id ' .. Casting.target_id)
 						mq.delay(250)
-						mq.cmd('/face id ' .. casting.target_id)
+						mq.cmd('/face id ' .. Casting.target_id)
 					end
 					
-					local cmd = '/casting "' .. casting.spell .. '" ' .. casting.gem .. ' -maxtries|' .. casting.max_tries .. ' -invis -targetid|' .. casting.target_id
+					local cmd = '/casting "' .. Casting.spell .. '" ' .. Casting.gem .. ' -maxtries|' .. Casting.max_tries .. ' -invis -targetid|' .. Casting.target_id
 					mq.cmd(cmd)
 					print(cmd)
 					--mq.delay(1000)
 				elseif mq.TLO.Me.Invis('ANY')() then
 					print('Casting will break invisibility, dropping ' .. spell.spell .. ' on ' .. mq.TLO.Spawn(spell.target_id).Name())
 				else
-					table.insert(queue, 1, spell)
+					table.insert(Queue, 1, spell)
 				end
 			end
 		end
-	elseif casting ~= nil and casting.priority and mychar.Casting() and has_spell_in_queue() and queue[highest_priority_spell_idx()].priority < casting.priority then
+	elseif Casting ~= nil and Casting.priority and mychar.Casting() and has_spell_in_queue() and Queue[highest_priority_spell_idx()].priority < Casting.priority then
 		mq.cmd('/g (cast_queue)Interrupting...')
 		mq.cmd('/interrupt')
-		table.insert(queue, 1, casting)
-		casting = nil
+		table.insert(Queue, 1, Casting)
+		Casting = nil
 	end
 end
 
@@ -197,11 +205,11 @@ local function command_cast_queue_remove_all(line)
 end
 
 local function command_cast_queue_pause(line)
-	paused = true
+	Paused = true
 end
 
 local function command_cast_queue_shutdown(line)
-	running = false
+	Running = false
 end
 
 
@@ -227,13 +235,13 @@ local function main()
 	mq.event('castqueuepause', '#*#COMMAND CASTQUEUEPAUSE', command_cast_queue_pause)
 	mq.event('castqueueshutdown', '#*#COMMAND CASTQUEUESHUTDOWN', command_cast_queue_shutdown)
 
-	while running == true do
+	while Running == true do
 		mq.doevents()
 
 		if every_5_seconds >= 500 then
 			every_5_seconds = 0
 			print('-----Queue-----')
-			for i,spell in ipairs(queue) do
+			for i,spell in ipairs(Queue) do
 				local target_state = mq.TLO.Spawn(spell.target_id).State()
 				if not target_state then target_state = "NIL" end
 				print(i .. ':' .. spell.spell .. ':' .. target_state)
@@ -241,8 +249,8 @@ local function main()
 		end
 		do_casting()
 		
-		if paused then
-			paused = false
+		if Paused then
+			Paused = false
 			print('(cast_queue)Pausing for 20 seconds')
 			mq.delay(20000)
 			print('(cast_queue)Finished pausing')

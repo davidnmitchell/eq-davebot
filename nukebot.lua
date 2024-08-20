@@ -1,106 +1,113 @@
 local mq = require('mq')
-local common = require('common')
-local ini = require('ini')
+require('ini')
+require('botstate')
+local str = require('str')
 local spells = require('spells')
+local mychar = require('mychar')
+local target = require('target')
 
 
 --
 -- Globals
 --
 
+MyClass = EQClass:new()
+State = BotState:new('nukebot', true, false)
+
 Running = true
-IniFilename = 'Bot_' .. mq.TLO.Me.CleanName() .. '.ini'
+Enabled = true
 
-NukeSpells = {}
-NukeGems = {}
-NukePercents = {}
-
-MinNukeMana = 30
-DefaultNukeGem = 2	
+Spells = {}
+Groups = {}
 
 History = {}
-CrowdControlActive = false
 
 
 --
 -- Functions
 --
 
-function BuildIni()
+function BuildIni(ini)
 	print('Building nuke config')
-	
-	mq.cmd('/ini "' .. IniFilename .. '" NukeOptions MinNukeMana 30')
 
-	mq.cmd('/ini "' .. IniFilename .. '" "Nuke Spells" dot "Direct Damage,Fire,Single"')
-	mq.cmd('/ini "' .. IniFilename .. '" "Nuke Spells" dd "Spirit Strike"')
-	mq.cmd('/ini "' .. IniFilename .. '" "Nuke Spells" aoe "Poison Storm"')
+	local options = ini:Section('Nuke Options')
+	options.WriteBoolean('Enabled', false)
+	options:WriteNumber('DefaultMinMana', 30)
 
-	mq.cmd('/ini "' .. IniFilename .. '" "Nuke Gems" dot 2')
-	mq.cmd('/ini "' .. IniFilename .. '" "Nuke Gems" dd 3')
-	mq.cmd('/ini "' .. IniFilename .. '" "Nuke Gems" aoe 4')
+	local nuke_spells = ini:Section('Nuke Spells')
+	nuke_spells:WriteString('fire', 'Direct Damage,Fire,Single')
 
-	mq.cmd('/ini "' .. IniFilename .. '" "Nuke Cast At Percent" dot 95')
-	mq.cmd('/ini "' .. IniFilename .. '" "Nuke Cast At Percent" dd 40')
+	local nuke_group_1 = ini:Section('Nuke Group 1')
+	nuke_group_1:WriteString('Modes', '5,6,7,8,9')
+
+	local nuke_gems_1 = ini:Section('Nuke Gems 1')
+	nuke_gems_1:WriteNumber('fire', 3)
+
+	local nuke_cast_at_pct_1 = ini:Section('Nuke Cast At Percent 1')
+	nuke_cast_at_pct_1:WriteNumber('nuke', 85)
 end
 
 function Setup()
-	if common.empty(IniFilename, 'NukeOptions', 'MinNukeMana') then BuildIni() end
-	
-	if not common.empty(IniFilename, 'NukeOptions', 'MinNukeMana') then MinNukeMana = tonumber(mq.TLO.Ini(IniFilename, 'NukeOptions', 'MinNukeMana')()) end
-	
-	NukeSpells = ini.IniSectionToTable(IniFilename, 'Nuke Spells')
-	NukeGems = ini.IniSectionToTable(IniFilename, 'Nuke Gems')
-	NukePercents = ini.IniSectionToTable(IniFilename, 'Nuke Cast At Percent')
-	
-	print('Nuke config loaded')
+	local ini = Ini:new()
+
+	if ini:IsMissing('Nuke Options', 'Enabled') then BuildIni(ini) end
+
+	Enabled = ini:Boolean('Nuke Options', 'Enabled', false)
+	local default_gem = ini:Number('Nuke Options', 'DefaultGem', 3)
+	local default_min_mana = ini:Number('Nuke Options', 'DefaultMinMana', 45)
+
+	Spells = ini:SectionToTable('Nuke Spells')
+
+	local i = 1
+	while ini:HasSection('Nuke Group ' .. i) do
+		local group = ini:SectionToTable('Nuke Group ' .. i)
+		local modes = str.Split(group['Modes'], ',')
+		if group['DefaultGem'] == nil then group['DefaultGem'] = default_gem end
+		if group['MinMana'] == nil then group['MinMana'] = default_min_mana end
+		group['Gems'] = ini:SectionToTable('Nuke Gems ' .. i)
+		group['AtPcts'] = ini:SectionToTable('Nuke Cast At Percent ' .. i)
+		for idx,mode in ipairs(modes) do
+			Groups[tonumber(mode)] = group
+		end
+		i = i + 1
+	end
+
+	print('Nukebot loaded with ' .. (i-1) .. ' groups')
 end
 
-function CastNukeOn(spellName, gem, id)
-	name = mq.TLO.Spell(spellName).Name()
+function CastNukeOn(spell_name, gem, id)
+	local name = mq.TLO.Spell(spell_name).Name()
 	if name then
-		spells.QueueSpell(name, 'gem' .. gem, id, 'Nuking ' .. mq.TLO.Spawn(id).Name() .. ' with ' .. spellName, MinNukeMana, 0, 2, 7)
+		spells.QueueSpell(name, 'gem' .. gem, id, 'Nuking ' .. mq.TLO.Spawn(id).Name() .. ' with ' .. spell_name, Groups[State.Mode].MinMana, 0, 2, 7)
 	end
 end
 
 function CheckNukes()
-	if common.IsGroupInCombat() and mq.TLO.Me.GroupAssistTarget() then		
-		for id,spell in pairs(NukeSpells) do
-			local name = common.ReferenceSpell(spell)
+	if mychar.InCombat() and mq.TLO.Me.GroupAssistTarget() then
+		for id,spell in pairs(Spells) do
+			local name = spells.ReferenceSpell(spell)
 			if not name then
 				print('Could not find anything for ' .. spell)
 			end
-			local gem = NukeGems[id]
+			local gem = Groups[State.Mode].Gems[id]
 			if gem == nil then
-				gem = DefaultNukeGem
+				gem = Groups[State.Mode].DefaultGem
 			end
-			local pct = tonumber(NukePercents[id])
+			local pct = tonumber(Groups[State.Mode].AtPcts[id])
 			if pct ~= nil then
-				local groupTargetId = mq.TLO.Me.GroupAssistTarget.ID()
-				local groupTargetName = mq.TLO.Me.GroupAssistTarget.Name()
+				local group_target_id = mq.TLO.Me.GroupAssistTarget.ID()
+				local group_target_name = mq.TLO.Me.GroupAssistTarget.Name()
 
-				if groupTargetId then
-					local pctHPs = mq.TLO.Spawn(groupTargetId).PctHPs()
-					if pctHPs and pctHPs < pct and not History['' .. name .. groupTargetId .. groupTargetName] then
-						CastNukeOn(name, gem, groupTargetId)
-						History['' .. name .. groupTargetId .. groupTargetName] = true
+				if group_target_id then
+					local pctHPs = mq.TLO.Spawn(group_target_id).PctHPs()
+					if pctHPs and pctHPs < pct and not History['' .. name .. group_target_id .. group_target_name] then
+						CastNukeOn(name, gem, group_target_id)
+						History['' .. name .. group_target_id .. group_target_name] = true
 					end
-				end			
+				end
 			end
 		end
 	end
-end
-
-
---
--- Events 
---
-
-function notify_crowd_control_active(line)
-	CrowdControlActive = true
-end
-
-function notify_crowd_control_inactive(line)
-	CrowdControlActive = false
 end
 
 
@@ -108,23 +115,20 @@ end
 -- Main
 --
 
-function main()
+local function main()
 	Setup()
-
-	mq.event('ccactive', '#*#NOTIFY CCACTIVE', notify_crowd_control_active)
-	mq.event('ccinactive', '#*#NOTIFY CCINACTIVE', notify_crowd_control_inactive)
 
 	while Running == true do
 		mq.doevents()
 
-		if common.IsGroupInCombat() and not CrowdControlActive then
+		if mychar.InCombat() and not State.CrowdControlActive then
 			CheckNukes()
 		end
-		
-		if CrowdControlActive and not common.IsGroupInCombat() then
-			CrowdControlActive = false
+
+		if State.CrowdControlActive and not mychar.InCombat() then
+			State.CrowdControlActive = false
 		end
-		
+
 		mq.delay(10)
 	end
 end

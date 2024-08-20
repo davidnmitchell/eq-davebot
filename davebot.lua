@@ -1,18 +1,19 @@
 local mq = require('mq')
+local lua = require('lua')
 local mychar = require('mychar')
 require('eqclass')
 require('botstate')
 require('autosit')
-local common = require('common')
 
 
 --
 -- Globals
 --
 
-Running = true
 MyClass = EQClass:new()
 State = BotState:new('davebot', false, false)
+
+Running = true
 
 
 --
@@ -20,7 +21,7 @@ State = BotState:new('davebot', false, false)
 --
 
 
-local last_mode = Mode
+local last_mode = State.Mode
 local in_combat = false
 function CheckCombatMode()
 	if mychar.InCombat() and not in_combat then
@@ -47,37 +48,37 @@ local function main()
 		mq.doevents()
 
 		if MyClass.HasSpells then
-			common.run_script_if_not_running('any_cast_queue')
-			common.run_script_if_not_running('dotbot')
-			common.run_script_if_not_running('nukebot')
+			lua.RunScriptIfNotRunning('any_cast_queue')
+			lua.RunScriptIfNotRunning('dotbot')
+			lua.RunScriptIfNotRunning('nukebot')
 		end
 
-		common.run_script_if_not_running('buffbot')
+		lua.RunScriptIfNotRunning('buffbot')
 		
 		if MyClass.IsHealer then
-			common.run_script_if_not_running('healbot')
+			lua.RunScriptIfNotRunning('healbot')
 		end
 
 		if MyClass.IsCrowdController then
-			common.run_script_if_not_running('crowdcontrolbot')
+			lua.RunScriptIfNotRunning('crowdcontrolbot')
 		end
 
 		if MyClass.IsDebuffer then
-			common.run_script_if_not_running('debuffbot')
+			lua.RunScriptIfNotRunning('debuffbot')
 		end
 
 		if MyClass.HasPet then
-			common.run_script_if_not_running('petbot')
+			lua.RunScriptIfNotRunning('petbot')
 		end
 
 		if MyClass.IsBard then
-			common.run_script_if_not_running('songbot')
+			lua.RunScriptIfNotRunning('songbot')
 		end
 		
 		if MyClass.IsMelee then
-			common.run_script_if_not_running('meleebot')
+			lua.RunScriptIfNotRunning('meleebot')
 		else
-			if common.IsGroupInCombat() then
+			if mychar.InCombat() then
 				--mq.cmd('/face')
 			end
 		end

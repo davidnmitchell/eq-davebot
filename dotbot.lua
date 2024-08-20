@@ -1,23 +1,23 @@
 local mq = require('mq')
 require('ini')
 require('botstate')
+require('eqclass')
 local str = require('str')
 local spells = require('spells')
-local common = require('common')
+local target = require('target')
 
 
 --
 -- Globals
 --
 
-Running = true
-State = BotState:new('crowdcontrolbot', true, false)
-MyName = mq.TLO.Me.Name()
+MyClass = EQClass:new()
+State = BotState:new('dotbot', true, false)
 
+Running = true
 Enabled = true
 
 Spells = {}
-
 Groups = {}
 
 
@@ -102,12 +102,12 @@ function CheckDots()
 			local group_target_id = mq.TLO.Me.GroupAssistTarget.ID()
 			local group_target_name = mq.TLO.Me.GroupAssistTarget.Name()
 
-			if group_target_id ~= nil and not common.IsIdInGroup(group_target_id) then
+			if group_target_id ~= nil and not target.IsInGroup(group_target_id) then
 				local pct_hps = mq.TLO.Spawn(group_target_id).PctHPs()
 				if pct_hps ~= nil and pct_hps < pct and pct_hps >= Groups[State.Mode].MinTargetHpPct and not HasDot(name, group_target_id) then
 					CastDotOn(name, gem, group_target_id)
 				end
-			end			
+			end
 		end
 	end
 end
@@ -123,7 +123,7 @@ local function main()
 	while Running == true do
 		mq.doevents()
 
-		if State.Mode == State.AutoCombatMode and not State.CrowdControlActive and mq.TLO.Me.GroupAssistTarget() ~= nil then
+		if Enabled and State.Mode == State.AutoCombatMode and not State.CrowdControlActive and mq.TLO.Me.GroupAssistTarget() ~= nil then
 			CheckDots()
 		end
 

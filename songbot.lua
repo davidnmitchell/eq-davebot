@@ -1,13 +1,18 @@
 local mq = require('mq')
-local common = require('common')
-local modes = require('modes')
-local ini = require('ini')
+require('ini')
+require('botstate')
+require('eqclass')
+local str = require('str')
 local spells = require('spells')
+local mychar = require('mychar')
 
 
 --
 -- Globals
 --
+
+MyClass = EQClass:new()
+State = BotState:new('songbot', true, true)
 
 Running = true
 Enabled = false
@@ -15,76 +20,77 @@ Enabled = false
 Songs = {}
 Groups = {}
 
-CrowdControlActive = false
-BardCastActive = FALSE
-
 
 --
 -- Functions
 --
 
-function BuildIni()
+function BuildIni(ini)
 	print('Building song config')
-	
-	mq.cmd('/ini "' .. IniFilename .. '" "Song Options" Enabled "FALSE"')
-	mq.cmd('/ini "' .. IniFilename .. '" "Song Options" CombatMode 5')
 
-	mq.cmd('/ini "' .. IniFilename .. '" "Songs" "ac" "Statistic Buffs,Armor Class,Group v2"')
+	local options = ini:Section('Song Options')
+	options.WriteBoolean('Enabled', false)
 
-	mq.cmd('/ini "' .. IniFilename .. '" "Song Group 1" Modes "1,2,3"')
-	mq.cmd('/ini "' .. IniFilename .. '" "Song Group 1" ModesToGemShareWith "4"')
-	mq.cmd('/ini "' .. IniFilename .. '" "Song Group 1" Order "1"')
+	local songs = ini:Section('Songs')
+	songs:WriteString('ac', 'Statistic Buffs,Armor Class,Group v2')
 
-	mq.cmd('/ini "' .. IniFilename .. '" "Song Gems 1" ac 1')
+	local song_group_1 = ini:Section('Song Group 1')
+	song_group_1:WriteString('Modes', '1,2,3')
+	song_group_1:WriteString('ModesToShareGemsWith', '4')
+	song_group_1:WriteString('Order', '1')
 
-	mq.cmd('/ini "' .. IniFilename .. '" "Song Group 2" Modes "4,5,6,7,8,9"')
-	mq.cmd('/ini "' .. IniFilename .. '" "Song Group 2" Order "1"')
+	local song_gems_1 = ini:Section('Song Gems 1')
+	song_gems_1:WriteNumber('ac', 1)
 
-	mq.cmd('/ini "' .. IniFilename .. '" "Song Gems 2" ac 1')
+	local song_group_2 = ini:Section('Song Group 2')
+	song_group_2:WriteString('Modes', '4,5,6,7,8,9')
+	song_group_2:WriteString('Order', '1')
+
+	local song_gems_2 = ini:Section('Song Gems 2')
+	song_gems_2:WriteNumber('ac', 1)
 end
 
 function Setup()
-	if not common.empty(IniFilename, 'Options', 'Mode') then Mode = tonumber(mq.TLO.Ini(IniFilename, 'Options', 'Mode')()) end
-	if not common.empty(IniFilename, 'Options', 'CombatMode') then CombatMode = tonumber(mq.TLO.Ini(IniFilename, 'Options', 'CombatMode')()) end
+	local ini = Ini:new()
 
-	if common.empty(IniFilename, 'Song Options', 'Enabled') then BuildIni() end
-	
-	if not common.empty(IniFilename, 'Song Options', 'Enabled') then Enabled = mq.TLO.Ini(IniFilename, 'Song Options', 'Enabled')() == 'TRUE' end
-	
-	Songs = ini.IniSectionToTable(IniFilename, 'Songs')
-	
+	if ini:IsMissing('Song Options', 'Enabled') then BuildIni(ini) end
+
+	Enabled = ini:Boolean('Dot Options', 'Enabled', false)
+
+	Songs = ini:SectionToTable('Songs')
+
 	local i = 1
-	while ini.HasSection(IniFilename, 'Song Group ' .. i) do
+	while ini:HasSection('Song Group ' .. i) do
 		local group = {}
-		local group = ini.IniSectionToTable(IniFilename, 'Song Group ' .. i)
-		local modes = common.split(group['Modes'], ',')
-		group['FriendModes'] = common.split(group['ModesToGemShareWith'], ',')
-		group['Gems'] = ini.IniSectionToTable(IniFilename, 'Song Gems ' .. i)
+		local group = ini:SectionToTable('Song Group ' .. i)
+		local modes = str.Split(group['Modes'], ',')
+		group['FriendModes'] = str.Split(group['ModesToShareGemsWith'], ',')
+		group['Gems'] = ini:SectionToTable('Song Gems ' .. i)
 		if group['Order'] == nil then
 			group['Order'] = {}
-			local i = 1
+			local idx = 1
 			for song_key,gem in pairs(group['Gems']) do
-				group['Order'][i] = gem
-				i = i + 1
-			end	
+				group['Order'][idx] = gem
+				idx = idx + 1
+			end
 		else
-			group['Order'] = common.split(group['Order'], ',')
+			group['Order'] = str.Split(group['Order'], ',')
 		end
 
-		for i,mode in ipairs(modes) do
+		for idx,mode in ipairs(modes) do
 			Groups[tonumber(mode)] = group
 		end
 		i = i + 1
 	end
 	
-	print('Songbot loaded with ' .. #Groups .. ' groups')
+	print('Songbot loaded with ' .. (i-1) .. ' groups')
 end
 
 
 function ActiveGems()
 	local gems = {}
 	local i = 1
-	for song_key,gem in pairs(Groups[Mode].Gems) do
+	for song_key,gem in pairs(Groups[State.Mode].Gems) do
 		gems[i] = gem
 		i = i + 1
 	end
@@ -92,9 +98,9 @@ function ActiveGems()
 end
 
 function CheckSongBar()
-	if Enabled and not BardCastActive then
-		for song_key,gem in pairs(Groups[Mode].Gems) do
-			local song = common.ReferenceSpell(Songs[song_key])
+	if Enabled and not State.BardCastActive then
+		for song_key,gem in pairs(Groups[State.Mode].Gems) do
+			local song = spells.ReferenceSpell(Songs[song_key])
 			if mq.TLO.Me.Gem(gem).Name() ~= song then
 				if mq.TLO.Twist.Twisting() then
 					print('clear 1')
@@ -103,9 +109,9 @@ function CheckSongBar()
 				mq.cmd('/memorize "' .. song .. '" gem' .. gem)
 			end
 		end
-		for i,friend_mode in ipairs(Groups[Mode].FriendModes) do
+		for i,friend_mode in ipairs(Groups[State.Mode].FriendModes) do
 			for song_key,gem in pairs(Groups[tonumber(friend_mode)].Gems) do
-				local song = common.ReferenceSpell(Songs[song_key])
+				local song = spells.ReferenceSpell(Songs[song_key])
 				if mq.TLO.Me.Gem(gem).Name() ~= song then
 					mq.cmd('/memorize "' .. song .. '" gem' .. gem)
 				end
@@ -120,14 +126,14 @@ function CheckSongBar()
 end
 
 function CheckTwist()
-	if Enabled and not CrowdControlActive and not BardCastActive then
+	if Enabled and not State.CrowdControlActive and not State.BardCastActive then
 		--while mq.TLO.Cast.Status() ~= 'I' do
 		--	mq.delay(10)
 		--end
-		
+
 		if mq.TLO.Twist.Twisting() then
-			local current_songs = common.split(common.trim(mq.TLO.Twist.List()), ' ')
-			local expected_songs = Groups[Mode]['Order']
+			local current_songs = str.Split(str.Trim(mq.TLO.Twist.List()), ' ')
+			local expected_songs = Groups[State.Mode]['Order']
 			for i,gem in ipairs(current_songs) do
 				if gem ~= expected_songs[i] then
 					print('clear 2')
@@ -138,10 +144,10 @@ function CheckTwist()
 			end
 			::end_loop::
 		end
-		
+
 		if not mq.TLO.Twist.Twisting() then
 			local cmd = '/twist'
-			for i,gem in ipairs(Groups[Mode]['Order']) do
+			for i,gem in ipairs(Groups[State.Mode]['Order']) do
 				cmd = cmd .. ' ' .. gem
 			end
 			mq.cmd(cmd)
@@ -151,54 +157,21 @@ end
 
 
 --
--- Events 
---
-
-function notify_crowd_control_active(line)
-	CrowdControlActive = true
-	print('Songbot: crowd control active')
-end
-
-function notify_crowd_control_inactive(line)
-	CrowdControlActive = false
-	print('Songbot: crowd control inactive')
-end
-
-function notify_bard_cast_active(line)
-	BardCastActive = true
-	print('Songbot: bard cast active')
-end
-
-function notify_bard_cast_inactive(line)
-	BardCastActive = false
-	print('Songbot: bard cast inactive')
-end
-
-
---
 -- Main
 --
 
-function main()
-	modes.SetupModeEvents('songbot')
-
-	mq.event('mode_set', '#*#NOTIFY BOTMODE #1#', notify_bot_mode)
-	mq.event('ccactive', 'NOTIFY CCACTIVE', notify_crowd_control_active)
-	mq.event('ccinactive', '#*#NOTIFY CCINACTIVE', notify_crowd_control_inactive)
-	mq.event('bcactive', '#*#NOTIFY BCACTIVE', notify_bard_cast_active)
-	mq.event('bcinactive', '#*#NOTIFY BCINACTIVE', notify_bard_cast_inactive)
-
+local function main()
 	Setup()
 
 	while Running == true do
 		mq.doevents()
 
-		if not common.IsGroupInCombat() then
+		if not mychar.InCombat() then
 			CheckSongBar()
 		end
-		
+
 		CheckTwist()
-			
+
 		mq.delay(10)
 	end
 end

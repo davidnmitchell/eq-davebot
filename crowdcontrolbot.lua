@@ -3,17 +3,16 @@ require('ini')
 require('botstate')
 local str = require('str')
 local spells = require('spells')
-local common = require('common')
 
 
 --
 -- Globals
 --
 
+MyClass = EQClass:new()
 State = BotState:new('crowdcontrolbot', false, false)
-Running = true
-MyName = mq.TLO.Me.Name()
 
+Running = true
 Enabled = true
 
 Groups = {}
@@ -139,7 +138,7 @@ end
 
 function CheckCC(my_class)
 	if State.Mode == State.AutoCombatMode then
-		local cc_spell = common.ReferenceSpell(Groups[State.Mode].Spell)
+		local cc_spell = spells.ReferenceSpell(Groups[State.Mode].Spell)
 
 		local threshold = 3
 		if Groups[State.Mode].IAmPrimaryCC then

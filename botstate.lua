@@ -1,5 +1,5 @@
 local mq = require('mq')
-local common = require('common')
+
 
 BotState = {}
 BotState.__index = BotState

@@ -8,19 +8,19 @@ function EQClass:new(name)
 	local obj = {}
 	setmetatable(obj, self)
 
-	obj.name = name or mq.TLO.Me.Class.Name()
+	obj.Name = name or mq.TLO.Me.Class.Name()
 
-	obj.IsHealer = obj.name == 'Shaman' or obj.name == 'Druid' or obj.name == 'Cleric'
-	obj.HasGroupHeals = obj.name == 'Cleric' or obj.name == 'Paladin'
-	obj.IsCaster = obj.name == 'Wizard' or obj.name == 'Magician' or obj.name == 'Necromancer' or obj.name == 'Enchanter'
-	obj.IsHybrid = obj.name == 'Ranger' or obj.name == 'Paladin' or obj.name == 'Shadow Knight' or obj.name == 'Beastlord'
+	obj.IsHealer = obj.Name == 'Shaman' or obj.Name == 'Druid' or obj.Name == 'Cleric'
+	obj.HasGroupHeals = obj.Name == 'Cleric' or obj.Name == 'Paladin'
+	obj.IsCaster = obj.Name == 'Wizard' or obj.Name == 'Magician' or obj.Name == 'Necromancer' or obj.Name == 'Enchanter'
+	obj.IsHybrid = obj.Name == 'Ranger' or obj.Name == 'Paladin' or obj.Name == 'Shadow Knight' or obj.Name == 'Beastlord'
 	obj.HasSpells = obj.IsHealer or obj.IsHybrid or obj.IsCaster
 
-	obj.IsDebuffer = obj.name == 'Shaman' or obj.name == 'Enchanter'
-	obj.IsCrowdController = obj.name == 'Bard' or obj.name == 'Enchanter'
-	obj.IsMelee = obj.name == 'Ranger' or obj.name == 'Monk' or obj.name == 'Bard' or obj.name == 'Rogue' or obj.name == 'Berserker' or obj.name == 'Paladin' or obj.name == 'Shadow Knight' or obj.name == 'Warrior'
-	obj.HasPet = obj.name == 'Shaman' or obj.name == 'Magician' or obj.name == 'Necromancer' or obj.name == 'Beastlord' or obj.name == 'Enchanter' or obj.name == 'Wizard' or obj.name == 'Shadow Knight'
-	obj.IsBard = obj.name == 'Bard'
+	obj.IsDebuffer = obj.Name == 'Shaman' or obj.Name == 'Enchanter'
+	obj.IsCrowdController = obj.Name == 'Bard' or obj.Name == 'Enchanter'
+	obj.IsMelee = obj.Name == 'Ranger' or obj.Name == 'Monk' or obj.Name == 'Bard' or obj.Name == 'Rogue' or obj.Name == 'Berserker' or obj.Name == 'Paladin' or obj.Name == 'Shadow Knight' or obj.Name == 'Warrior'
+	obj.HasPet = obj.Name == 'Shaman' or obj.Name == 'Magician' or obj.Name == 'Necromancer' or obj.Name == 'Beastlord' or obj.Name == 'Enchanter' or obj.Name == 'Wizard' or obj.Name == 'Shadow Knight'
+	obj.IsBard = obj.Name == 'Bard'
 
 	return obj
 end

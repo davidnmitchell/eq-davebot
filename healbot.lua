@@ -3,21 +3,19 @@ require('ini')
 require('botstate')
 local str = require('str')
 local spells = require('spells')
-local common = require('common')
 
 
 --
 -- Globals
 --
 
-Running = true
 MyClass = EQClass:new()
 State = BotState:new('healbot', true, false)
 
+Running = true
 Enabled = true
 
 Spells = {}
-
 Groups = {}
 
 
@@ -152,13 +150,13 @@ end
 function CheckGroupMembers()
 	local to_heal = LowestHPsGroupMember()
 	if to_heal.id then
-		local spell_name = common.ReferenceSpell(to_heal.spell)
+		local spell_name = spells.ReferenceSpell(to_heal.spell)
 		spells.QueueSpellIfNotQueued(spell_name, 'gem' .. to_heal.gem, to_heal.id, 'Healing ' .. to_heal.name .. ' with ' .. spell_name, 0, 0, 1, 3)
 	end
 end
 
 function GroupHeal()
-	local spell_name = common.ReferenceSpell(Spells[spell_key_by_type('group')])
+	local spell_name = spells.ReferenceSpell(Spells[spell_key_by_type('group')])
 	if mq.TLO.Me.CurrentMana() > mq.TLO.Spell(spell_name).Mana() then
 		spells.QueueSpellIfNotQueued(spell_name, 'gem' .. gem_by_type('group'), mq.TLO.Me.ID(), 'Healing group with ' .. spell_name, 0, 0, 1, 2)
 	end
@@ -169,7 +167,7 @@ function CheckPets()
 	for i=0,groupSize do
 		if not mq.TLO.Group.Member(i).Pet() == nil then
 			if mq.TLO.Group.Member(i).Pet.PctHPs() < at_pct_by_type('pet') then
-				local name = common.ReferenceSpell(Spells[spell_key_by_type('pet')])
+				local name = spells.ReferenceSpell(Spells[spell_key_by_type('pet')])
 				spells.QueueSpellIfNotQueued(name, 'gem' .. gem_by_type('pet'), mq.TLO.Group.Member(i).Pet.ID(), 'Healing ' .. mq.TLO.Group.Member(i).Name() .. '\'s pet with ' .. name, 0, 0, 1, 6)
 			end
 		end
@@ -190,7 +188,7 @@ function CheckHitPoints()
 
 		if mq.TLO.Group.Injured(95)() > 0 then CheckGroupMembers() end
 
-		if HealGroupPets then CheckPets() end
+		if Groups[State.Mode].HealGroupPets then CheckPets() end
 	end
 end
 
@@ -203,7 +201,7 @@ local function main()
 	if MyClass.IsHealer then
 		Setup()
 	else
-		print('(healbot)No support for ' .. MyClass.name)
+		print('(healbot)No support for ' .. MyClass.Name)
 		print('(healbot)Exiting...')
 		return
 	end

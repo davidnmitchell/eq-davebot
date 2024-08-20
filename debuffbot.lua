@@ -3,20 +3,21 @@ require('ini')
 require('botstate')
 local str = require('str')
 local spells = require('spells')
-local common = require('common')
+local mychar = require('mychar')
 
 
 --
 -- Globals
 --
 
+MyClass = EQClass:new()
+State = BotState:new('debuffbot', true, false)
+
 Running = true
-State = BotState:new('crowdcontrolbot', true, false)
+Enabled = true
 
 Spells = {}
 Groups = {}
-
-History = {}
 
 
 --
@@ -126,7 +127,6 @@ function CheckDebuffs()
 
 			if group_target_pct_hps and group_target_pct_hps < pct and group_target_pct_hps >= Groups[State.Mode].MinTargetHpPct and not HasDebuff(spell, group_target_id) then
 				CastDebuffOn(spell, gem, group_target_id)
-				--History['' .. spell .. group_target_id .. group_target_name] = true
 			end
 		end
 	end
@@ -143,11 +143,11 @@ local function main()
 	while Running == true do
 		mq.doevents()
 
-		if common.IsGroupInCombat() and not State.CrowdControlActive then
+		if Enabled and (State.Mode == State.AutoCombatMode or mychar.InCombat()) and not State.CrowdControlActive then
 			CheckDebuffs()
 		end
 
-		if State.CrowdControlActive and not common.IsGroupInCombat() then
+		if State.CrowdControlActive and not mychar.InCombat() then
 			State.CrowdControlActive = false
 		end
 

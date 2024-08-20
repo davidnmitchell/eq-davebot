@@ -1,4 +1,5 @@
 local mq = require('mq')
+local str = require('str')
 
 local common = {}
 
@@ -166,7 +167,7 @@ function common.casting()
 end
 
 function common.castAndBlock(spell, gem, targetid, maxtries)
-	local tries = AsNumber(maxtries, 3)
+	local tries = str.AsNumber(maxtries, 3)
 	if targetid ~= nil then
 		mq.cmd('/casting "' .. spell .. '" gem' .. gem .. ' -targetid|' .. targetid .. ' -maxtries|' .. tries)
 	else

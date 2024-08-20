@@ -3,21 +3,21 @@ require('ini')
 require('botstate')
 local str = require('str')
 local spells = require('spells')
-local common = require('common')
+local mychar = require('mychar')
+local dannet = require('dannet')
 
 
 --
 -- Globals
 --
 
+MyClass = EQClass:new()
 State = BotState:new('buffbot', true, false)
-Running = true
-MyName = mq.TLO.Me.Name()
 
+Running = true
 Enabled = true
 
 Spells = {}
-
 Groups = {}
 
 
@@ -106,7 +106,7 @@ end
 -- TODO: Item Buffs
 
 function PeersPetHasBuff(buff_name, peer)
-	local buff = common.query(peer, 'Pet.Buff[' .. buff_name .. ']')
+	local buff = dannet.Query(peer, 'Pet.Buff[' .. buff_name .. ']')
 	return buff ~= 'NULL'
 end
 
@@ -141,7 +141,7 @@ function CheckOnBuffsForId(package_name, id, char_name)
 end
 
 function CheckOnBuffsForIdsPet(package_name, id, char_name)
-	local peer = common.peerById(id)
+	local peer = dannet.PeerById(id)
 	if peer then
 		for i,tab_id in ipairs(str.Split(Groups[State.Mode].Packages[package_name],',')) do
 			local name = spells.ReferenceSpell(Spells[tab_id])
@@ -214,13 +214,11 @@ function CheckPetBuffs()
 end
 
 function CheckBuffs()
-	if Enabled and State.Mode ~= State.AutoCombatMode then
-		CheckSelfBuffs()
+	CheckSelfBuffs()
 
-		if mq.TLO.Me.Grouped() then
-			CheckGroupBuffs()
-			CheckPetBuffs()
-		end
+	if mq.TLO.Me.Grouped() then
+		CheckGroupBuffs()
+		CheckPetBuffs()
 	end
 end
 
@@ -235,7 +233,9 @@ local function main()
 	while Running == true do
 		mq.doevents()
 
-		CheckBuffs()
+		if Enabled and State.Mode ~= State.AutoCombatMode and not mychar.InCombat() then
+			CheckBuffs()
+		end
 			
 		mq.delay(10)
 	end
