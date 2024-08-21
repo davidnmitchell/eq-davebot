@@ -35,15 +35,21 @@ function BuildIni(ini)
 	options:WriteNumber('PrintTimer', 10)
 end
 
+function LoadIni(ini)
+	Print = ini:Boolean('Cast Queue Options', 'Print', Print)
+	PrintTimer = ini:Number('Cast Queue Options', 'PrintTimer', PrintTimer)
+end
+
 function Setup()
 	local ini = Ini:new()
 
 	if ini:IsMissing('Cast Queue Options', 'Print') then BuildIni(ini) end
 
-	Print = ini:Boolean('Cast Queue Options', 'Print', Print)
-	PrintTimer = ini:Number('Cast Queue Options', 'PrintTimer', PrintTimer)
+	LoadIni(ini)
 
 	print('Cast queue loaded')
+
+	return ini
 end
 
 
@@ -244,10 +250,9 @@ end
 -- Main
 --
 
-local timer = 0
-
 local function main()
-	Setup()
+	local ini = Setup()
+	local nextload = mq.gettime() + 10000
 
 	if not MyClass.HasSpells then
 		print('(cast_queue)No support for ' .. MyClass.Name)
@@ -262,19 +267,27 @@ local function main()
 	mq.event('castqueuepause', '#*#COMMAND CASTQUEUEPAUSE', command_cast_queue_pause)
 	mq.event('castqueueshutdown', '#*#COMMAND CASTQUEUESHUTDOWN', command_cast_queue_shutdown)
 
+	local nextprint = mq.gettime() + PrintTimer * 1000
 	while Running == true do
 		mq.doevents()
 
-		if Print and timer >= PrintTimer * 100 then
-			timer = 0
+		local time = mq.gettime()
+		if Print and time >= nextprint then
 			print('-----Queue-----')
 			for i,spell in ipairs(Queue) do
 				local target_state = mq.TLO.Spawn(spell.target_id).State()
 				if not target_state then target_state = "NIL" end
 				print(i .. ':' .. spell.spell .. ':' .. target_state)
 			end
+			nextprint = time + PrintTimer * 1000
 		end
 		do_casting()
+
+		time = mq.gettime()
+		if time >= nextload then
+			LoadIni(ini)
+			nextload = time + 10000
+		end
 
 		if Paused then
 			Paused = false
@@ -283,7 +296,6 @@ local function main()
 			print('(cast_queue)Finished pausing')
 		else
 			mq.delay(10)
-			timer = timer + 10
 		end
 	end
 end

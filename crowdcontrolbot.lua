@@ -42,11 +42,7 @@ function BuildIni(ini)
 	cc1:WriteNumber('Gem', 1)
 end
 
-function Setup()
-	local ini = Ini:new()
-
-	if ini:IsMissing('Crowd Control Options', 'Enabled') then BuildIni(ini) end
-
+function LoadIni(ini)
 	local options = ini:Section('Crowd Control Options')
 	Enabled = options:Boolean('Enabled', false)
 	local default_primary = options:Boolean('DefaultIAmPrimary', false)
@@ -67,7 +63,19 @@ function Setup()
 		i = i + 1
 	end
 
-	print('Crowd control config loaded. ' .. (i-1) .. ' groups.')
+	return i - 1
+end
+
+function Setup()
+	local ini = Ini:new()
+
+	if ini:IsMissing('Crowd Control Options', 'Enabled') then BuildIni(ini) end
+
+	local groups = LoadIni(ini)
+
+	print('Crowd control config loaded. ' .. groups .. ' groups.')
+
+	return ini
 end
 
 
@@ -226,23 +234,28 @@ end
 --
 -- Main
 --
--- TODO: have all CC members communicate
+
 local function main()
 	if MyClass.IsCrowdController then
-		Setup()
+		local ini = Setup()
+		local nextload = mq.gettime() + 10000
+
+		while Running == true do
+			mq.doevents()
+
+			CheckSpellBar()
+			CheckCC(MyClass.Name)
+
+			local time = mq.gettime()
+			if time >= nextload then
+				LoadIni(ini)
+				nextload = time + 10000
+			end
+			mq.delay(10)
+		end
 	else
 		print('(crowdcontrolbot)No support for ' .. MyClass.Name)
 		print('(crowdcontrolbot)Exiting...')
-		return
-	end
-
-	while Running == true do
-		mq.doevents()
-
-		CheckSpellBar()
-		CheckCC(MyClass.Name)
-
-		mq.delay(10)
 	end
 end
 

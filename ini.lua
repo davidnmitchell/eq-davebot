@@ -36,7 +36,7 @@ function Section:ToTable()
 			t[v] = value
 		end
 	end
-		
+
 	return t
 end
 

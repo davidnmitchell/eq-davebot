@@ -77,11 +77,7 @@ function BuildIni(ini)
 	buff_packages_2:WriteString('selfpet', 'hps')
 end
 
-function Setup()
-	local ini = Ini:new()
-
-	if ini:IsMissing('Buff Options', 'Enabled') then BuildIni(ini) end
-
+function LoadIni(ini)
 	Enabled = ini:Boolean('Buff Options', 'Enabled', false)
 	local default_min_mana = ini:Number('Buff Options', 'DefaultMinMana', 20)
 	local default_gem = ini:Number('Buff Options', 'DefaultGem', 8)
@@ -102,10 +98,20 @@ function Setup()
 		i = i + 1
 	end
 
-	print('Buffbot loaded with ' .. (i-1) .. ' groups')
+	return i - 1
 end
 
--- TODO: Item Buffs
+function Setup()
+	local ini = Ini:new()
+
+	if ini:IsMissing('Buff Options', 'Enabled') then BuildIni(ini) end
+
+	local groups = LoadIni(ini)
+
+	print('Buffbot loaded with ' .. groups .. ' groups')
+
+	return ini
+end
 
 function PeersPetHasBuff(buff_name, peer)
 	local buff = dannet.Query(peer, 'Pet.Buff[' .. buff_name .. ']')
@@ -230,7 +236,8 @@ end
 --
 
 local function main()
-	Setup()
+	local ini = Setup()
+	local nextload = mq.gettime() + 10000
 
 	while Running == true do
 		mq.doevents()
@@ -238,7 +245,12 @@ local function main()
 		if Enabled and State.Mode ~= State.AutoCombatMode and not mychar.InCombat() then
 			CheckBuffs()
 		end
-			
+
+		local time = mq.gettime()
+		if time >= nextload then
+			LoadIni(ini)
+			nextload = time + 10000
+		end
 		mq.delay(10)
 	end
 end

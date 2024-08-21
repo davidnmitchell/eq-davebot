@@ -70,11 +70,7 @@ function BuildIni(ini)
 	debuff_cast_at_pct_2:WriteNumber('slo', 90)
 end
 
-function Setup()
-	local ini = Ini:new()
-
-	if ini:IsMissing('Debuff Options', 'Enabled') then BuildIni(ini) end
-
+function LoadIni(ini)
 	Enabled = ini:Boolean('Debuff Options', 'Enabled', false)
 	local default_gem = ini:Number('Debuff Options', 'DefaultGem', 6)
 	local default_min_mana = ini:Number('Debuff Options', 'DefaultMinMana', 45)
@@ -97,7 +93,19 @@ function Setup()
 		i = i + 1
 	end
 
-	print('Debuffbot loaded with ' .. (i-1) .. ' groups')
+	return i - 1
+end
+
+function Setup()
+	local ini = Ini:new()
+
+	if ini:IsMissing('Debuff Options', 'Enabled') then BuildIni(ini) end
+
+	local groups = LoadIni(ini)
+
+	print('Debuffbot loaded with ' .. groups .. ' groups')
+
+	return ini
 end
 
 function HasDebuff(debuff_name, id)
@@ -142,20 +150,31 @@ end
 --
 
 local function main()
-	Setup()
+	if MyClass.IsDebuffer then
+		local ini = Setup()
+		local nextload = mq.gettime() + 10000
 
-	while Running == true do
-		mq.doevents()
+		while Running == true do
+			mq.doevents()
 
-		if Enabled and (State.Mode == State.AutoCombatMode or mychar.InCombat()) and not State.CrowdControlActive then
-			CheckDebuffs()
+			if Enabled and (State.Mode == State.AutoCombatMode or mychar.InCombat()) and not State.CrowdControlActive then
+				CheckDebuffs()
+			end
+
+			if State.CrowdControlActive and not mychar.InCombat() then
+				State.CrowdControlActive = false
+			end
+
+			local time = mq.gettime()
+			if time >= nextload then
+				LoadIni(ini)
+				nextload = time + 10000
+			end
+			mq.delay(10)
 		end
-
-		if State.CrowdControlActive and not mychar.InCombat() then
-			State.CrowdControlActive = false
-		end
-
-		mq.delay(10)
+	else
+		print('(debuffbot)No support for ' .. MyClass.Name)
+		print('(debuffbot)Exiting...')
 	end
 end
 

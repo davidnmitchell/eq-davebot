@@ -68,11 +68,7 @@ function BuildIni(ini)
 	end
 end
 
-function Setup()
-	local ini = Ini:new()
-
-	if ini:IsMissing('Heal Options', 'Enabled') then BuildIni(ini) end
-
+function LoadIni(ini)
 	Enabled = ini:Boolean('Heal Options', 'Enabled', false)
 	local default_heal_group_pets = ini:Boolean('Heal Options', 'DefaultHealGroupPets', false)
 	local default_min_mana = ini:Number('Heal Options', 'DefaultMinMana', 0)
@@ -95,7 +91,19 @@ function Setup()
 		i = i + 1
 	end
 
-	print('Healbot loaded with ' .. (i-1) .. ' groups')
+	return i - 1
+end
+
+function Setup()
+	local ini = Ini:new()
+
+	if ini:IsMissing('Heal Options', 'Enabled') then BuildIni(ini) end
+
+	local groups = LoadIni(ini)
+
+	print('Healbot loaded with ' .. groups .. ' groups')
+
+	return ini
 end
 
 local function type_from_class(class)
@@ -252,19 +260,24 @@ end
 
 local function main()
 	if MyClass.IsHealer or MyClass.Name == 'Shadow Knight' then
-		Setup()
+		local ini = Setup()
+		local nextload = mq.gettime() + 10000
+
+		while Running == true do
+			mq.doevents()
+
+			CheckHitPoints()
+
+			local time = mq.gettime()
+			if time >= nextload then
+				LoadIni(ini)
+				nextload = time + 10000
+			end
+			mq.delay(10)
+		end
 	else
 		print('(healbot)No support for ' .. MyClass.Name)
 		print('(healbot)Exiting...')
-		return
-	end
-
-	while Running == true do
-		mq.doevents()
-
-		CheckHitPoints()
-			
-		mq.delay(10)
 	end
 end
 

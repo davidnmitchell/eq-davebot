@@ -33,16 +33,22 @@ function BuildIni(ini)
 	options:WriteNumber('EngageTargetDistance', 75)
 end
 
+function LoadIni(ini)
+	Enabled = ini:Boolean('Melee Options', 'Enabled', false)
+	EngageTargetHpPct = ini:Number('Melee Options', 'EngageTargetHpPct', 95)
+	EngageTargetDistance = ini:Number('Melee Options', 'EngageTargetDistance', 75)
+end
+
 function Setup()
 	local ini = Ini:new()
 
 	if ini:IsMissing('Melee Options', 'Enabled') then BuildIni(ini) end
 
-	Enabled = ini:Boolean('Melee Options', 'Enabled', false)
-	EngageTargetHpPct = ini:Number('Melee Options', 'EngageTargetHpPct', 95)
-	EngageTargetDistance = ini:Number('Melee Options', 'EngageTargetDistance', 75)
+	LoadIni(ini)
 
 	print('Melee config loaded')
+
+	return ini
 end
 
 
@@ -51,7 +57,8 @@ end
 --
 
 local function main()
-	Setup()
+	local ini = Setup()
+	local nextload = mq.gettime() + 10000
 
 	while Running == true do
 		mq.doevents()
@@ -70,7 +77,7 @@ local function main()
 				mq.cmd('/makecamp return')
 			end
 		end
-		
+
 		if Enabled and mychar.InCombat() and not mq.TLO.Me.Combat() and mq.TLO.Me.GroupAssistTarget() then
 			if mq.TLO.Me.GroupAssistTarget.PctHPs() < EngageTargetHpPct and mq.TLO.Me.GroupAssistTarget.Distance() < EngageTargetDistance then
 				mq.cmd('/target ' .. mq.TLO.Me.GroupAssistTarget())
@@ -84,7 +91,12 @@ local function main()
 		if Enabled and mychar.InCombat() and mq.TLO.Me.Combat() and (not mq.TLO.Target() or mq.TLO.Target() ~= mq.TLO.Me.GroupAssistTarget()) then
 			mq.cmd('/attack off')
 		end
-		
+
+		local time = mq.gettime()
+		if time >= nextload then
+			LoadIni(ini)
+			nextload = time + 10000
+		end
 		mq.delay(10)
 	end
 end

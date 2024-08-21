@@ -50,11 +50,7 @@ function BuildIni(ini)
 	song_gems_2:WriteNumber('ac', 1)
 end
 
-function Setup()
-	local ini = Ini:new()
-
-	if ini:IsMissing('Song Options', 'Enabled') then BuildIni(ini) end
-
+function LoadIni(ini)
 	Enabled = ini:Boolean('Song Options', 'Enabled', false)
 
 	Songs = ini:SectionToTable('Songs')
@@ -82,8 +78,20 @@ function Setup()
 		end
 		i = i + 1
 	end
-	
-	print('Songbot loaded with ' .. (i-1) .. ' groups')
+
+	return i - 1
+end
+
+function Setup()
+	local ini = Ini:new()
+
+	if ini:IsMissing('Song Options', 'Enabled') then BuildIni(ini) end
+
+	local groups = LoadIni(ini)
+
+	print('Songbot loaded with ' .. groups .. ' groups')
+
+	return ini
 end
 
 
@@ -161,7 +169,8 @@ end
 --
 
 local function main()
-	Setup()
+	local ini = Setup()
+	local nextload = mq.gettime() + 10000
 
 	while Running == true do
 		mq.doevents()
@@ -172,6 +181,11 @@ local function main()
 
 		CheckTwist()
 
+		local time = mq.gettime()
+		if time >= nextload then
+			LoadIni(ini)
+			nextload = time + 10000
+		end
 		mq.delay(10)
 	end
 end

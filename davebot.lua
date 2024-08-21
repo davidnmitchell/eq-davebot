@@ -39,9 +39,21 @@ end
 --
 -- Main
 --
--- TODO: Reload config on file change
+-- TODO: Pre-mem spells (done for Bard)
+-- TODO: Summon food/drink (MQ2FeedMe?)
+-- TODO: stuns
+-- TODO: Cure detrimental effects
+-- TODO: pulling
+-- TODO: MQ2NetBots (replace pet buffs with, maybe other uses)
+-- TODO: Item Buffs
+-- TODO: Lose aggro logic
+-- TODO: have all CC members communicate
+-- TODO: /setwintitle, /foreground /setprio
+
 local function main()
 	local autosit = Autosit:new()
+
+	mq.cmd('/setwintitle ' .. mq.TLO.Me.Name())
 
 	print('davebot loaded')
 	while Running == true do

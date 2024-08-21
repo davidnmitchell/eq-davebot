@@ -49,11 +49,7 @@ function BuildIni(ini)
 	nuke_cast_at_pct_1:WriteNumber('nuke', 85)
 end
 
-function Setup()
-	local ini = Ini:new()
-
-	if ini:IsMissing('Nuke Options', 'Enabled') then BuildIni(ini) end
-
+function LoadIni(ini)
 	Enabled = ini:Boolean('Nuke Options', 'Enabled', false)
 	local default_gem = ini:Number('Nuke Options', 'DefaultGem', 3)
 	local default_min_mana = ini:Number('Nuke Options', 'DefaultMinMana', 45)
@@ -74,7 +70,19 @@ function Setup()
 		i = i + 1
 	end
 
-	print('Nukebot loaded with ' .. (i-1) .. ' groups')
+	return i - 1
+end
+
+function Setup()
+	local ini = Ini:new()
+
+	if ini:IsMissing('Nuke Options', 'Enabled') then BuildIni(ini) end
+
+	local groups = LoadIni(ini)
+
+	print('Nukebot loaded with ' .. groups .. ' groups')
+
+	return ini
 end
 
 function CastNukeOn(spell_name, gem, id)
@@ -118,7 +126,8 @@ end
 --
 
 local function main()
-	Setup()
+	local ini = Setup()
+	local nextload = mq.gettime()
 
 	while Running == true do
 		mq.doevents()
@@ -131,6 +140,11 @@ local function main()
 			State.CrowdControlActive = false
 		end
 
+		local time = mq.gettime()
+		if time >= nextload then
+			LoadIni(ini)
+			nextload = time + 10000
+		end
 		mq.delay(10)
 	end
 end

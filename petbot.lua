@@ -62,11 +62,7 @@ function BuildIni(ini)
 	options:WriteNumber('EngageTargetDistance', 75)
 end
 
-function Setup()
-	local ini = Ini:new()
-
-	if ini:IsMissing('Pet Options', 'AutoCast') then BuildIni(ini) end
-
+function LoadIni(ini)
 	AutoCast = ini:Boolean('Pet Options', 'AutoCast', AutoCast)
 	AutoAttack = ini:Boolean('Pet Options', 'AutoAttack', AutoAttack)
 	Type = ini:String('Pet Options', 'Type', Type)
@@ -74,8 +70,18 @@ function Setup()
 	MinMana = ini:Number('Pet Options', 'MinMana', MinMana)
 	EngageTargetHpPct = ini:Number('Pet Options', 'EngageTargetHpPct', EngageTargetHpPct)
 	EngageTargetDistance = ini:Number('Pet Options', 'EngageTargetDistance', EngageTargetDistance)
+end
+
+function Setup()
+	local ini = Ini:new()
+
+	if ini:IsMissing('Pet Options', 'AutoCast') then BuildIni(ini) end
+
+	LoadIni(ini)
 
 	print('Petbot loaded')
+
+	return ini
 end
 
 
@@ -90,7 +96,8 @@ end
 --
 
 local function main()
-	Setup()
+	local ini = Setup()
+	local nextload = mq.gettime() + 10000
 
 	while Running == true do
 		mq.doevents()
@@ -114,7 +121,12 @@ local function main()
 		if i_have_a_pet and AutoAttack and mychar.InCombat() and mq.TLO.Pet.Combat() and (not mq.TLO.Pet.Target() or mq.TLO.Pet.Target() ~= mq.TLO.Me.GroupAssistTarget()) then
 			mq.cmd('/pet as you were')
 		end
-		
+
+		local time = mq.gettime()
+		if time >= nextload then
+			LoadIni(ini)
+			nextload = time + 10000
+		end
 		mq.delay(10)
 	end
 end
