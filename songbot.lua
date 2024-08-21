@@ -55,7 +55,7 @@ function Setup()
 
 	if ini:IsMissing('Song Options', 'Enabled') then BuildIni(ini) end
 
-	Enabled = ini:Boolean('Dot Options', 'Enabled', false)
+	Enabled = ini:Boolean('Song Options', 'Enabled', false)
 
 	Songs = ini:SectionToTable('Songs')
 

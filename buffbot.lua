@@ -1,10 +1,12 @@
 local mq = require('mq')
 require('ini')
+require('eqclass')
 require('botstate')
 local str = require('str')
 local spells = require('spells')
 local mychar = require('mychar')
 local dannet = require('dannet')
+local common = require('common')
 
 
 --
@@ -90,8 +92,8 @@ function Setup()
 	while ini:HasSection('Buff Group ' .. i) do
 		local group = ini:SectionToTable('Buff Group ' .. i)
 		local modes = str.Split(group['Modes'], ',')
-		if group['MinMana'] == nil then group['MinMana'] = default_min_mana end
-		if group['DefaultGem'] == nil then group['DefaultGem'] = default_gem end
+		common.TableValueToNumberOrDefault(group, 'MinMana', default_min_mana)
+		common.TableValueToNumberOrDefault(group, 'DefaultGem', default_gem)
 		group['Gems'] = ini:SectionToTable('Buff Gems ' .. i)
 		group['Packages'] = ini:SectionToTable('Buff Packages ' .. i)
 		for idx,mode in ipairs(modes) do

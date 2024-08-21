@@ -1,9 +1,11 @@
 local mq = require('mq')
 require('ini')
+require('eqclass')
 require('botstate')
 local str = require('str')
 local spells = require('spells')
 local mychar = require('mychar')
+local common = require('common')
 
 
 --
@@ -84,9 +86,9 @@ function Setup()
 	while ini:HasSection('Debuff Group ' .. i) do
 		local group = ini:SectionToTable('Debuff Group ' .. i)
 		local modes = str.Split(group['Modes'], ',')
-		if group['DefaultGem'] == nil then group['DefaultGem'] = default_gem end
-		if group['MinMana'] == nil then group['MinMana'] = default_min_mana end
-		if group['MinTargetHpPct'] == nil then group['MinTargetHpPct'] = default_min_target_hp_pct end
+		common.TableValueToNumberOrDefault(group, 'DefaultGem', default_gem)
+		common.TableValueToNumberOrDefault(group, 'MinMana', default_min_mana)
+		common.TableValueToNumberOrDefault(group, 'MinTargetHpPct', default_min_target_hp_pct)
 		group['Gems'] = ini:SectionToTable('Debuff Gems ' .. i)
 		group['AtPcts'] = ini:SectionToTable('Debuff Cast At Percent ' .. i)
 		for idx,mode in ipairs(modes) do
@@ -112,21 +114,23 @@ function CastDebuffOn(spell_name, gem, id)
 end
 
 function CheckDebuffs()
-	for id, spellref in pairs(Spells) do
-		local spell = spells.ReferenceSpell(spellref)
+	if Groups[State.Mode] ~= nil then
+		for id, spellref in pairs(Spells) do
+			local spell = spells.ReferenceSpell(spellref)
 
-		local gem = Groups[State.Mode].Gems[id]
-		if gem == nil then
-			gem = Groups[State.Mode].DefaultGem
-		end
-		local pct = tonumber(Groups[State.Mode].AtPcts[id])
-		if pct ~= nil then
-			local group_target_id = mq.TLO.Me.GroupAssistTarget.ID()
-			local group_target_name = mq.TLO.Me.GroupAssistTarget.Name()
-			local group_target_pct_hps = mq.TLO.Spawn(group_target_id).PctHPs()
+			local gem = Groups[State.Mode].Gems[id]
+			if gem == nil then
+				gem = Groups[State.Mode].DefaultGem
+			end
+			local pct = tonumber(Groups[State.Mode].AtPcts[id])
+			if pct ~= nil then
+				local group_target_id = mq.TLO.Me.GroupAssistTarget.ID()
+				local group_target_name = mq.TLO.Me.GroupAssistTarget.Name()
+				local group_target_pct_hps = mq.TLO.Spawn(group_target_id).PctHPs()
 
-			if group_target_pct_hps and group_target_pct_hps < pct and group_target_pct_hps >= Groups[State.Mode].MinTargetHpPct and not HasDebuff(spell, group_target_id) then
-				CastDebuffOn(spell, gem, group_target_id)
+				if group_target_pct_hps and group_target_pct_hps < pct and group_target_pct_hps >= Groups[State.Mode].MinTargetHpPct and not HasDebuff(spell, group_target_id) then
+					CastDebuffOn(spell, gem, group_target_id)
+				end
 			end
 		end
 	end

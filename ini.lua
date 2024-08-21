@@ -91,9 +91,9 @@ function Section:WriteNumber(key, value)
 end
 
 function Section:WriteBoolean(key, value)
-	local str = "FALSE"
-	if value then str = "TRUE" end
-	self:WriteString(key, str)
+	local s = "FALSE"
+	if value then s = "TRUE" end
+	self:WriteString(key, s)
 end
 
 Ini = {}

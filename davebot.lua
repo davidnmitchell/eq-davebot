@@ -55,7 +55,7 @@ local function main()
 
 		lua.RunScriptIfNotRunning('buffbot')
 		
-		if MyClass.IsHealer then
+		if MyClass.IsHealer or MyClass.Name == 'Shadow Knight' then
 			lua.RunScriptIfNotRunning('healbot')
 		end
 

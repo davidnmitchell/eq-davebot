@@ -5,6 +5,7 @@ require('eqclass')
 local str = require('str')
 local spells = require('spells')
 local target = require('target')
+local common = require('common')
 
 
 --
@@ -62,9 +63,9 @@ function Setup()
 	while ini:HasSection('Dot Group ' .. i) do
 		local group = ini:SectionToTable('Dot Group ' .. i)
 		local modes = str.Split(group['Modes'], ',')
-		if group['DefaultGem'] == nil then group['DefaultGem'] = default_gem end
-		if group['MinMana'] == nil then group['MinMana'] = default_min_mana end
-		if group['MinTargetHpPct'] == nil then group['MinTargetHpPct'] = default_min_target_hp_pct end
+		common.TableValueToNumberOrDefault(group, 'DefaultGem', default_gem)
+		common.TableValueToNumberOrDefault(group, 'MinMana', default_min_mana)
+		common.TableValueToNumberOrDefault(group, 'MinTargetHpPct', default_min_target_hp_pct)
 		group['Gems'] = ini:SectionToTable('Dot Gems ' .. i)
 		group['AtPcts'] = ini:SectionToTable('Dot Cast At Percent ' .. i)
 		for idx,mode in ipairs(modes) do

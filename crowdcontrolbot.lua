@@ -1,8 +1,10 @@
 local mq = require('mq')
 require('ini')
+require('eqclass')
 require('botstate')
 local str = require('str')
 local spells = require('spells')
+local common = require('common')
 
 
 --
@@ -16,6 +18,7 @@ Running = true
 Enabled = true
 
 Groups = {}
+CCRunning = false
 
 
 --
@@ -55,9 +58,9 @@ function Setup()
 		local group = {}
 		local group = ini:SectionToTable('Crowd Control ' .. i)
 		local modes = str.Split(group['Modes'], ',')
-		if group['IAmPrimary'] == nil then group['IAmPrimary'] = default_primary end
-		if group['MinMana'] == nil then group['MinMana'] = default_min_mana end
-		if group['Gem'] == nil then group['Gem'] = default_gem end
+		common.TableValueToBooleanOrDefault(group, 'IAmPrimary', default_primary)
+		common.TableValueToNumberOrDefault(group, 'MinMana', default_min_mana)
+		common.TableValueToNumberOrDefault(group, 'Gem', default_gem)
 		for idx,mode in ipairs(modes) do
 			Groups[tonumber(mode)] = group
 		end
@@ -141,16 +144,16 @@ function CheckCC(my_class)
 		local cc_spell = spells.ReferenceSpell(Groups[State.Mode].Spell)
 
 		local threshold = 3
-		if Groups[State.Mode].IAmPrimaryCC then
+		if Groups[State.Mode].IAmPrimary then
 			threshold = 1
 		end
-		
+
 		if my_class == 'Enchanter' then
 			if mq.TLO.Me.XTarget() > threshold and mq.TLO.Me.PctMana() >= Groups[State.Mode].MinMana and cc_spell ~= nil then
 				if not CCRunning then
 					EnchanterCCMode()
 				end
-				if Groups[State.Mode].IAmPrimaryCC then
+				if Groups[State.Mode].IAmPrimary then
 					for i=1,mq.TLO.Me.XTarget() do
 						EnchanterCCTargetByID(i, mq.TLO.Me.XTarget(i).ID(), cc_spell)
 						if mq.TLO.Me.XTarget() <= threshold then
@@ -178,7 +181,7 @@ function CheckCC(my_class)
 				if not CCRunning then
 					BardCCMode(cc_spell)
 				end
-				if Groups[State.Mode].IAmPrimaryCC then
+				if Groups[State.Mode].IAmPrimary then
 					for i=1,mq.TLO.Me.XTarget() do
 						BardCCTargetByID(mq.TLO.Me.XTarget(i).ID())
 						if mq.TLO.Me.XTarget() <= threshold then
@@ -224,18 +227,11 @@ end
 -- Main
 --
 -- TODO: have all CC members communicate
-function main()
-	local am_cc = false
-
-	local my_class = mq.TLO.Me.Class.Name()
-	if my_class == 'Enchanter' or my_class == 'Bard' then
-		am_cc = true
-	end
-
-	if am_cc then
+local function main()
+	if MyClass.IsCrowdController then
 		Setup()
 	else
-		print('(crowdcontrolbot)No support for ' .. my_class)
+		print('(crowdcontrolbot)No support for ' .. MyClass.Name)
 		print('(crowdcontrolbot)Exiting...')
 		return
 	end
@@ -244,8 +240,8 @@ function main()
 		mq.doevents()
 
 		CheckSpellBar()
-		CheckCC(my_class)
-		
+		CheckCC(MyClass.Name)
+
 		mq.delay(10)
 	end
 end

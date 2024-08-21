@@ -1,5 +1,7 @@
 local mq = require('mq')
 require('ini')
+require('eqclass')
+require('botstate')
 local spells = require('spells')
 local mychar = require('mychar')
 

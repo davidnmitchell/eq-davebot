@@ -66,7 +66,7 @@ function Autosit:Check()
 		if self._override_on_move and mychar.Standing() and self._sitting then
 			self._sitting = false
 			if mq.TLO.Me.PctMana() < self._min_mana or mq.TLO.Me.PctHPs() < self._min_hps then
-				print('Overriding sit')
+				print('Overriding sit for ' .. self._override_seconds .. ' seconds')
 				self._override = 100 * self._override_seconds
 			end
 		end

@@ -1,10 +1,12 @@
 local mq = require('mq')
 require('ini')
+require('eqclass')
 require('botstate')
 local str = require('str')
 local spells = require('spells')
 local mychar = require('mychar')
 local target = require('target')
+local common = require('common')
 
 
 --
@@ -31,7 +33,7 @@ function BuildIni(ini)
 	print('Building nuke config')
 
 	local options = ini:Section('Nuke Options')
-	options.WriteBoolean('Enabled', false)
+	options:WriteBoolean('Enabled', false)
 	options:WriteNumber('DefaultMinMana', 30)
 
 	local nuke_spells = ini:Section('Nuke Spells')
@@ -62,8 +64,8 @@ function Setup()
 	while ini:HasSection('Nuke Group ' .. i) do
 		local group = ini:SectionToTable('Nuke Group ' .. i)
 		local modes = str.Split(group['Modes'], ',')
-		if group['DefaultGem'] == nil then group['DefaultGem'] = default_gem end
-		if group['MinMana'] == nil then group['MinMana'] = default_min_mana end
+		common.TableValueToNumberOrDefault(group, 'DefaultGem', default_gem)
+		common.TableValueToNumberOrDefault(group, 'MinMana', default_min_mana)
 		group['Gems'] = ini:SectionToTable('Nuke Gems ' .. i)
 		group['AtPcts'] = ini:SectionToTable('Nuke Cast At Percent ' .. i)
 		for idx,mode in ipairs(modes) do
@@ -83,7 +85,7 @@ function CastNukeOn(spell_name, gem, id)
 end
 
 function CheckNukes()
-	if mychar.InCombat() and mq.TLO.Me.GroupAssistTarget() then
+	if mychar.InCombat() and Groups[State.Mode] ~= nil and mq.TLO.Me.GroupAssistTarget() then
 		for id,spell in pairs(Spells) do
 			local name = spells.ReferenceSpell(spell)
 			if not name then

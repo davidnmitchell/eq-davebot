@@ -3,14 +3,21 @@ local str = require('str')
 local mychar = require('mychar')
 local target = require('target')
 local spells = require('spells')
+require('ini')
+require('eqclass')
 
 
 --
 -- Globals
 --
 
+MyClass = EQClass:new()
+
 Running = true
 Paused = false
+
+Print = false
+PrintTimer = 10
 
 Queue = {}
 Casting = {}
@@ -19,6 +26,26 @@ Casting = {}
 --
 -- Functions
 --
+
+function BuildIni(ini)
+	print('Building queue config')
+
+	local options = ini:Section('Cast Queue Options')
+	options:WriteBoolean('Print', false)
+	options:WriteNumber('PrintTimer', 10)
+end
+
+function Setup()
+	local ini = Ini:new()
+
+	if ini:IsMissing('Cast Queue Options', 'Print') then BuildIni(ini) end
+
+	Print = ini:Boolean('Cast Queue Options', 'Print', Print)
+	PrintTimer = ini:Number('Cast Queue Options', 'PrintTimer', PrintTimer)
+
+	print('Cast queue loaded')
+end
+
 
 local function add_to_queue(spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
 	print('Queueing ' .. spell .. ' with priority ' .. priority)
@@ -64,12 +91,12 @@ local function highest_priority_spell_idx()
 	local priority = 10
 	for i, sinfo in ipairs(Queue) do
 		if sinfo.priority < priority and target.IsAlive(sinfo.target_id) then
-		
+
 			local range = mq.TLO.Me.Spell(sinfo.spell).Range()
 			if range == nil then range = 200 end
 			local distance = mq.TLO.Spawn(sinfo.target_id).Distance()
 			if distance == nil then distance = 0 end
-			
+
 			local in_range = range == 0 or distance <= range
 			local is_invisibility_on_me = sinfo.spell == 'Invisibility' and sinfo.target_id == mq.TLO.Me.ID()
 			if in_range and (not is_invisibility_on_me or #Queue == 1) then
@@ -117,14 +144,14 @@ local function do_casting()
 				mq.cmd('/g (cast_queue)Skipping "' .. spell.msg .. '" because target hit points are lower than ' .. spell.min_target_hp_pct)
 			else
 				local enough_mana = mq.TLO.Me.PctMana() >= spell.min_mana_pct
-				
+
 				local range = mq.TLO.Me.Spell(spell.spell).Range()
 				if range == nil then range = 200 end
 				local distance = mq.TLO.Spawn(spell.target_id).Distance()
 				if distance == nil then distance = 0 end
-				
+
 				local in_range = range == 0 or distance <= range
-				
+
 				if enough_mana and in_range and not mq.TLO.Me.Invis('ANY')() then
 					Casting = spell
 					mq.cmd('/g (cast_queue)' .. Casting.msg)
@@ -134,7 +161,7 @@ local function do_casting()
 						mq.delay(250)
 						mq.cmd('/face id ' .. Casting.target_id)
 					end
-					
+
 					local cmd = '/casting "' .. Casting.spell .. '" ' .. Casting.gem .. ' -maxtries|' .. Casting.max_tries .. ' -invis -targetid|' .. Casting.target_id
 					mq.cmd(cmd)
 					print(cmd)
@@ -170,33 +197,33 @@ end
 
 local function command_cast_queue_add(line)
 	local parts = str.Split(line, '|')
-	
+
 	local spell = parts[2]
 	local gem = parts[3]
 	local target_id = tonumber(parts[4])
 	local msg = parts[5]
-	
+
 	local min_mana_pct = str.AsNumber(parts[6], 0)
 	local min_target_hp_pct = str.AsNumber(parts[7], 0)
 	local max_tries = str.AsNumber(parts[8], 1)	
 	local priority = str.AsNumber(parts[9], 5)
-	
+
 	add_to_queue(spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
 end
 
 local function command_cast_queue_add_unique(line)
 	local parts = str.Split(line, '|')
-	
+
 	local spell = parts[2]
 	local gem = parts[3]
 	local target_id = tonumber(parts[4])
 	local msg = parts[5]
-	
+
 	local min_mana_pct = str.AsNumber(parts[6], 0)
 	local min_target_hp_pct = str.AsNumber(parts[7], 0)
 	local max_tries = str.AsNumber(parts[8], 1)	
 	local priority = str.AsNumber(parts[9], 5)
-	
+
 	add_unique_to_queue(spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
 end
 
@@ -217,13 +244,13 @@ end
 -- Main
 --
 
-local every_5_seconds = 0
+local timer = 0
 
 local function main()
-	local my_class = mq.TLO.Me.Class.Name()
+	Setup()
 
-	if my_class ~= 'Shaman' and my_class ~= 'Druid' and my_class ~= 'Cleric' and my_class ~= 'Enchanter' and my_class ~= 'Ranger' and my_class ~= 'Paladin' and my_class ~= 'Shadow Knight' and my_class ~= 'Beastlandd' and my_class ~= 'Wizard' and my_class ~= 'Magician' and my_class ~= 'Necromancer' then
-		print('(cast_queue)No support for ' .. my_class)
+	if not MyClass.HasSpells then
+		print('(cast_queue)No support for ' .. MyClass.Name)
 		print('(cast_queue)Exiting...')
 		return
 	end
@@ -238,8 +265,8 @@ local function main()
 	while Running == true do
 		mq.doevents()
 
-		if every_5_seconds >= 500 then
-			every_5_seconds = 0
+		if Print and timer >= PrintTimer * 100 then
+			timer = 0
 			print('-----Queue-----')
 			for i,spell in ipairs(Queue) do
 				local target_state = mq.TLO.Spawn(spell.target_id).State()
@@ -248,7 +275,7 @@ local function main()
 			end
 		end
 		do_casting()
-		
+
 		if Paused then
 			Paused = false
 			print('(cast_queue)Pausing for 20 seconds')
@@ -256,7 +283,7 @@ local function main()
 			print('(cast_queue)Finished pausing')
 		else
 			mq.delay(10)
-			every_5_seconds = every_5_seconds + 10
+			timer = timer + 10
 		end
 	end
 end
