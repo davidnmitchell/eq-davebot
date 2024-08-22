@@ -39,15 +39,20 @@ end
 --
 -- Main
 --
+-- TODO: Test multiple coroutines with mq.delay to see if it holds up all threads in a process or not
 -- TODO: Pre-mem spells (done for Bard)
+-- TODO: Immunity/resist memory (save to ini?)
+-- TODO: Pre-populated spells in configs
 -- TODO: Summon food/drink (MQ2FeedMe?)
--- TODO: stuns
--- TODO: Cure detrimental effects
+-- TODO: Stuns
+-- TODO: Short lived combat buffs
+-- TODO: Cure detrimental effects (target datatype)
 -- TODO: pulling
 -- TODO: MQ2NetBots (replace pet buffs with, maybe other uses)
 -- TODO: Item Buffs
 -- TODO: Lose aggro logic
 -- TODO: have all CC members communicate
+-- TODO: Individual class spell lists/abilities
 -- TODO: /setwintitle, /foreground /setprio
 
 local function main()

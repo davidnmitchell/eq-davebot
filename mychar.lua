@@ -13,7 +13,7 @@ function mychar.Casting()
 end
 
 function mychar.InCombat()
-	return mq.TLO.Me.XTarget() > 0 or mq.TLO.Me.CombatState() ~= 'COMBAT'
+	return mq.TLO.Me.XTarget() > 0 -- or mq.TLO.Me.CombatState() == 'COMBAT'
 	-- for i=1,mq.TLO.DanNet.PeerCount() do
 		-- local peer = mq.TLO.DanNet.Peers(i)()
 		-- local combat = common.query(peer, 'Me.Combat')

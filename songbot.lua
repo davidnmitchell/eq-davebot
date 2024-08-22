@@ -29,25 +29,33 @@ function BuildIni(ini)
 	print('Building song config')
 
 	local options = ini:Section('Song Options')
-	options.WriteBoolean('Enabled', false)
+	options:WriteBoolean('Enabled', false)
 
 	local songs = ini:Section('Songs')
 	songs:WriteString('ac', 'Statistic Buffs,Armor Class,Group v2')
+	songs:WriteString('regen', 'Regen,Health,Group v2')
+	songs:WriteString('speed', 'Utility Beneficial,Movement,Group v2')
+	songs:WriteString('resist', 'Statistic Buffs,Resist Buff,Group v2')
+	songs:WriteString('selfhaste', 'Utility Beneficial,Haste,Self')
+
+	local song_gems_1 = ini:Section('Song Gems 1')
+	song_gems_1:WriteNumber('regen', 1)
+	song_gems_1:WriteNumber('speed', 8)
 
 	local song_group_1 = ini:Section('Song Group 1')
 	song_group_1:WriteString('Modes', '1,2,3')
+	song_group_1:WriteString('Order', '1,8')
 	song_group_1:WriteString('ModesToShareGemsWith', '4')
-	song_group_1:WriteString('Order', '1')
 
-	local song_gems_1 = ini:Section('Song Gems 1')
-	song_gems_1:WriteNumber('ac', 1)
+	local song_gems_2 = ini:Section('Song Gems 2')
+	song_gems_2:WriteNumber('regen', 1)
+	song_gems_2:WriteNumber('ac', 2)
+	song_gems_2:WriteNumber('resist', 3)
+	song_gems_2:WriteNumber('selfhaste', 4)
 
 	local song_group_2 = ini:Section('Song Group 2')
 	song_group_2:WriteString('Modes', '4,5,6,7,8,9')
 	song_group_2:WriteString('Order', '1')
-
-	local song_gems_2 = ini:Section('Song Gems 2')
-	song_gems_2:WriteNumber('ac', 1)
 end
 
 function LoadIni(ini)
@@ -120,8 +128,16 @@ function CheckSongBar()
 		for i,friend_mode in ipairs(Groups[State.Mode].FriendModes) do
 			for song_key,gem in pairs(Groups[tonumber(friend_mode)].Gems) do
 				local song = spells.ReferenceSpell(Songs[song_key])
-				if mq.TLO.Me.Gem(gem).Name() ~= song then
-					mq.cmd('/memorize "' .. song .. '" gem' .. gem)
+				if song then
+					if mq.TLO.Me.Gem(gem).Name() ~= song then
+						mq.cmd('/memorize "' .. song .. '" gem' .. gem)
+					end
+				else
+					if not Songs[song_key] then
+						print('Unmatched song key ' .. song_key)
+					else
+						print('Nothing found for song search ' .. Songs[song_key])
+					end
 				end
 			end
 		end
