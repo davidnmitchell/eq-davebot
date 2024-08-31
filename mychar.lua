@@ -4,7 +4,16 @@ local mq = require('mq')
 local mychar = {}
 
 function mychar.ReadyToCast()
-	return not mq.TLO.Me.Moving() and mq.TLO.Cast.Status() == 'I'
+	return not mq.TLO.Me.Stunned()
+		and not	mq.TLO.Me.Dead()
+		and not mq.TLO.Me.Feigning()
+		and not	mq.TLO.Me.Ducking()
+		and not mq.TLO.Me.Silenced()
+		and not mq.TLO.Me.Charmed()
+		and not mq.TLO.Me.Mezzed()
+		and not mq.TLO.Me.Invulnerable()
+		and not mq.TLO.Me.Moving()
+		and mq.TLO.Cast.Status() == 'I'
 end
 
 function mychar.Casting()

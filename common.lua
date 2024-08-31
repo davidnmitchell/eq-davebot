@@ -3,6 +3,33 @@ local str = require('str')
 
 local common = {}
 
+function common.TableHasValue(T, value)
+	for i=1,#T do
+		if T[i] == value then
+			return true
+		end
+	end
+	return false
+end
+
+function common.TableIndexOf(T, value)
+	for i=1,#T do
+		if T[i] == value then return i end
+	end
+	return -1
+end
+
+function common.TableAsCsv(T)
+	local s = ''
+	for i=1,#T do
+		if i == 1 then
+			s = T[i]
+		else
+			s = s .. ',' .. T[i]
+		end
+	end
+	return s
+end
 
 function common.TableLength(T)
   local count = 0
@@ -24,6 +51,10 @@ function common.TableValueToBooleanOrDefault(t, key, default)
 	else
 		t[key] = t[key] == 'TRUE'
 	end	
+end
+
+function common.PrintTableKeys(T)
+	for k,v in pairs(T) do print(k) end
 end
 
 function common.PrintTable(T)

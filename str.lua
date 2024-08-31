@@ -42,4 +42,16 @@ function str.IsEmpty(s)
 	return s == nil or string.len(s) == 0
 end
 
+function str.Insert(s1, s2, pos)
+    return s1:sub(1,pos)..s2..s1:sub(pos+1)
+end
+
+function str.StartsWith(s, start)
+	return s:sub(1, #start) == start
+end
+
+function str.EndsWith(s, ending)
+	return ending == "" or s:sub(-#ending) == ending
+end
+
 return str

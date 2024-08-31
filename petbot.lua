@@ -1,94 +1,41 @@
 local mq = require('mq')
-require('ini')
-require('eqclass')
-require('botstate')
 local spells = require('spells')
 local mychar = require('mychar')
-
-
-function DefaultType()
-	local default_type = ''
-	if MyClass.Name == 'Magician' then
-		default_type = 'Water'
-	elseif MyClass.Name == 'Shaman' then
-		default_type = 'Warder'
-	elseif MyClass.Name == 'Shadow Knight' then
-		default_type = 'Undead'
-	elseif MyClass.Name == 'Necromancer' then
-		default_type = 'Undead'
-	elseif MyClass.Name == 'Beastlord' then
-		print('Need Beastlord Code')
-	elseif MyClass.Name == 'Enchanter' then
-		default_type = 'Animation'
-	elseif MyClass.Name == 'Wizard' then
-		default_type = 'Familiar'
-	end
-	return default_type
-end
+local heartbeat = require('heartbeat')
+require('eqclass')
+require('botstate')
+require('config')
 
 
 --
 -- Globals
 --
 
-MyClass = EQClass:new()
-State = BotState:new('petbot', true, false)
+local ProcessName = 'petbot'
+local MyClass = EQClass:new()
+local State = BotState:new(false, ProcessName, false, false)
+local Config = PetConfig:new()
+local SpellBar = SpellBarConfig:new()
 
-Running = true
-AutoCast = false
-AutoAttack = false
-
-Type = DefaultType()
-Gem = 8
-MinMana = 20
-EngageTargetHpPct = 95
-EngageTargetDistance = 75
+local Running = true
 
 
 --
 -- Functions
 --
 
-function BuildIni(ini)
-	print('Building pet config')
-
-	local options = ini:Section('Pet Options')
-	options:WriteBoolean('AutoCast', false)
-	options:WriteBoolean('AutoAttack', false)
-	options:WriteString('Type', DefaultType())
-	options:WriteNumber('Gem', 8)
-	options:WriteNumber('MinMana', 20)
-	options:WriteNumber('EngageTargetHpPct', 95)
-	options:WriteNumber('EngageTargetDistance', 75)
+local function log(msg)
+	print('(' .. ProcessName .. ') ' .. msg)
 end
 
-function LoadIni(ini)
-	AutoCast = ini:Boolean('Pet Options', 'AutoCast', AutoCast)
-	AutoAttack = ini:Boolean('Pet Options', 'AutoAttack', AutoAttack)
-	Type = ini:String('Pet Options', 'Type', Type)
-	Gem = ini:Number('Pet Options', 'Gem', Gem)
-	MinMana = ini:Number('Pet Options', 'MinMana', MinMana)
-	EngageTargetHpPct = ini:Number('Pet Options', 'EngageTargetHpPct', EngageTargetHpPct)
-	EngageTargetDistance = ini:Number('Pet Options', 'EngageTargetDistance', EngageTargetDistance)
-end
-
-function Setup()
-	local ini = Ini:new()
-
-	if ini:IsMissing('Pet Options', 'AutoCast') then BuildIni(ini) end
-
-	LoadIni(ini)
-
-	print('Petbot loaded')
-
-	return ini
-end
-
-
-
-function CastPet()
-	local spell = spells.ReferenceSpell('Pet,Sum: ' .. Type .. ',Self')
-	spells.QueueSpellIfNotQueued(spell, 'gem' .. Gem, mq.TLO.Me.ID(), 'Casting pet: ' .. spell, MinMana, 0, 1, 8)
+local function CastPet()
+	local gem = SpellBar:FirstOpenGem(State)
+	if gem ~= 0 then
+		local spell = spells.ReferenceSpell('Pet,Sum: ' .. Config:Type(State) .. ',Self')
+		spells.QueueSpellIfNotQueued(spell, 'gem' .. gem, mq.TLO.Me.ID(), 'Casting pet: ' .. spell, Config:MinMana(State), 0, 1, 8)
+	else
+		log('Cannot find open gem to cast pet')
+	end
 end
 
 --
@@ -96,8 +43,6 @@ end
 --
 
 local function main()
-	local ini = Setup()
-	local nextload = mq.gettime() + 10000
 
 	while Running == true do
 		mq.doevents()
@@ -105,28 +50,29 @@ local function main()
 		local i_have_a_pet = mq.TLO.Pet() ~= 'NO PET'
 		local group_assist_target = mq.TLO.Me.GroupAssistTarget()
 
-		if not i_have_a_pet and AutoCast and not mychar.InCombat() then
+		if not i_have_a_pet and Config:AutoCast(State) and not mychar.InCombat() then
 			CastPet()
 		end
 
-		if i_have_a_pet and AutoAttack and mychar.InCombat() and not mq.TLO.Pet.Combat() and group_assist_target ~= nil then
+		if i_have_a_pet and Config:AutoAttack(State) and mychar.InCombat() and not mq.TLO.Pet.Combat() and group_assist_target ~= nil then
+			---@diagnostic disable-next-line: undefined-field
 			local pct_hps = mq.TLO.Me.GroupAssistTarget.PctHPs()
+			---@diagnostic disable-next-line: undefined-field
 			local distance = mq.TLO.Me.GroupAssistTarget.Distance()
-			if pct_hps and pct_hps < EngageTargetHpPct and distance and distance < EngageTargetDistance then
+			if pct_hps and pct_hps < Config:EngageTargetHPs(State) and distance and distance < Config:EngageTargetDistance(State) then
 				mq.cmd('/target ' .. group_assist_target)
 				mq.delay(500)
 				mq.cmd('/pet attack')
 			end
 		end
-		if i_have_a_pet and AutoAttack and mychar.InCombat() and mq.TLO.Pet.Combat() and (not mq.TLO.Pet.Target() or mq.TLO.Pet.Target() ~= mq.TLO.Me.GroupAssistTarget()) then
+		if i_have_a_pet and Config:AutoAttack(State) and mychar.InCombat() and mq.TLO.Pet.Combat() and (not mq.TLO.Pet.Target() or mq.TLO.Pet.Target() ~= mq.TLO.Me.GroupAssistTarget()) then
 			mq.cmd('/pet as you were')
 		end
 
-		local time = mq.gettime()
-		if time >= nextload then
-			LoadIni(ini)
-			nextload = time + 10000
-		end
+		Config:Reload(10000)
+		SpellBar:Reload(10000)
+
+		heartbeat.SendHeartBeat(ProcessName)
 		mq.delay(10)
 	end
 end

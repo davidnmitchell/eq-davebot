@@ -12,6 +12,15 @@ local function FilterEmpty(table)
 	return filtered
 end
 
+local function StripComment(s)
+	local parts = str.Split(s, ';')
+	if #parts > 1 then
+		return str.Trim(parts[1])
+	else
+		return s
+	end
+end
+
 Section = {}
 Section.__index = Section
 
@@ -19,21 +28,21 @@ function Section:new(filename, section_name)
 	local mt = {}
 	setmetatable(mt, self)
 
-	self.Filename = filename or ('Bot_' .. mq.TLO.Me.CleanName() .. '.ini')
-	self.SectionName = section_name
+	mt.Filename = filename or ('Bot_' .. mq.TLO.Me.CleanName() .. '.ini')
+	mt.Name = section_name
 
 	return mt
 end
 
 function Section:ToTable()
-	local rawkeys = mq.TLO.Ini(self.Filename, self.SectionName)()
+	local rawkeys = mq.TLO.Ini(self.Filename, self.Name)()
 	local t = {}
 
 	if rawkeys ~= nil then
 		local keys = FilterEmpty(str.Split(rawkeys, '|'))
-		for i,v in ipairs(keys) do
-			local value = mq.TLO.Ini(self.Filename, self.SectionName, v)()
-			t[v] = value
+		for i,key in ipairs(keys) do
+			local value = mq.TLO.Ini(self.Filename, self.Name, key)() or ''
+			t[key] = StripComment(value)
 		end
 	end
 
@@ -41,29 +50,30 @@ function Section:ToTable()
 end
 
 function Section:ToArray()
-	local rawkeys = mq.TLO.Ini(self.Filename, self.SectionName)()
+	local rawkeys = mq.TLO.Ini(self.Filename, self.Name)()
 	local list = {}
 
 	if rawkeys == nil then
-		print('Invalid section name ' .. self.SectionName)
+		print('Invalid section name ' .. self.Name)
 	end
 
 	local keys = FilterEmpty(str.Split(rawkeys, '|'))
 
-	for i,v in ipairs(keys) do
-		table.insert(list, mq.TLO.Ini(self.Filename, self.SectionName, v)())
+	for i,key in ipairs(keys) do
+		local value = mq.TLO.Ini(self.Filename, self.Name, key)()
+		table.insert(list, StripComment(value))
 	end
 
 	return list
 end
 
 function Section:IsMissing(key)
-	return str.IsEmpty(mq.TLO.Ini(self.Filename, self.SectionName, key)())
+	return str.IsEmpty(mq.TLO.Ini(self.Filename, self.Name, key)())
 end
 
 function Section:LoadValueOrDefault(key, default)
 	if self:IsMissing(key) then return default end
-	return mq.TLO.Ini(self.Filename, self.SectionName, key)()
+	return StripComment(mq.TLO.Ini(self.Filename, self.Name, key)())
 end
 
 function Section:String(key, default)
@@ -83,7 +93,7 @@ function Section:Boolean(key, default)
 end
 
 function Section:WriteString(key, value)
-	mq.cmd('/ini "' .. self.Filename .. '" "' .. self.SectionName .. '" "' .. key .. '" "' .. value .. '"')
+	mq.cmd('/ini "' .. self.Filename .. '" "' .. self.Name .. '" "' .. key .. '" "' .. value .. '"')
 end
 
 function Section:WriteNumber(key, value)
@@ -103,9 +113,13 @@ function Ini:new(filename)
 	local mt = {}
 	setmetatable(mt, self)
 
-	self.Filename = filename or ('Bot_' .. mq.TLO.Me.CleanName() .. '.ini')
+	mt.Filename = filename or ('Bot_' .. mq.TLO.Me.CleanName() .. '.ini')
 
 	return mt
+end
+
+function Ini:SectionNames()
+	return FilterEmpty(str.Split(mq.TLO.Ini(self.Filename)(), '|'))
 end
 
 function Ini:HasSection(section_name)

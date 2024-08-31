@@ -25,7 +25,7 @@ local function in_history(spell, target_id)
 	for i, sinfo in ipairs(History) do
 		if sinfo.timestamp < os.clock() - 3 then
 			table.remove(History, i)
-		end	
+		end
 	end
 
 	for i, sinfo in ipairs(History) do
@@ -36,11 +36,24 @@ local function in_history(spell, target_id)
 	return false
 end
 
+local function dbcq_queue_cmd(unique, spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
+	local cmd = '/dbcq queue -spell|' .. spell
+	if unique then cmd = cmd .. ' -unique|TRUE' end
+	if gem then cmd = cmd .. ' -gem|' .. gem end
+	if target_id then cmd = cmd .. ' -target_id|' .. target_id end
+	if msg then cmd = cmd .. ' -message|' .. msg end
+	if min_mana_pct then cmd = cmd .. ' -min_mana|' .. min_mana_pct end
+	if min_target_hp_pct then cmd = cmd .. ' -min_target_hps|' .. min_target_hp_pct end
+	if max_tries then cmd = cmd .. ' -max_tries|' .. max_tries end
+	if priority then cmd = cmd .. ' -priority|' .. priority end
+	return cmd
+end
 
 function spells.QueueSpell(spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
 	table.insert(History, { spell=spell, targetid=target_id, timestamp=os.clock() })
 	if not AmBard then
-		mq.cmd('/echo COMMAND CASTQUEUEADD |' .. spell .. '|' .. gem .. '|' .. target_id .. '|' .. msg .. '|' .. min_mana_pct .. '|' .. min_target_hp_pct .. '|' .. max_tries .. '|' .. priority)
+		local cmd = dbcq_queue_cmd(false, spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
+		mq.cmd(cmd)
 	else
 		spells.BardCast(spell, gem, target_id)
 	end
@@ -51,7 +64,8 @@ function spells.QueueSpellIfNotQueued(spell, gem, target_id, msg, min_mana_pct, 
 		table.insert(History, { spell=spell, targetid=target_id, timestamp=os.clock() })
 
 		if not AmBard then
-			mq.cmd('/echo COMMAND CASTQUEUEADDUNIQUE |' .. spell .. '|' .. gem .. '|' .. target_id .. '|' .. msg .. '|' .. min_mana_pct .. '|' .. min_target_hp_pct .. '|' .. max_tries .. '|' .. priority)
+			local cmd = dbcq_queue_cmd(true, spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
+			mq.cmd(cmd)
 		else
 			if type(gem) == 'string' then
 				if gem:find('^gem') ~= nil then
@@ -68,15 +82,73 @@ end
 
 function spells.WipeQueue()
 	while #History > 0 do table.remove(History) end
-	mq.cmd('/echo COMMAND CASTQUEUEREMOVEALL')
+	mq.cmd('/dbcq removeall')
+end
+
+function spells.KnownSpellCount()
+    local i = 1
+    while mq.TLO.Me.Book(i)() do
+        i = i + 1
+    end
+    return i-1
+end
+
+function spells.DumpSpellBook(ini, section_name)
+	local i = 1
+	local done = false
+	local spell_book = {}
+
+	while not done do
+		local spell = mq.TLO.Me.Book(i)()
+		if spell == nil then
+			done = true
+		else
+			local name = spell
+			local category = mq.TLO.Spell(spell).Category()
+			local subcategory = mq.TLO.Spell(spell).Subcategory()
+			local type = mq.TLO.Spell(spell).TargetType()
+			local level = mq.TLO.Spell(spell).Level()
+
+			local parts = str.Split(name, ' ')
+			local key = string.lower(parts[#parts]) .. level
+
+			table.insert(spell_book, 1, {key=key, name=name, level=level, category=category, subcategory=subcategory, type=type})
+			i = i + 1
+		end
+	end
+
+	table.sort(
+		spell_book,
+		function (spell1, spell2)
+			if spell1.level == spell2.level then
+				return spell1.name < spell2.name
+			end
+			return spell1.level < spell2.level
+		end
+	)
+
+	local section = ini:Section(section_name)
+	for idx,spell in ipairs(spell_book) do
+		local name_pad = 18 - string.len(spell.key)
+		local comment_pad = 35 - string.len(spell.name)
+
+		local name = spell.name
+		local comment = ';' .. spell.category .. ',' .. spell.subcategory .. ',' .. spell.type
+
+		for j=1,name_pad do name = str.Insert(name, ' ', 0) end
+		for j=1,comment_pad do comment = str.Insert(comment, ' ', 0) end
+
+		section:WriteString(spell.key, name .. comment)
+	end
+
+	print('Wrote ' .. (i-1) .. ' spells to ini')
 end
 
 function spells.FindSpell(category, subcategory, target, depth)
     local i = 1
     local found = {}
     local done = false
-	local dpth = 1
-	if depth ~= nil then dpth = depth end
+	local dpth = depth or 1
 
     while not done do
 		local spell = mq.TLO.Me.Book(i)()
@@ -86,8 +158,8 @@ function spells.FindSpell(category, subcategory, target, depth)
 			--if spell == 'Gift of Pure Thought' then
 				--print(spell .. ':' .. mq.TLO.Me.Spell(spell).TargetType())
 			--end
-			if target == mq.TLO.Me.Spell(spell).TargetType() and category == mq.TLO.Me.Spell(spell).Category() and subcategory == mq.TLO.Me.Spell(spell).Subcategory() then
-				table.insert(found, 1, {spell=spell, level = mq.TLO.Me.Spell(spell).Level()})
+			if target == mq.TLO.Spell(spell).TargetType() and category == mq.TLO.Spell(spell).Category() and subcategory == mq.TLO.Spell(spell).Subcategory() then
+				table.insert(found, 1, {spell=spell, level = mq.TLO.Spell(spell).Level()})
 			end
 			i = i + 1
 		end
@@ -101,7 +173,7 @@ function spells.FindSpell(category, subcategory, target, depth)
 	if #found > 0 then
 		return table.remove(found, dpth).spell
 	else
-		return nil
+		return ''
 	end
 end
 
@@ -114,7 +186,7 @@ function spells.ReferenceSpell(spell_or_csv)
 			return spells.FindSpell(parts[1], parts[2], parts[3], parts[4])
 		end
 	end
-	return spell_or_csv
+	return spell_or_csv or ''
 end
 
 function spells.CastAndBlock(spell, gem, targetid, maxtries)
@@ -124,6 +196,7 @@ function spells.CastAndBlock(spell, gem, targetid, maxtries)
 	else
 		mq.cmd('/casting "' .. spell .. '" gem' .. gem .. ' -maxtries|' .. tries)
 	end
+	---@diagnostic disable-next-line: undefined-field
 	while mq.TLO.Cast.Status() ~= 'I' do
 		mq.delay(10)
 	end
@@ -132,16 +205,26 @@ end
 function spells.MemorizeAndBlock(spell, gem_number)
 	local cmd = '/memorize "' .. spell .. '" gem' .. gem_number
 	mq.cmd(cmd)
+	---@diagnostic disable-next-line: undefined-field
 	while not mq.TLO.Cast.Ready(gem_number)() do
 		mq.delay(100)
 	end
+	---@diagnostic disable-next-line: undefined-field
 	while mq.TLO.Cast.Status() ~= 'I' do
 		mq.delay(10)
 	end
 end
 
-function spells.BardCast(spell, gem_number, target_id)
+function spells.UpdateBardCastActive()
 	mq.cmd('/echo NOTIFY BCACTIVE')
+end
+
+function spells.UpdateBardCastInactive()
+	mq.cmd('/echo NOTIFY BCINACTIVE')
+end
+
+function spells.BardCast(spell, gem_number, target_id)
+	spells.UpdateBardCastActive()
 	mq.delay(250)
 	mq.cmd('/twist clear')
 	mq.delay(500)
@@ -151,8 +234,8 @@ function spells.BardCast(spell, gem_number, target_id)
 		mq.delay(100)
 	end
 	mq.cmd('/cast ' .. gem_number)
-	mq.delay(mq.TLO.Spell(spell).CastTime.Seconds() * 1000)
-	mq.cmd('/echo NOTIFY BCINACTIVE')
+	mq.delay((mq.TLO.Spell(spell).CastTime.Seconds() + 2) * 1000)
+	spells.UpdateBardCastInactive()
 end
 
 return spells

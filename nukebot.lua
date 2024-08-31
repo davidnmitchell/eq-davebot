@@ -1,118 +1,56 @@
 local mq = require('mq')
-require('ini')
-require('eqclass')
-require('botstate')
-local str = require('str')
 local spells = require('spells')
 local mychar = require('mychar')
-local target = require('target')
-local common = require('common')
+local heartbeat = require('heartbeat')
+require('eqclass')
+require('botstate')
+require('config')
 
 
 --
 -- Globals
 --
 
-MyClass = EQClass:new()
-State = BotState:new('nukebot', true, false)
+local ProcessName = 'nukebot'
+local MyClass = EQClass:new()
+local State = BotState:new(false, ProcessName, true, false)
+local Config = DdConfig:new()
+local Spells = SpellsConfig:new()
+local SpellBar = SpellBarConfig:new()
 
-Running = true
-Enabled = true
-
-Spells = {}
-Groups = {}
-
-History = {}
+local Running = true
+local History = {}
 
 
 --
 -- Functions
 --
 
-function BuildIni(ini)
-	print('Building nuke config')
-
-	local options = ini:Section('Nuke Options')
-	options:WriteBoolean('Enabled', false)
-	options:WriteNumber('DefaultMinMana', 30)
-
-	local nuke_spells = ini:Section('Nuke Spells')
-	nuke_spells:WriteString('fire', 'Direct Damage,Fire,Single')
-
-	local nuke_group_1 = ini:Section('Nuke Group 1')
-	nuke_group_1:WriteString('Modes', '5,6,7,8,9')
-
-	local nuke_gems_1 = ini:Section('Nuke Gems 1')
-	nuke_gems_1:WriteNumber('fire', 3)
-
-	local nuke_cast_at_pct_1 = ini:Section('Nuke Cast At Percent 1')
-	nuke_cast_at_pct_1:WriteNumber('nuke', 85)
-end
-
-function LoadIni(ini)
-	Enabled = ini:Boolean('Nuke Options', 'Enabled', false)
-	local default_gem = ini:Number('Nuke Options', 'DefaultGem', 3)
-	local default_min_mana = ini:Number('Nuke Options', 'DefaultMinMana', 45)
-
-	Spells = ini:SectionToTable('Nuke Spells')
-
-	local i = 1
-	while ini:HasSection('Nuke Group ' .. i) do
-		local group = ini:SectionToTable('Nuke Group ' .. i)
-		local modes = str.Split(group['Modes'], ',')
-		common.TableValueToNumberOrDefault(group, 'DefaultGem', default_gem)
-		common.TableValueToNumberOrDefault(group, 'MinMana', default_min_mana)
-		group['Gems'] = ini:SectionToTable('Nuke Gems ' .. i)
-		group['AtPcts'] = ini:SectionToTable('Nuke Cast At Percent ' .. i)
-		for idx,mode in ipairs(modes) do
-			Groups[tonumber(mode)] = group
-		end
-		i = i + 1
-	end
-
-	return i - 1
-end
-
-function Setup()
-	local ini = Ini:new()
-
-	if ini:IsMissing('Nuke Options', 'Enabled') then BuildIni(ini) end
-
-	local groups = LoadIni(ini)
-
-	print('Nukebot loaded with ' .. groups .. ' groups')
-
-	return ini
+local function log(msg)
+	print('(' .. ProcessName .. ') ' .. msg)
 end
 
 function CastNukeOn(spell_name, gem, id)
-	local name = mq.TLO.Spell(spell_name).Name()
-	if name then
-		spells.QueueSpell(name, 'gem' .. gem, id, 'Nuking ' .. mq.TLO.Spawn(id).Name() .. ' with ' .. spell_name, Groups[State.Mode].MinMana, 0, 2, 7)
-	end
+	spells.QueueSpell(spell_name, 'gem' .. gem, id, 'Nuking ' .. mq.TLO.Spawn(id).Name() .. ' with ' .. spell_name, Config:MinMana(State), Config:MinTargetHpPct(State), 2, 7)
 end
 
 function CheckNukes()
-	if mychar.InCombat() and Groups[State.Mode] ~= nil and mq.TLO.Me.GroupAssistTarget() then
-		for id,spell in pairs(Spells) do
-			local name = spells.ReferenceSpell(spell)
-			if not name then
-				print('Could not find anything for ' .. spell)
-			end
-			local gem = Groups[State.Mode].Gems[id]
-			if gem == nil then
-				gem = Groups[State.Mode].DefaultGem
-			end
-			local pct = tonumber(Groups[State.Mode].AtPcts[id])
-			if pct ~= nil then
+	if mychar.InCombat() and mq.TLO.Me.GroupAssistTarget() then
+		for pct,spell_key in pairs(Config:AtTargetHpPcts(State)) do
+			local gem, spell_name, err = SpellBar:GemAndSpellByKey(State, Spells, spell_key)
+			if gem < 1 then
+				log(err)
+			else
+				---@diagnostic disable-next-line: undefined-field
 				local group_target_id = mq.TLO.Me.GroupAssistTarget.ID()
+				---@diagnostic disable-next-line: undefined-field
 				local group_target_name = mq.TLO.Me.GroupAssistTarget.Name()
 
 				if group_target_id then
 					local pctHPs = mq.TLO.Spawn(group_target_id).PctHPs()
-					if pctHPs and pctHPs < pct and not History['' .. name .. group_target_id .. group_target_name] then
-						CastNukeOn(name, gem, group_target_id)
-						History['' .. name .. group_target_id .. group_target_name] = true
+					if pctHPs and pctHPs < pct and not History['' .. spell_name .. group_target_id .. group_target_name] then
+						CastNukeOn(spell_name, gem, group_target_id)
+						History['' .. spell_name .. group_target_id .. group_target_name] = true
 					end
 				end
 			end
@@ -126,25 +64,16 @@ end
 --
 
 local function main()
-	local ini = Setup()
-	local nextload = mq.gettime()
-
 	while Running == true do
 		mq.doevents()
 
-		if mychar.InCombat() and not State.CrowdControlActive then
+		if Config:Enabled(State) and mychar.InCombat() and not State:CrowdControlActive() then
 			CheckNukes()
 		end
 
-		if State.CrowdControlActive and not mychar.InCombat() then
-			State.CrowdControlActive = false
-		end
+		Config:Reload()
 
-		local time = mq.gettime()
-		if time >= nextload then
-			LoadIni(ini)
-			nextload = time + 10000
-		end
+		heartbeat.SendHeartBeat(ProcessName)
 		mq.delay(10)
 	end
 end
