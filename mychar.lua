@@ -1,7 +1,9 @@
 local mq = require('mq')
+local co = require('co')
 
 
 local mychar = {}
+
 
 function mychar.ReadyToCast()
 	return not mq.TLO.Me.Stunned()
@@ -39,6 +41,46 @@ end
 
 function mychar.Standing()
 	return mq.TLO.Me.State() == 'STAND'
+end
+
+
+local function moving()
+	local loc = mq.TLO.Me.MQLoc()
+	local m = loc ~= _MyChar_LastLoc
+	_MyChar_LastLoc = loc
+	return m
+end
+
+function mychar.StillForSeconds()
+	return (mq.gettime() - _MyChar_StillSince) / 1000
+end
+
+
+--
+-- Init
+--
+
+function mychar.Init(cfg)
+	--Config = cfg
+	--Ini = cfg._ini
+
+	_MyChar_StillSince = 0
+	_MyChar_LastLoc = ''
+end
+
+
+---
+--- Main Loop
+---
+
+function mychar.Run()
+	while true do
+		if moving() then
+			_MyChar_StillSince = mq.gettime()
+		end
+
+		co.yield()
+	end
 end
 
 return mychar

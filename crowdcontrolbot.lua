@@ -3,7 +3,6 @@ local spells = require('spells')
 local mychar = require('mychar')
 local heartbeat = require('heartbeat')
 require('eqclass')
-require('botstate')
 require('config')
 
 
@@ -13,10 +12,7 @@ require('config')
 
 local ProcessName = 'crowdcontrolbot'
 local MyClass = EQClass:new()
-local State = BotState:new(false, ProcessName, false, false)
-local Config = CrowdControlConfig:new()
-local Spells = SpellsConfig:new()
-local SpellBar = SpellBarConfig:new()
+local Config = Config:new(ProcessName)
 
 local Running = true
 local CCRunning = false
@@ -67,8 +63,8 @@ end
 
 local function CCTargetByID(idx, target_id, cast_function)
 	if WantToControl(idx, target_id) and not IsControlled(target_id) then
-		local spell_key = Config:Spell(State)
-		local gem, spell_name, err = SpellBar:GemAndSpellByKey(State, Spells, spell_key)
+		local spell_key = Config:CrowdControl():Spell()
+		local gem, spell_name, err = Config:SpellBar():GemAndSpellByKey(spell_key)
 		if gem < 1 then
 			log(err)
 		else
@@ -84,7 +80,7 @@ end
 local function EnchanterCCMode()
 	log('Crowd control active')
 	CCRunning = true
-	State:UpdateCrowdControlActive()
+	Config:State():UpdateCrowdControlActive()
 	spells.WipeQueue()
 	mq.cmd('/interrupt')
 end
@@ -94,7 +90,7 @@ local function EnchanterCCTargetByID(idx, target_id)
 		idx,
 		target_id,
 		function(spell, gem, name)
-			spells.QueueSpellIfNotQueued(spell, 'gem' .. gem, target_id, 'Controlling ' .. name, Config:MinMana(State), 1, 3, 1)
+			spells.QueueSpellIfNotQueued(spell, 'gem' .. gem, target_id, 'Controlling ' .. name, Config:CrowdControl():MinMana(), 1, 3, 10)
 		end
 	)
 end
@@ -102,7 +98,7 @@ end
 local function BardCCMode()
 	log('Crowd control active')
 	CCRunning = true
-	State:UpdateCrowdControlActive()
+	Config:State():UpdateCrowdControlActive()
 	mq.delay(100)
 	mq.cmd('/attack off')
 	mq.cmd('/twist clear')
@@ -128,7 +124,7 @@ function BardCCTargetByID(idx, target_id)
 end
 
 function CheckCC(my_class)
-	local i_am_primary = Config:IAmPrimary(State)
+	local i_am_primary = Config:CrowdControl():IAmPrimary()
 
 	local threshold = 3
 	if i_am_primary then
@@ -136,7 +132,7 @@ function CheckCC(my_class)
 	end
 
 	if my_class == 'Enchanter' then
-		if mq.TLO.Me.XTarget() > threshold and mq.TLO.Me.PctMana() >= Config:MinMana(State) then
+		if mq.TLO.Me.XTarget() > threshold and mq.TLO.Me.PctMana() >= Config:CrowdControl():MinMana() then
 			if not CCRunning then
 				EnchanterCCMode()
 			end
@@ -160,7 +156,7 @@ function CheckCC(my_class)
 		else
 			if CCRunning then
 				CCRunning = false
-				State:UpdateCrowdControlInactive()
+				Config:State():UpdateCrowdControlInactive()
 			end
 		end
 	elseif my_class == 'Bard' then
@@ -188,7 +184,7 @@ function CheckCC(my_class)
 		else
 			if CCRunning then
 				CCRunning = false
-				State:UpdateCrowdControlInactive()
+				Config:State():UpdateCrowdControlInactive()
 			end
 		end
 	end
@@ -204,11 +200,11 @@ local function main()
 		while Running == true do
 			mq.doevents()
 
-			if Config:Enabled(State) and mychar.InCombat() then
+			if Config:CrowdControl():Enabled() and mychar.InCombat() then
 				CheckCC(MyClass.Name)
 			end
 
-			Config:Reload()
+			Config:Reload(10000)
 
 			heartbeat.SendHeartBeat(ProcessName)
 			mq.delay(10)

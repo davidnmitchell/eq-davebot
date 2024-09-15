@@ -1,12 +1,21 @@
 local mq = require('mq')
-local lua = require('lua')
-local mychar = require('mychar')
+local co     = require('co')
+local str    = require('str')
 local spells = require('spells')
+local lua = require('lua')
 local heartbeat = require('heartbeat')
-require('ini')
+local bc     = require('bc')
 require('eqclass')
-require('botstate')
-require('autosit')
+require('config')
+require('autositbot')
+require('gembot')
+local tlo = require('tlo')
+local mychar = require('mychar')
+local drivebot = require('drivebot')
+local songbot = require('songbot')
+local targetbot = require('targetbot')
+local tetherbot = require('tetherbot')
+local teameventbot = require('teameventbot')
 
 
 --
@@ -14,12 +23,12 @@ require('autosit')
 --
 
 local MyClass = EQClass:new()
-local State = BotState:new(true, 'davebot', false, false)
-local Autosit = AutoSit:new(State)
+local Config = Config:new('davebot')
 
 local Running = true
 local LastHeardFrom = {}
 
+local EarlyCombatSince = 0
 
 --
 -- Functions
@@ -97,9 +106,81 @@ local function main()
 		end
 	)
 
+	bc.InitServer()
+
+	tlo.Init(Config)
+	local tlo_co = ManagedCoroutine:new(
+		function()
+			tlo.Run()
+		end
+	)
+	mychar.Init(Config)
+	local mychar_co = ManagedCoroutine:new(
+		function()
+			mychar.Run()
+		end
+	)
+	teameventbot.Init(Config)
+	local teameventbot_co = ManagedCoroutine:new(
+		function()
+			teameventbot.Run()
+		end
+	)
+	drivebot.Init(Config)
+	local drivebot_co = ManagedCoroutine:new(
+		function()
+			drivebot.Run()
+		end
+	)
+	local autositbot_co = ManagedCoroutine:new(
+		function()
+			AutoSitBot:new(Config):Run()
+		end
+	)
+	local gembot_co = ManagedCoroutine:new(
+		function()
+			GemBot:new(Config):Run()
+		end
+	)
+	targetbot.Init(Config)
+	local targetbot_co = ManagedCoroutine:new(
+		function()
+			targetbot.Run()
+		end
+	)
+	tetherbot.Init(Config)
+	local tetherbot_co = ManagedCoroutine:new(
+		function()
+			tetherbot.Run()
+		end
+	)
+	if MyClass.IsBard then
+		songbot.Init(Config)
+	end
+	local songbot_co = ManagedCoroutine:new(
+		function()
+			songbot.Run()
+		end
+	)
+	local ecstate_co = ManagedCoroutine:new(
+		function()
+			while true do
+				if Config:State():EarlyCombatActive() and not mychar.InCombat() and Config:State():EarlyCombatActiveSince() + 10000 < mq.gettime() then
+					Config:State():UpdateEarlyCombatInactive()
+				end
+				co.yield()
+			end
+		end
+	)
+
 	print('davebot loaded')
 	while Running == true do
 		mq.doevents()
+
+		tlo_co:Resume()
+		mychar_co:Resume()
+		teameventbot_co:Resume()
+		drivebot_co:Resume()
 
 		if MyClass.HasSpells or MyClass.IsBard then
 			local spell_count = spells.KnownSpellCount()
@@ -109,7 +190,7 @@ local function main()
 				spells.DumpSpellBook(ini, 'Spells')
 			end
 
-			CheckBot('gembot')
+			gembot_co:Resume()
 		end
 
 		if MyClass.HasSpells then
@@ -137,14 +218,19 @@ local function main()
 		end
 
 		if MyClass.IsBard then
-			CheckBot('songbot')
+			songbot_co:Resume()
 		end
 
 		if MyClass.IsMelee then
 			CheckBot('meleebot')
 		end
 
-		Autosit:Check()
+		autositbot_co:Resume()
+		targetbot_co:Resume()
+		tetherbot_co:Resume()
+		ecstate_co:Resume()
+
+		Config:Reload(10000)
 
 		mq.delay(1)
 	end

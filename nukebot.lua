@@ -3,7 +3,6 @@ local spells = require('spells')
 local mychar = require('mychar')
 local heartbeat = require('heartbeat')
 require('eqclass')
-require('botstate')
 require('config')
 
 
@@ -13,10 +12,7 @@ require('config')
 
 local ProcessName = 'nukebot'
 local MyClass = EQClass:new()
-local State = BotState:new(false, ProcessName, true, false)
-local Config = DdConfig:new()
-local Spells = SpellsConfig:new()
-local SpellBar = SpellBarConfig:new()
+local Config = Config:new(ProcessName)
 
 local Running = true
 local History = {}
@@ -31,13 +27,13 @@ local function log(msg)
 end
 
 function CastNukeOn(spell_name, gem, id)
-	spells.QueueSpell(spell_name, 'gem' .. gem, id, 'Nuking ' .. mq.TLO.Spawn(id).Name() .. ' with ' .. spell_name, Config:MinMana(State), Config:MinTargetHpPct(State), 2, 7)
+	spells.QueueSpell(spell_name, 'gem' .. gem, id, 'Nuking ' .. mq.TLO.Spawn(id).Name() .. ' with ' .. spell_name, Config:Dd():MinMana(), Config:Dd():MinTargetHpPct(), 2, 70)
 end
 
 function CheckNukes()
 	if mychar.InCombat() and mq.TLO.Me.GroupAssistTarget() then
-		for pct,spell_key in pairs(Config:AtTargetHpPcts(State)) do
-			local gem, spell_name, err = SpellBar:GemAndSpellByKey(State, Spells, spell_key)
+		for pct,spell_key in pairs(Config:Dd():AtTargetHpPcts()) do
+			local gem, spell_name, err = Config:SpellBar():GemAndSpellByKey(spell_key)
 			if gem < 1 then
 				log(err)
 			else
@@ -67,11 +63,11 @@ local function main()
 	while Running == true do
 		mq.doevents()
 
-		if Config:Enabled(State) and mychar.InCombat() and not State:CrowdControlActive() then
+		if Config:Dd():Enabled() and mychar.InCombat() and not Config:State():CrowdControlActive() then
 			CheckNukes()
 		end
 
-		Config:Reload()
+		Config:Reload(10000)
 
 		heartbeat.SendHeartBeat(ProcessName)
 		mq.delay(10)

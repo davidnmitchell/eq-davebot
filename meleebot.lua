@@ -4,7 +4,6 @@ local mychar = require('mychar')
 local group = require('group')
 local heartbeat = require('heartbeat')
 require('eqclass')
-require('botstate')
 require('config')
 
 
@@ -14,8 +13,7 @@ require('config')
 
 local ProcessName = 'meleebot'
 local MyClass = EQClass:new()
-local State = BotState:new(false, ProcessName, false, false)
-local Config = MeleeConfig:new()
+local Config = Config:new(ProcessName)
 
 local Running = true
 local InCombat = false
@@ -42,7 +40,7 @@ local function main()
 	while Running == true do
 		mq.doevents()
 
-		local enabled = Config:Enabled(State)
+		local enabled = Config:Melee():Enabled()
 
 		if mychar.InCombat() and not InCombat then
 			InCombat = true
@@ -63,7 +61,7 @@ local function main()
 			local group_assist_target = mq.TLO.Me.GroupAssistTarget()
 			if group_assist_target then
 				---@diagnostic disable-next-line: undefined-field
-				if mq.TLO.Me.GroupAssistTarget.PctHPs() < Config:EngageTargetHPs(State) and mq.TLO.Me.GroupAssistTarget.Distance() < Config:EngageTargetDistance(State) then
+				if mq.TLO.Me.GroupAssistTarget.PctHPs() < Config:Melee():EngageTargetHPs() and mq.TLO.Me.GroupAssistTarget.Distance() < Config:Melee():EngageTargetDistance() then
 					mq.cmd('/g (' .. ProcessName .. ')Engaging ' .. group_assist_target)
 					mq.cmd('/target ' .. group_assist_target)
 					mq.delay(250)

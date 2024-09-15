@@ -12,30 +12,13 @@ function str.Trim(s)
 	return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
 
-function str.Split(s, sSeparator, nMax, bRegexp)
-	if s == nil then return {} end
-	assert(sSeparator ~= '')
-	assert(nMax == nil or nMax >= 1)
-
-	local aRecord = {}
-
-	if string.len(s) > 0 then
-    	local bPlain = not bRegexp
-      	nMax = nMax or -1
-
-      	local nField, nStart = 1, 1
-      	local nFirst,nLast = string.find(s, sSeparator, nStart, bPlain)
-      	while nFirst and nMax ~= 0 do
-         	aRecord[nField] = string.sub(s, nStart, nFirst-1)
-         	nField = nField+1
-         	nStart = nLast+1
-         	nFirst,nLast = string.find(s, sSeparator, nStart, bPlain)
-         	nMax = nMax-1
-      	end
-      	aRecord[nField] = string.sub(s, nStart)
-   	end
-
-   	return aRecord
+function str.Split(s, sep)
+	local result = {}
+	local regex = ("([^%s]+)"):format(sep)
+	for each in s:gmatch(regex) do
+	   table.insert(result, each)
+	end
+	return result
 end
 
 function str.IsEmpty(s)
@@ -52,6 +35,18 @@ end
 
 function str.EndsWith(s, ending)
 	return ending == "" or s:sub(-#ending) == ending
+end
+
+function str.Join(arr, start)
+	local s = arr[start] or ''
+    for i = start+1, #arr, 1 do
+		s = s .. ' ' .. arr[i]
+    end
+	return s
+end
+
+function str.FirstToUpper(s)
+    return (s:gsub("^%l", string.upper))
 end
 
 return str

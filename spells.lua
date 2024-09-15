@@ -1,4 +1,5 @@
 local mq = require('mq')
+local co = require('co')
 local str = require('str')
 local common = require('common')
 
@@ -110,7 +111,7 @@ function spells.DumpSpellBook(ini, section_name)
 			local level = mq.TLO.Spell(spell).Level()
 
 			local parts = str.Split(name, ' ')
-			local key = string.lower(parts[#parts]) .. level
+			local key = string.lower(parts[#parts]):gsub('`', '') .. level
 
 			table.insert(spell_book, 1, {key=key, name=name, level=level, category=category, subcategory=subcategory, type=type})
 			i = i + 1
@@ -198,7 +199,7 @@ function spells.CastAndBlock(spell, gem, targetid, maxtries)
 	end
 	---@diagnostic disable-next-line: undefined-field
 	while mq.TLO.Cast.Status() ~= 'I' do
-		mq.delay(10)
+		co.delay(50)
 	end
 end
 

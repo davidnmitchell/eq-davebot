@@ -4,11 +4,25 @@ local mychar = require('mychar')
 local target = require('target')
 local spells = require('spells')
 local heartbeat = require('heartbeat')
+local co = require('co')
 require('ini')
 require('config')
-require('botstate')
 require('eqclass')
+require('cast')
 
+--
+-- Priorities
+--
+-- 10 - CC
+-- 20 - Group Heal
+-- 30 - Single Heal
+-- 40 - Debuff
+-- 50 - Dot
+-- 60 - Pet Heal
+-- 70 - Nuke
+-- 80 - Pet Cast
+-- 90 - Buff
+--
 
 --
 -- Globals
@@ -16,9 +30,7 @@ require('eqclass')
 
 local ProcessName = 'castqueue'
 local MyClass = EQClass:new()
-local State = BotState:new(false, ProcessName, false, false)
-local Config = CastQueueConfig:new()
-local SpellBar = SpellBarConfig:new()
+local Config = Config:new(ProcessName)
 
 Running = true
 PauseUntil = 0
@@ -26,68 +38,55 @@ Paused = false
 
 Queue = {}
 Casting = {}
+Immune = {}
 
 
 local function log(msg)
 	print('(' .. ProcessName .. ') ' .. msg)
 end
 
-local function add_to_queue(spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
-	log('Queueing ' .. spell .. ' with priority ' .. priority)
+local function announce(msg)
+	mq.cmd('/g ' .. msg)
+end
+
+local function add_to_queue(cast)
+	log('Queueing ' .. cast:SpellName() .. ' with priority ' .. cast:Priority())
 	table.insert(
 		Queue,
-		{
-			spell=spell,
-			gem=gem,
-			target_id=target_id,
-			msg=msg,
-			min_mana_pct=min_mana_pct,
-			min_target_hp_pct=min_target_hp_pct,
-			priority=priority,
-			max_tries=max_tries,
-			at=mq.gettime()
-		}
+		cast
 	)
 	table.sort(
 		Queue,
-		function (spell1, spell2)
-			if spell1.priority == spell2.priority then
-				return spell1.spell:upper() > spell2.spell:upper()
+		function (cast1, cast2)
+			if cast1:Priority() == cast2:Priority() then
+				return cast1:SpellName():upper() > cast2:SpellName():upper()
 			else
-				return spell1.priority > spell2.priority
+				return cast1:Priority() < cast2:Priority()
 			end
 		end
 	)
 end
 
-local function add_unique_to_queue(spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
-	if Casting ~= nil and spell == Casting.spell and target_id == Casting.target_id then
+local function add_unique_to_queue(cast)
+	if cast:IsSame(Casting) then
 		return
 	end
-	for i, sinfo in ipairs(Queue) do
-		if spell == sinfo.spell and target_id == sinfo.target_id then
+	for i, q_cast in ipairs(Queue) do
+		if cast:IsSame(q_cast) then
 			return
 		end
 	end
-	add_to_queue(spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
+	add_to_queue(cast)
 end
 
 local function highest_priority_spell_idx()
 	local idx = 0
-	local priority = 10
-	for i, sinfo in ipairs(Queue) do
-		if sinfo.priority < priority and target.IsAlive(sinfo.target_id) then
-
-			local range = mq.TLO.Spell(sinfo.spell).Range()
-			if range == nil then range = 200 end
-			local distance = mq.TLO.Spawn(sinfo.target_id).Distance()
-			if distance == nil then distance = 0 end
-
-			local in_range = range == 0 or distance <= range
-			local is_invisibility_on_me = sinfo.spell == 'Invisibility' and sinfo.target_id == mq.TLO.Me.ID()
-			if in_range and (not is_invisibility_on_me or #Queue == 1) then
+	local priority = 999
+	for i, q_cast in ipairs(Queue) do
+		if q_cast:Priority() < priority and (not q_cast:HasTarget() or q_cast:TargetIsAlive()) then
+			if (not q_cast:HasTarget() or q_cast:InRange()) and (not q_cast:IsInvisibilityOnMe() or #Queue == 1) then
 				idx = i
-				priority = sinfo.priority
+				priority = q_cast:Priority()
 			end
 		end
 	end
@@ -107,12 +106,40 @@ local function remove_all_from_queue()
 	while has_spell_in_queue() do next_spell() end
 end
 
-local function InRangeAndLoS(spell_name, target_id)
-	local range = mq.TLO.Spell(spell_name).Range() or 200
-	local distance = mq.TLO.Spawn(target_id).Distance() or 0
-	local los = mq.TLO.Spawn(target_id).LineOfSight() or false
+local function find_dead()
+	local idx = 0
+	for i, q_cast in ipairs(Queue) do
+		if q_cast:HasTarget() and not q_cast:TargetIsAlive() then
+			idx = i
+		end
+	end
+	return idx
+end
 
-	return (range == 0 or distance <= range) and los
+local function prune_dead()
+	local dead_idx = find_dead()
+	local i = 1
+	while dead_idx > 0 and i <= #Queue do
+		co.yield()
+
+		local cast = table.remove(Queue, dead_idx)
+		cast:Skip('target is dead')
+
+		dead_idx = find_dead()
+		i = i + 1
+	end
+end
+
+
+local function i_am_invisible()
+	return mq.TLO.Me.Invis('ANY')()
+end
+
+local function is_immune(cast)
+	for i, i_cast in ipairs(Immune) do
+		if cast:IsSame(i_cast) then return true end
+	end
+	return false
 end
 
 local function do_casting()
@@ -122,77 +149,49 @@ local function do_casting()
 		local result = mq.TLO.Cast.Result()
 		if result ~= nil and Casting ~= nil and result == 'CAST_IMMUNE' then
 			log('IMMUNE!!!!')
-			log(mq.TLO.Spawn(Casting.target_id).Name())
+			table.insert(Immune, Casting)
 		end
 		Casting = nil
 	end
 	if ready and has_spell_in_queue() then
 		local me_id = mq.TLO.Me.ID()
-		local spell = next_spell()
-		if spell then
-			local target_hp_pct = mq.TLO.Spawn(spell.target_id).PctHPs()
-
-			if spell.target_id ~= 0 and not target.IsAlive(spell.target_id) then
-				mq.cmd('/g (' .. ProcessName .. ')Skipping "' .. spell.msg .. '" because target is dead')
-			elseif spell.target_id ~= 0 and target_hp_pct ~= nil and target_hp_pct < spell.min_target_hp_pct then
-				mq.cmd('/g (' .. ProcessName .. ')Skipping "' .. spell.msg .. '" because target hit points are lower than ' .. spell.min_target_hp_pct)
+		local cast = next_spell()
+		if cast then
+			if cast:HasTarget() and not cast:TargetIsAlive() then
+				cast:Skip('target is dead')
+			elseif is_immune(cast) then
+				cast:Skip('target is immune')
+			elseif cast:HasTarget() and cast:TargetHPsAreTooLow() then
+				cast:Skip('target hit points are too low')
 			else
-				local enough_mana = mq.TLO.Me.PctMana() >= spell.min_mana_pct
-
-				if enough_mana and (spell.target_id == 0 or InRangeAndLoS(spell.spell, spell.target_id)) and not mq.TLO.Me.Invis('ANY')() then
-					Casting = spell
-					mq.cmd('/g (' .. ProcessName .. ')' .. Casting.msg)
-
-					if Casting.target_id ~= 0 and Casting.target_id ~= me_id then
-						mq.cmd('/target id ' .. Casting.target_id)
-						mq.delay(250)
-						mq.cmd('/face id ' .. Casting.target_id)
+				if cast:IHaveEnoughMana() and (not cast:HasTarget() or (cast:InRange() and cast:LineOfSight())) and not i_am_invisible() then
+					Casting = cast
+					Casting:Execute()
+				elseif i_am_invisible() then
+					local msg = 'Casting will break invisibility, waiting to cast ' .. cast:SpellName()
+					if cast:HasTarget() then
+						msg = msg .. ' on ' .. cast:TargetName()
 					end
-
-					local cmd = '/casting "' .. Casting.spell .. '" ' .. Casting.gem .. ' -maxtries|' .. Casting.max_tries .. ' -invis'
-					if Casting.target_id ~= 0 then
-						cmd = cmd .. ' -targetid|' .. Casting.target_id
-						local target_name = mq.TLO.Spawn(spell.target_id).Name() or "NIL"
-						log('Casting ' .. Casting.spell .. ' on ' .. target_name)
-					else
-						log('Casting ' .. Casting.spell)
-					end
-					mq.cmd(cmd)
-					--print(cmd)
-					--mq.delay(1000)
-				elseif mq.TLO.Me.Invis('ANY')() then
-					log('Casting will break invisibility, dropping ' .. spell.spell .. ' on ' .. mq.TLO.Spawn(spell.target_id).Name())
+					log(msg)
+					table.insert(Queue, 1, cast)
+					co.delay(1000)
 				else
-					table.insert(Queue, 1, spell)
+					table.insert(Queue, 1, cast)
 				end
 			end
 		end
-	elseif Casting ~= nil and Casting.priority and mychar.Casting() and has_spell_in_queue() and Queue[highest_priority_spell_idx()].priority < Casting.priority then
-		mq.cmd('/g (' .. ProcessName .. ')Interrupting...')
+	elseif Casting ~= nil and mychar.Casting() and has_spell_in_queue() and Queue[highest_priority_spell_idx()]:Priority() < Casting:Priority() then
+		log('Interrupting...')
+		announce('Interrupting...')
 		mq.cmd('/interrupt')
 		table.insert(Queue, 1, Casting)
 		Casting = nil
 	end
 end
 
-local function concat(args, start)
-	local s = args[start] or ''
-    for i = start+1, #args, 1 do
-		s = s .. ' ' .. args[i]
-    end
-	return s
-end
-
 local function parse_line(line)
 	local parsed = {
-		priority=8,
-		target_id=0,
-		gem=SpellBar:FirstOpenGem(State),
-		spell='',
-		message='',
-		min_mana=0,
-		min_target_hps=0,
-		max_tries=1,
+		gem=Config:SpellBar():FirstOpenGem(),
 		unique=false
 	}
 	local parts = str.Split(line, '-')
@@ -202,13 +201,7 @@ local function parse_line(line)
 		elseif str.StartsWith(parts[i], 'target_id|') then
 			parsed.target_id = tonumber(str.Trim(str.Split(parts[i], '|')[2]))
 		elseif str.StartsWith(parts[i], 'gem|') then
-			local gem = str.Trim(str.Split(parts[i], '|')[2])
-			local num = tonumber(gem, 10)
-			if num then
-				parsed.gem = 'gem' .. num
-			else
-				parsed.gem = gem
-			end
+			parsed.gem = str.Trim(str.Split(parts[i], '|')[2])
 		elseif str.StartsWith(parts[i], 'spell|') then
 			parsed.spell = spells.ReferenceSpell(str.Trim(str.Split(parts[i], '|')[2]))
 		elseif str.StartsWith(parts[i], 'message|') then
@@ -220,13 +213,31 @@ local function parse_line(line)
 		elseif str.StartsWith(parts[i], 'max_tries|') then
 			parsed.max_tries = tonumber(str.Trim(str.Split(parts[i], '|')[2]))
 		elseif str.StartsWith(parts[i], 'unique|') then
-			parsed.unique = str.Trim(str.Split(parts[i], '|')[2]) == 'TRUE'
+			parsed.unique = str.Trim(str.Split(parts[i], '|')[2]):lower() == 'true'
 		end
 	end
 	if not parsed.message then
 		parsed.message = 'Casting ' .. parsed.spell ..' from event'
 	end
-	return parsed
+	return Cast:new(parsed.spell, parsed.gem, parsed.target_id, parsed.message, parsed.min_mana, parsed.min_target_hps, parsed.max_tries, parsed.priority), parsed.unique
+end
+
+local function print_queue()
+	print('-----Queue-----')
+	if Casting then
+		if Casting:HasTarget() then
+			print('c:' .. Casting:SpellName() .. ':' .. Casting:TargetName())
+		else
+			print('c:' .. Casting:SpellName())
+		end
+	end
+	for i, q_cast in ipairs(Queue) do
+		if q_cast:HasTarget() then
+			print(i .. ':' .. q_cast:SpellName() .. ':' .. q_cast:TargetName())
+		else
+			print(i .. ':' .. q_cast:SpellName())
+		end
+	end
 end
 
 --
@@ -239,52 +250,58 @@ local function command_queue_spell(line, priority, target_id, gem, spell)
 		log('Could not find anything for ' .. spell)
 		return
 	end
-	add_to_queue(name, 'gem ' .. tonumber(gem), tonumber(target_id), 'Casting ' .. name ..' from event', 0, 0, 1, tonumber(priority))
+	add_to_queue(Cast:new(name, gem, target_id, 'Casting ' .. name ..' from event', 0, 0, 1, priority))
 end
 
--- local function command_cast_queue_add(line)
--- 	local parts = str.Split(line, '|')
 
--- 	local spell = parts[2]
--- 	local gem = parts[3]
--- 	local target_id = tonumber(parts[4])
--- 	local msg = parts[5]
+--
+-- Coroutines
+--
 
--- 	local min_mana_pct = str.AsNumber(parts[6], 0)
--- 	local min_target_hp_pct = str.AsNumber(parts[7], 0)
--- 	local max_tries = str.AsNumber(parts[8], 1)	
--- 	local priority = str.AsNumber(parts[9], 5)
+local print_co = ManagedCoroutine:new(
+	function()
+		local nextprint = mq.gettime() + Config:CastQueue():PrintTimer() * 1000
+		while true do
+			local time = mq.gettime()
+			if Config:CastQueue():Print() and time >= nextprint then
+				print_queue()
+				nextprint = time + Config:CastQueue():PrintTimer() * 1000
+			end
 
--- 	add_to_queue(spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
--- end
+			co.yield()
+		end
+	end
+)
 
--- local function command_cast_queue_add_unique(line)
--- 	local parts = str.Split(line, '|')
+local cast_co = ManagedCoroutine:new(
+	function()
+		while true do
+			do_casting()
 
--- 	local spell = parts[2]
--- 	local gem = parts[3]
--- 	local target_id = tonumber(parts[4])
--- 	local msg = parts[5]
+			co.yield()
+		end
+	end
+)
 
--- 	local min_mana_pct = str.AsNumber(parts[6], 0)
--- 	local min_target_hp_pct = str.AsNumber(parts[7], 0)
--- 	local max_tries = str.AsNumber(parts[8], 1)
--- 	local priority = str.AsNumber(parts[9], 5)
+local prune_co = ManagedCoroutine:new(
+	function()
+		while true do
+			prune_dead()
 
--- 	add_unique_to_queue(spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
--- end
+			co.delay(1000)
+		end
+	end
+)
 
--- local function command_cast_queue_remove_all(line)
--- 	remove_all_from_queue()
--- end
+local reload_co = ManagedCoroutine:new(
+	function()
+		while true do
+			Config:Reload(10000)
 
--- local function command_cast_queue_pause(line)
--- 	PauseUntil = mq.gettime() + 20000
--- end
-
--- local function command_cast_queue_shutdown(line)
--- 	Running = false
--- end
+			co.yield()
+		end
+	end
+)
 
 
 --
@@ -300,11 +317,6 @@ local function main()
 	end
 
 	mq.event('queuespell', '#*#COMMAND QUEUESPELL #1# #2# #3# #4#', command_queue_spell)
-	-- mq.event('castqueueadd', '#*#COMMAND CASTQUEUEADD #*#', command_cast_queue_add)
-	-- mq.event('castqueueaddunique', '#*#COMMAND CASTQUEUEADDUNIQUE #*#', command_cast_queue_add_unique)
-	-- mq.event('castqueueremoveall', '#*#COMMAND CASTQUEUEREMOVEALL', command_cast_queue_remove_all)
-	-- mq.event('castqueuepause', '#*#COMMAND CASTQUEUEPAUSE', command_cast_queue_pause)
-	-- mq.event('castqueueshutdown', '#*#COMMAND CASTQUEUESHUTDOWN', command_cast_queue_shutdown)
 	mq.bind(
 		'/dbcq',
 		function(...)
@@ -318,21 +330,20 @@ local function main()
 				elseif args[1] == 'removeall' then
 					remove_all_from_queue()
 				elseif args[1] == 'queue' then
-					local line = concat(args, 2)
-					local parsed = parse_line(line)
-					if parsed.unique then
-						add_unique_to_queue(parsed.spell, parsed.gem, parsed.target_id, parsed.message, parsed.min_mana, parsed.min_target_hps, parsed.max_tries, parsed.priority)
+					local line = str.Join(args, 2)
+					local cast, unique = parse_line(line)
+					if unique then
+						add_unique_to_queue(cast)
 					else
-						add_to_queue(parsed.spell, parsed.gem, parsed.target_id, parsed.message, parsed.min_mana, parsed.min_target_hps, parsed.max_tries, parsed.priority)
+						add_to_queue(cast)
 					end
 				end
 			else
-				log('Print is ' .. tostring(Config:Print(State)) .. ', PrintTimer is ' .. Config:PrintTimer(State))
+				log('Print is ' .. tostring(Config:CastQueue():Print()) .. ', PrintTimer is ' .. Config:CastQueue():PrintTimer())
 			end
 		end
 	)
 
-	local nextprint = mq.gettime() + Config:PrintTimer(State) * 1000
 	while Running == true do
 		mq.doevents()
 
@@ -343,20 +354,8 @@ local function main()
 		end
 
 		if not Paused then
-			local time = mq.gettime()
-			if Config:Print(State) and time >= nextprint then
-				print('-----Queue-----')
-				for i,spell in ipairs(Queue) do
-					local target_name = mq.TLO.Spawn(spell.target_id).Name() or "NIL"
-					local target_state = mq.TLO.Spawn(spell.target_id).State() or "NIL"
-					print(i .. ':' .. spell.spell .. ':' .. target_name .. ':' .. target_state)
-				end
-				nextprint = time + Config:PrintTimer(State) * 1000
-			end
-			do_casting()
-
-			Config:Reload(10000)
-			SpellBar:Reload(10000)
+			print_co:Resume()
+			cast_co:Resume()
 		else
 			if mq.gettime() >= PauseUntil then
 				Paused = false
@@ -365,8 +364,11 @@ local function main()
 			end
 		end
 
+		prune_co:Resume()
+		reload_co:Resume()
+
 		heartbeat.SendHeartBeat(ProcessName)
-		mq.delay(10)
+		mq.delay(1)
 	end
 
 	log('Shutting down')

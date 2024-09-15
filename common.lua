@@ -3,13 +3,47 @@ local str = require('str')
 
 local common = {}
 
-function common.TableHasValue(T, value)
-	for i=1,#T do
-		if T[i] == value then
+function common.TimeIt(func, ...)
+	local start = mq.gettime()
+	func(...)
+	print(mq.gettime() - start)
+end
+
+function common.ArrayHasValue(T, value)
+	for _, v in ipairs(T) do
+		if value == v then
 			return true
 		end
 	end
 	return false
+end
+
+function common.MapHasKey(T, key)
+	for k,_ in pairs(T) do
+		if k == key then
+			return true
+		end
+	end
+	return false
+end
+
+function common.MapHasValue(T, value)
+	for _, v in pairs(T) do
+		if value == v then
+			return true
+		end
+	end
+	return false
+end
+
+function common.TableKeys(T)
+	local keys = {}
+	local i = 0
+	for k,_ in pairs(T) do
+		i = i + 1
+		keys[i] =  k
+	end
+	return keys
 end
 
 function common.TableIndexOf(T, value)

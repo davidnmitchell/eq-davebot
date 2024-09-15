@@ -1,5 +1,7 @@
 local mq = require('mq')
 local str = require('str')
+local lip = require('LIP')
+local common = require('common')
 
 
 local function FilterEmpty(table)
@@ -7,93 +9,78 @@ local function FilterEmpty(table)
 	for i,v in ipairs(table) do
 		if string.len(v) > 0 then
 			filtered[i] = v
+		else
+			print('Found empty')
 		end
 	end
 	return filtered
 end
 
-local function StripComment(s)
-	local parts = str.Split(s, ';')
-	if #parts > 1 then
-		return str.Trim(parts[1])
-	else
-		return s
-	end
-end
+-- local function StripComment(s)
+-- 	local parts = str.Split(s, ';')
+-- 	if #parts > 1 then
+-- 		return str.Trim(parts[1])
+-- 	else
+-- 		return s
+-- 	end
+-- end
 
 Section = {}
 Section.__index = Section
 
-function Section:new(filename, section_name)
+function Section:new(filename, data, section_name)
 	local mt = {}
 	setmetatable(mt, self)
 
-	mt.Filename = filename or ('Bot_' .. mq.TLO.Me.CleanName() .. '.ini')
-	mt.Name = section_name
+	mt._filename = filename or ('Bot_' .. mq.TLO.Me.CleanName() .. '.ini')
+	mt._data = data or {}
+	mt._name = section_name
 
 	return mt
 end
 
 function Section:ToTable()
-	local rawkeys = mq.TLO.Ini(self.Filename, self.Name)()
-	local t = {}
-
-	if rawkeys ~= nil then
-		local keys = FilterEmpty(str.Split(rawkeys, '|'))
-		for i,key in ipairs(keys) do
-			local value = mq.TLO.Ini(self.Filename, self.Name, key)() or ''
-			t[key] = StripComment(value)
-		end
-	end
-
-	return t
+	return self._data
+	-- local section = {}
+	-- for k, v in pairs(self._data) do
+	-- 	section[k] = StripComment(v)
+	-- end
+	-- return section
 end
 
-function Section:ToArray()
-	local rawkeys = mq.TLO.Ini(self.Filename, self.Name)()
-	local list = {}
-
-	if rawkeys == nil then
-		print('Invalid section name ' .. self.Name)
-	end
-
-	local keys = FilterEmpty(str.Split(rawkeys, '|'))
-
-	for i,key in ipairs(keys) do
-		local value = mq.TLO.Ini(self.Filename, self.Name, key)()
-		table.insert(list, StripComment(value))
-	end
-
-	return list
+function Section:Keys()
+	return FilterEmpty(common.TableKeys(self._data))
 end
 
 function Section:IsMissing(key)
-	return str.IsEmpty(mq.TLO.Ini(self.Filename, self.Name, key)())
+	return not common.MapHasKey(self._data, key)
 end
 
-function Section:LoadValueOrDefault(key, default)
-	if self:IsMissing(key) then return default end
-	return StripComment(mq.TLO.Ini(self.Filename, self.Name, key)())
+function Section:ValueOrDefault(key, default)
+	if not common.MapHasKey(self._data, key) then return default end
+	return self._data[key]
+	-- return StripComment(self._data[key])
 end
 
 function Section:String(key, default)
-	return self:LoadValueOrDefault(key, default)
+	return self:ValueOrDefault(key, default)
 end
 
 function Section:Number(key, default)
-	return tonumber(self:LoadValueOrDefault(key, default))
+	return tonumber(self:ValueOrDefault(key, default))
 end
 
 function Section:Boolean(key, default)
-	local v = self:LoadValueOrDefault(key, default)
+	local v = self:ValueOrDefault(key, default)
 	if type(v) == 'string' then
-		return v == 'TRUE'
+		return v:lower() == 'true'
 	end
 	return v
 end
 
 function Section:WriteString(key, value)
-	mq.cmd('/ini "' .. self.Filename .. '" "' .. self.Name .. '" "' .. key .. '" "' .. value .. '"')
+	self._data[key] = value
+	mq.cmd('/ini "' .. self._filename .. '" "' .. self._name .. '" "' .. key .. '" "' .. value .. '"')
 end
 
 function Section:WriteNumber(key, value)
@@ -106,6 +93,8 @@ function Section:WriteBoolean(key, value)
 	self:WriteString(key, s)
 end
 
+
+
 Ini = {}
 Ini.__index = Ini
 
@@ -113,21 +102,28 @@ function Ini:new(filename)
 	local mt = {}
 	setmetatable(mt, self)
 
-	mt.Filename = filename or ('Bot_' .. mq.TLO.Me.CleanName() .. '.ini')
+	mt._filename = filename or ('Bot_' .. mq.TLO.Me.CleanName() .. '.ini')
+	mt._path = mq.TLO.Lua.Dir() .. '\\config\\' .. mt._filename
+
+	mt:Reload()
 
 	return mt
 end
 
+function Ini:Reload()
+	self._data = lip.load(self._path)
+end
+
 function Ini:SectionNames()
-	return FilterEmpty(str.Split(mq.TLO.Ini(self.Filename)(), '|'))
+	return FilterEmpty(common.TableKeys(self._data))
 end
 
 function Ini:HasSection(section_name)
-	return mq.TLO.Ini(self.Filename, section_name)() ~= nil
+	return common.MapHasKey(self._data, section_name)
 end
 
 function Ini:Section(section_name)
-	return Section:new(self.Filename, section_name)
+	return Section:new(self._path, self._data[section_name], section_name)
 end
 
 function Ini:SectionToTable(section_name)
@@ -139,7 +135,7 @@ function Ini:SectionToArray(section_name)
 end
 
 function Ini:IsMissing(section, key)
-	return str.IsEmpty(mq.TLO.Ini(self.Filename, section, key)())
+	return str.IsEmpty(mq.TLO.Ini(self._filename, section, key)())
 end
 
 function Ini:String(section, key, default)

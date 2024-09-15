@@ -1,9 +1,9 @@
 local mq = require('mq')
+local co = require('co')
 local spells = require('spells')
 local mychar = require('mychar')
 local heartbeat = require('heartbeat')
 require('eqclass')
-require('botstate')
 require('config')
 
 
@@ -13,9 +13,7 @@ require('config')
 
 local ProcessName = 'petbot'
 local MyClass = EQClass:new()
-local State = BotState:new(false, ProcessName, false, false)
-local Config = PetConfig:new()
-local SpellBar = SpellBarConfig:new()
+local Config = Config:new(ProcessName)
 
 local Running = true
 
@@ -29,10 +27,10 @@ local function log(msg)
 end
 
 local function CastPet()
-	local gem = SpellBar:FirstOpenGem(State)
+	local gem = Config:SpellBar():FirstOpenGem()
 	if gem ~= 0 then
-		local spell = spells.ReferenceSpell('Pet,Sum: ' .. Config:Type(State) .. ',Self')
-		spells.QueueSpellIfNotQueued(spell, 'gem' .. gem, mq.TLO.Me.ID(), 'Casting pet: ' .. spell, Config:MinMana(State), 0, 1, 8)
+		local spell = spells.ReferenceSpell('Pet,Sum: ' .. Config:Pet():Type() .. ',Self')
+		spells.QueueSpellIfNotQueued(spell, 'gem' .. gem, mq.TLO.Me.ID(), 'Casting pet: ' .. spell, Config:Pet():MinMana(), 0, 1, 80)
 	else
 		log('Cannot find open gem to cast pet')
 	end
@@ -50,27 +48,28 @@ local function main()
 		local i_have_a_pet = mq.TLO.Pet() ~= 'NO PET'
 		local group_assist_target = mq.TLO.Me.GroupAssistTarget()
 
-		if not i_have_a_pet and Config:AutoCast(State) and not mychar.InCombat() then
+		if not i_have_a_pet and Config:Pet():AutoCast() and not mychar.InCombat() then
 			CastPet()
 		end
 
-		if i_have_a_pet and Config:AutoAttack(State) and mychar.InCombat() and not mq.TLO.Pet.Combat() and group_assist_target ~= nil then
+		if i_have_a_pet and Config:Pet():AutoAttack() and mychar.InCombat() and not mq.TLO.Pet.Combat() and group_assist_target ~= nil then
 			---@diagnostic disable-next-line: undefined-field
 			local pct_hps = mq.TLO.Me.GroupAssistTarget.PctHPs()
 			---@diagnostic disable-next-line: undefined-field
 			local distance = mq.TLO.Me.GroupAssistTarget.Distance()
-			if pct_hps and pct_hps < Config:EngageTargetHPs(State) and distance and distance < Config:EngageTargetDistance(State) then
+			if pct_hps and pct_hps < Config:Pet():EngageTargetHPs() and distance and distance < Config:Pet():EngageTargetDistance() then
 				mq.cmd('/target ' .. group_assist_target)
-				mq.delay(500)
+				co.delay(500, function() return mq.TLO.Target.ID() == group_assist_target end)
+				log('Telling pet to attack')
 				mq.cmd('/pet attack')
 			end
 		end
-		if i_have_a_pet and Config:AutoAttack(State) and mychar.InCombat() and mq.TLO.Pet.Combat() and (not mq.TLO.Pet.Target() or mq.TLO.Pet.Target() ~= mq.TLO.Me.GroupAssistTarget()) then
+		if i_have_a_pet and Config:Pet():AutoAttack() and mychar.InCombat() and mq.TLO.Pet.Combat() and (not mq.TLO.Pet.Target() or mq.TLO.Pet.Target() ~= mq.TLO.Me.GroupAssistTarget() or mq.TLO.Me.GroupAssistTarget.PctHPs() > Config:Pet():EngageTargetHPs()) then
+			log('Telling pet to back off')
 			mq.cmd('/pet as you were')
 		end
 
 		Config:Reload(10000)
-		SpellBar:Reload(10000)
 
 		heartbeat.SendHeartBeat(ProcessName)
 		mq.delay(10)
