@@ -32,11 +32,24 @@ local function train_all_langs(times)
     mq.cmd('/lang 1')
 end
 
+local function train_one_lang(lang, times)
+    local langs = {}
+    table.insert(langs, lang)
+    for i=1,times do
+        train_langs(langs, i)
+    end
+    mq.cmd('/lang 1')
+end
+
 return {
     Run = function(...)
         local args = { ... }
         if args[1] == 'lang' then
-            train_all_langs(tonumber(args[2]))
+            if #args > 2 then
+                train_one_lang(tonumber(args[2]), tonumber(args[3]))
+            else
+                train_all_langs(tonumber(args[2]))
+            end
         end
     end
 }
