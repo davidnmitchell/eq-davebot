@@ -6,6 +6,20 @@ require('eqclass')
 
 local MyClass = EQClass:new()
 local EngageDistance = 80
+local Timeout = 35
+
+local function in_xtargets(target_id)
+    local i = 1
+    local cur_id = mq.TLO.Me.XTarget(i).ID()
+    while cur_id ~= nil do
+        if cur_id == target_id then
+            return true
+        end
+        i = i + 1
+        cur_id = mq.TLO.Me.XTarget(i).ID()
+    end
+    return false
+end
 
 local function tank_attack()
     local target = tonumber(mq.TLO.Me.GroupAssistTarget.ID())
@@ -26,12 +40,22 @@ local function tank_attack()
         return
     end
 
+    if not in_xtargets(target) then
+        local first = mq.TLO.Me.XTarget(1).ID()
+        if first ~= nil then
+            target = first
+        else
+            print('No targets')
+            return
+        end
+    end
+
 	local mob = mq.TLO.Spawn(target).Name()
 	teamevents.PreEngage(mob)
 	mq.cmd('/face')
 
     co.delay(
-        30000,
+        Timeout * 1000,
         function()
             mq.cmd('/face')
             return mq.TLO.Target.Distance() <= EngageDistance
