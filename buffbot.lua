@@ -267,7 +267,7 @@ function BuffBot:Check()
 			else
 				local pet_id = pet_id_by_id(mq.TLO.Group.Member(i).ID())
 				if pet_id ~= 0 then
-					self:CheckOnBuffsForId(self._config:Buff():PackageByName('Pet'), id, mq.TLO.Group.Member(i).Name() .. '\'s pet', active_keys)
+					self:CheckOnBuffsForId(self._config:Buff():PackageByName('Pet'), pet_id, mq.TLO.Group.Member(i).Name() .. '\'s pet', active_keys)
 				end
 			end
 		end
