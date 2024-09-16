@@ -12,7 +12,7 @@ local function shd_pull()
     local snare = spells.FindSpell('Damage Over Time', 'Snare', 'Single')
 
     mq.TLO.DaveBot.States.EarlyCombatIsActive()
-    co.delay(250)
+    co.delay(100)
 
     mq.cmd('/dbt target last mob')
     mq.delay(5000, function()

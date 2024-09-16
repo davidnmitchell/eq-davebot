@@ -73,9 +73,13 @@ function teameventbot.Init(cfg)
 	Ini = cfg._ini
 
 	mq.event('teamevent1', "#1# tells the group, 'Pulling #2#'", callback_pull_start)
+	mq.event('teamevent1.1', "#1# tells the group, in #*#, 'Pulling #2#'", callback_pull_start)
 	mq.event('teamevent2', "#1# tells the group, 'Arrived back at camp'", callback_pull_end)
+	mq.event('teamevent2.1', "#1# tells the group, in #*#, 'Arrived back at camp'", callback_pull_end)
 	mq.event('teamevent3', "#1# tells the group, 'Waiting to engage #2#'", callback_pre_engage)
+	mq.event('teamevent3.1', "#1# tells the group, in #*#, 'Waiting to engage #2#'", callback_pre_engage)
 	mq.event('teamevent4', "#1# tells the group, 'Engaging #2#'", callback_engaging)
+	mq.event('teamevent4.1', "#1# tells the group, in #*#, 'Engaging #2#'", callback_engaging)
 	
 	log('Initialized')
 end
