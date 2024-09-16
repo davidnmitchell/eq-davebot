@@ -42,23 +42,39 @@ local modeType = mq.DataType.new('ModeType', {
     },
 
     Methods = {
-		ModeIs = function(new_mode, mode)
-			mode.Mode = new_mode
-			Ini:WriteNumber('State', 'Mode', mode.Mode)
+		ModeIs = function(m, mode)
+			local new_mode = tonumber(m)
+			if new_mode ~= nil then
+				mode.Mode = new_mode
+				Ini:WriteNumber('State', 'Mode', mode.Mode)
+				log('Mode is now ' .. mode.Mode)
+			else
+				log('Tried to set Mode to nil')
+			end
 		end,
 		SetFlag = function(flag, mode)
-			if not common.ArrayHasValue(mode.Flags, flag) then
-				table.insert(mode.Flags, flag)
-				local csv = common.TableAsCsv(mode.Flags)
-				Ini:WriteString('State', 'Flags', csv)
+			if flag ~= nil then
+				if not common.ArrayHasValue(mode.Flags, flag) then
+					table.insert(mode.Flags, flag)
+					local csv = common.TableAsCsv(mode.Flags)
+					Ini:WriteString('State', 'Flags', csv)
+					log('Set Flag ' .. flag)
+				end
+			else
+				log('Tried to set nil Flag')
 			end
 		end,
 		UnsetFlag = function(flag, mode)
-			local idx = common.TableIndexOf(mode.Flags, flag)
-			if idx > 0 then
-				table.remove(mode.Flags, idx)
-				local csv = common.TableAsCsv(mode.Flags)
-				Ini:WriteString('State', 'Flags', csv)
+			if flag ~= nil then
+				local idx = common.TableIndexOf(mode.Flags, flag)
+				if idx > 0 then
+					table.remove(mode.Flags, idx)
+					local csv = common.TableAsCsv(mode.Flags)
+					Ini:WriteString('State', 'Flags', csv)
+					log('Unset Flag ' .. flag)
+				end
+			else
+				log('Tried to unset nil Flag')
 			end
 		end,
 		Read = function(_, mode)

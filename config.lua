@@ -307,9 +307,6 @@ function SpellBarConfig:Gems()
 		for k,v in pairs(flag_overlay) do
 			overlaid[k] = v
 		end
-		if mode == nil then
-			print('config.lua 311: mode is nil')
-		end
 		local mode_flag_overlay = self._mode_flag_overlays[mode][flag] or {}
 		for k,v in pairs(mode_flag_overlay) do
 			overlaid[k] = v
