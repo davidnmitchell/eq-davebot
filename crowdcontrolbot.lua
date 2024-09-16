@@ -80,7 +80,7 @@ end
 local function EnchanterCCMode()
 	log('Crowd control active')
 	CCRunning = true
-	Config:State():UpdateCrowdControlActive()
+	mq.TLO.DaveBot.States.CrowdControlIsActive()
 	spells.WipeQueue()
 	mq.cmd('/interrupt')
 end
@@ -98,7 +98,7 @@ end
 local function BardCCMode()
 	log('Crowd control active')
 	CCRunning = true
-	Config:State():UpdateCrowdControlActive()
+	mq.TLO.DaveBot.States.CrowdControlIsActive()
 	mq.delay(100)
 	mq.cmd('/attack off')
 	mq.cmd('/twist clear')
@@ -156,7 +156,7 @@ function CheckCC(my_class)
 		else
 			if CCRunning then
 				CCRunning = false
-				Config:State():UpdateCrowdControlInactive()
+				mq.TLO.DaveBot.States.CrowdControlIsInactive()
 			end
 		end
 	elseif my_class == 'Bard' then
@@ -184,7 +184,7 @@ function CheckCC(my_class)
 		else
 			if CCRunning then
 				CCRunning = false
-				Config:State():UpdateCrowdControlInactive()
+				mq.TLO.DaveBot.States.CrowdControlIsInactive()
 			end
 		end
 	end

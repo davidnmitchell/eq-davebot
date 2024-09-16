@@ -76,7 +76,8 @@ function teameventbot.Init(cfg)
 	mq.event('teamevent2', "#1# tells the group, 'Arrived back at camp'", callback_pull_end)
 	mq.event('teamevent3', "#1# tells the group, 'Waiting to engage #2#'", callback_pre_engage)
 	mq.event('teamevent4', "#1# tells the group, 'Engaging #2#'", callback_engaging)
-	log('loaded')
+	
+	log('Initialized')
 end
 
 

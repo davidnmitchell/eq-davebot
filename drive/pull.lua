@@ -11,7 +11,7 @@ local MyClass = EQClass:new()
 local function shd_pull()
     local snare = spells.FindSpell('Damage Over Time', 'Snare', 'Single')
 
-    mq.cmd('/echo NOTIFY ECACTIVE')
+    mq.TLO.DaveBot.States.EarlyCombatIsActive()
     co.delay(250)
 
     mq.cmd('/dbt target last mob')
@@ -24,13 +24,13 @@ local function shd_pull()
     local distance = mq.TLO.Spawn(target_id).Distance()
     if distance > range then
         print('Out of range')
-        mq.cmd('/echo NOTIFY ECINACTIVE')
+        mq.TLO.DaveBot.States.EarlyCombatIsInactive()
         return
     end
 
     if not target_id or group.IsGroupMember(target_id) then
         print('Invalid target')
-        mq.cmd('/echo NOTIFY ECINACTIVE')
+        mq.TLO.DaveBot.States.EarlyCombatIsInactive()
         return
     end
 
@@ -38,13 +38,13 @@ local function shd_pull()
 
     mq.delay(5000, function() return mq.TLO.Cast.Ready() end)
     if not mq.TLO.Cast.Ready() then
-        mq.cmd('/echo NOTIFY ECINACTIVE')
+        mq.TLO.DaveBot.States.EarlyCombatIsInactive()
         return
     end
 
     if mq.TLO.DaveBot.Tether.Status() ~= 'C' then
         print('Camp is not made')
-        mq.cmd('/echo NOTIFY ECINACTIVE')
+        mq.TLO.DaveBot.States.EarlyCombatIsInactive()
         return
     end
 
@@ -55,7 +55,7 @@ local function shd_pull()
     co.delay(1000, function() return mq.TLO.Cast.Status() == 'C' end)
     if not mq.TLO.Cast.Status() == 'C' then
         print('Not casting spell for some reason, aborting...')
-        mq.cmd('/echo NOTIFY ECINACTIVE')
+        mq.TLO.DaveBot.States.EarlyCombatIsInactive()
         spells.WipeQueue()
         return
     end

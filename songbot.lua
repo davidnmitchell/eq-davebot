@@ -31,7 +31,7 @@ local function interrupt()
 end
 
 local function check_twist(order)
-	if not Config:State():CrowdControlActive() and not Config:State():BardCastActive() then
+	if not mq.TLO.DaveBot.States.IsCrowdControlActive() and not mq.TLO.DaveBot.States.IsBardCastActive() then
 		local gem_order = {}
 		for i,spell_key in ipairs(order) do
 			gem_order[i] = Config:SpellBar():GemBySpellKey(spell_key)

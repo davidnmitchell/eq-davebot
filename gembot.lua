@@ -44,11 +44,9 @@ function GemBot:Memorize()
 				if spell_name ~= '' then
 					if mq.TLO.Me.Gem(gem).Name() ~= spell_name then
 
-						if not MyClass.IsBard or not self._config:State():BardCastActive() then
+						if not MyClass.IsBard or not mq.TLO.DaveBot.States.IsBardCastActive() then
 							if MyClass.IsBard then
-								spells.UpdateBardCastActive()
-								--self._config:State():UpdateBardCastActive()   -- TODO: switch to this call if BuffBot is merged into davebot
-								co.delay(10000, function() return self._config:State():BardCastActive() end)
+								mq.TLO.DaveBot.States.BardCastIsActive()
 								mq.cmd('/twist clear')
 								co.delay(100)
 							end
@@ -63,8 +61,7 @@ function GemBot:Memorize()
 							---@diagnostic disable-next-line: undefined-field
 							co.delay(10000, function() return mq.TLO.Cast.Ready(gem)() end)
 							if MyClass.IsBard then
-								spells.UpdateBardCastInactive()
-								--self._config:State():UpdateBardCastInactive()     -- TODO: switch to this call if BuffBot is merged into davebot
+								mq.TLO.DaveBot.States.BardCastIsInactive()
 							end
 						end
 

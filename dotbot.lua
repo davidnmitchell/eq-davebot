@@ -78,7 +78,7 @@ local function main()
 	while Running == true do
 		mq.doevents()
 
-		if Config:Dot():Enabled() and mychar.InCombat() and not Config:State():CrowdControlActive() then
+		if Config:Dot():Enabled() and mychar.InCombat() and not mq.TLO.DaveBot.States.IsCrowdControlActive() then
 			CheckDots()
 		end
 

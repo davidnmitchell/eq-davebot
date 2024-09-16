@@ -1,6 +1,7 @@
 local mq = require('mq')
 local co = require('co')
 local str= require('str')
+local mychar = require('mychar')
 
 
 local tetherbot = {}
@@ -10,7 +11,6 @@ local tetherbot = {}
 --
 
 local Config = {}
-local Ini = {}
 
 
 --
@@ -79,7 +79,7 @@ end
 local function do_tether()
 	if mq.TLO.DaveBot.Tether.Status() ~= 'N' then
 		if in_camp() then
-			if Config:Tether():ModeIsActive() and not mq.TLO.Navigation.Active() and not mq.TLO.DaveBot.MyChar.InCombat() and mq.TLO.DaveBot.MyChar.HasNotMovedFor() > Config:Tether():ReturnTimer() then
+			if Config:Tether():ModeIsActive() and not mq.TLO.Navigation.Active() and not mychar.InCombat() and mq.TLO.DaveBot.MyChar.HasNotMovedFor() > Config:Tether():ReturnTimer() then
 				local distance = mq.TLO.Math.Distance(mq.TLO.DaveBot.Tether.Detail())()
 				if distance > Config:Tether():CampMaxDistance() then
 					nav_to_camp()
@@ -104,12 +104,10 @@ end
 
 function tetherbot.Init(cfg)
 	Config = cfg
-	Ini = cfg._ini
 
-	mq.TLO.DaveBot.Tether.Read()
-
-	log('loaded')
 	mq.bind('/dbtether', callback_dbtether)
+
+	log('Initialized')
 end
 
 

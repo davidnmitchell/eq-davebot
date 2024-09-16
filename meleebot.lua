@@ -53,7 +53,7 @@ local function main()
 		if not mychar.InCombat() and InCombat then
 			InCombat = false
 			if enabled then
-				mq.cmd('/makecamp return')
+				mq.cmd('/dbtether return')
 			end
 		end
 

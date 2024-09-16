@@ -281,7 +281,7 @@ end
 function BuffBot:Run()
 	while true do
 		if self._config:Buff():Enabled() then
-			if not mychar.InCombat() and not Config:State():EarlyCombatActive() then
+			if not mychar.InCombat() and not mq.TLO.DaveBot.States.IsEarlyCombatActive() then
 				self:Check()
 			end
 		end

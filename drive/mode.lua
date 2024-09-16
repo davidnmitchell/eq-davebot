@@ -4,7 +4,7 @@ require('eqclass')
 local MyClass = EQClass:new()
 
 local function set_mode(mode)
-    mq.cmd('/echo NOTIFY BOTMODE ' .. mode)
+    mq.TLO.DaveBot.Mode.ModeIs(mode)
 end
 
 return {

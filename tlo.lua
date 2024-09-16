@@ -1,8 +1,15 @@
 local mq = require('mq')
 local co = require('co')
+local str= require('str')
+local common = require('common')
 
 local tlo = {}
 
+
+local function log(msg)
+	print('(tlo) ' .. msg)
+	-- co.delay(250)
+end
 
 --
 -- Globals
@@ -11,48 +18,105 @@ local tlo = {}
 local Config = {}
 local Ini = {}
 
-local MyChar = {StillSince = 0, LastLoc = ''}
-local Tether = {Status = 'N', Detail = 'NONE'}
+local Mode = { Mode = 1, Flags = {} }
+local States = { CrowdControlActive = false, BardCastActive = false, EarlyCombatActive = false, EarlyCombatActiveSince = 0 }
+local MyChar = { StillSince = 0, LastLoc = '' }
+local Tether = { Status = 'N', Detail = 'NONE' }
+
 
 --
 -- DataTypes
 --
 
+local modeType = mq.DataType.new('ModeType', {
+    Members = {
+		Mode = function(_, mode)
+			return 'int', mode.Mode
+		end,
+		FlagCount = function(_, mode)
+			return 'int', #mode.Flags
+		end,
+		Flag = function(i, mode)
+			return 'string', mode.Flags[i]
+		end
+    },
+
+    Methods = {
+		ModeIs = function(new_mode, mode)
+			mode.Mode = new_mode
+			Ini:WriteNumber('State', 'Mode', mode.Mode)
+		end,
+		SetFlag = function(flag, mode)
+			if not common.ArrayHasValue(mode.Flags, flag) then
+				table.insert(mode.Flags, flag)
+				local csv = common.TableAsCsv(mode.Flags)
+				Ini:WriteString('State', 'Flags', csv)
+			end
+		end,
+		UnsetFlag = function(flag, mode)
+			local idx = common.TableIndexOf(mode.Flags, flag)
+			if idx > 0 then
+				table.remove(mode.Flags, idx)
+				local csv = common.TableAsCsv(mode.Flags)
+				Ini:WriteString('State', 'Flags', csv)
+			end
+		end,
+		Read = function(_, mode)
+			mode.Mode = Ini:Number('State', 'Mode', 1)
+			mode.Flags = str.Split(Ini:String('State', 'Flags', ''), ',')
+		end
+    },
+
+    ToString = function(_)
+        return string.format('')
+    end
+})
+
+local statesType = mq.DataType.new('StatesType', {
+    Members = {
+		IsCrowdControlActive = function(_, states)
+			return 'bool', states.CrowdControlActive
+		end,
+		IsBardCastActive = function(_, states)
+			return 'bool', states.BardCastActive
+		end,
+		IsEarlyCombatActive = function(_, states)
+			return 'bool', states.EarlyCombatActive
+		end,
+		EarlyCombatActiveSince = function(_, states)
+			return 'int', states.EarlyCombatActiveSince
+		end
+    },
+
+    Methods = {
+		CrowdControlIsActive = function(_, states)
+			states.CrowdControlActive = true
+		end,
+		CrowdControlIsInactive = function(_, states)
+			states.CrowdControlActive = false
+		end,
+		BardCastIsActive = function(_, states)
+			states.BardCastActive = true
+		end,
+		BardCastIsInactive = function(_, states)
+			states.BardCastActive = false
+		end,
+		EarlyCombatIsActive = function(_, states)
+			states.EarlyCombatActive = true
+			states.EarlyCombatActiveSince = mq.gettime()
+		end,
+		EarlyCombatIsInactive = function(_, states)
+			states.EarlyCombatActive = false
+		end
+    },
+
+    ToString = function(_)
+        return string.format('')
+    end
+})
+
 local myCharType = mq.DataType.new('MyCharType', {
     Members = {
-		Casting = function(_, my_char)
-			return 'bool', mq.TLO.Cast.Status() ~= 'C'
-		end,
-        ReadyToCast = function(_, my_char)
-			local value = not mq.TLO.Me.Stunned()
-				and not	mq.TLO.Me.Dead()
-				and not mq.TLO.Me.Feigning()
-				and not	mq.TLO.Me.Ducking()
-				and not mq.TLO.Me.Silenced()
-				and not mq.TLO.Me.Charmed()
-				and not mq.TLO.Me.Mezzed()
-				and not mq.TLO.Me.Invulnerable()
-				and not mq.TLO.Me.Moving()
-				and mq.TLO.Cast.Status() == 'I'
-            return 'bool', value
-        end,
-		InCombat = function(_, my_char)
-			return 'bool', mq.TLO.Me.XTarget() > 0 -- or mq.TLO.Me.CombatState() == 'COMBAT'
-			-- for i=1,mq.TLO.DanNet.PeerCount() do
-				-- local peer = mq.TLO.DanNet.Peers(i)()
-				-- local combat = common.query(peer, 'Me.Combat')
-				-- if combat then
-					-- return true
-				-- end
-			-- end
-			-- return false
-		end,
-		CanRest = function(_, mychar)
-			return 'bool', mq.TLO.Me.CombatState() == 'ACTIVE'
-		end,
-		Standing = function(_, mychar)
-			return 'bool', mq.TLO.Me.State() == 'STAND'
-		end,
 		HasNotMovedFor = function(_, my_char)
 			return 'int', (mq.gettime() - my_char.StillSince) / 1000
 		end
@@ -111,6 +175,12 @@ local tetherType = mq.DataType.new('TetherType', {
 
 local daveBotType = mq.DataType.new('DaveBotType', {
     Members = {
+		Mode = function(_, _)
+			return modeType, Mode
+		end,
+		States = function(_, _)
+			return statesType, States
+		end,
 		MyChar = function(_, _)
 			return myCharType, MyChar
 		end,
@@ -138,6 +208,7 @@ local function DaveBot(param)
 	return daveBotType, {}
 end
 
+
 --
 -- Init
 --
@@ -147,6 +218,11 @@ function tlo.Init(cfg)
 	Ini = cfg._ini
 
 	mq.AddTopLevelObject('DaveBot', DaveBot)
+
+	mq.TLO.DaveBot.Mode.Read()
+	mq.TLO.DaveBot.Tether.Read()
+
+	log('Initialized')
 end
 
 

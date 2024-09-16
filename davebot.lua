@@ -28,8 +28,6 @@ local Config = Config:new('davebot')
 local Running = true
 local LastHeardFrom = {}
 
-local EarlyCombatSince = 0
-
 --
 -- Functions
 --
@@ -47,9 +45,7 @@ end
 --
 -- TODO: Key off of MainAssist instead of MainTank
 -- TODO: Individual class spell lists/abilities (scan Book and write to ini?)
--- TODO: Test multiple coroutines with mq.delay to see if it holds up all threads in a process or not
 -- TODO: Warn when MainTank/MainAssist not set (idles most offense routines and does not say anyting about it)
--- TODO: Pre-mem spells (done for Bard)
 -- TODO: Check for a more powerful buff before buffing (see autotoon)
 -- TODO: Replace camp plugin (see autotoon)
 -- TODO: Immunity/resist memory by mob name/type (save to ini?)
@@ -63,15 +59,12 @@ end
 -- TODO: Short lived combat buffs
 -- TODO: Cure detrimental effects (target datatype)
 -- TODO: Finding and pulling (see autotoon)
--- TODO: MQ2NetBots (replace pet buffs with, maybe other uses)
 -- TODO: Item Buffs
 -- TODO: Lose aggro logic
 -- TODO: Have all CC members communicate
 -- TODO: /setwintitle, /foreground /setprio
 -- TODO: Loot
 -- TODO: GUI? (see autotoon)
--- TODO: Change modes 5,6,7,8,9 to just 5? with flags for each mode instead
--- TODO: WIP Modes: 1 - Manual, 2 - Managed 3 - Managed IC 4 - Camped 5 - Camped IC 6 - Travel 7 - Travel IC
 
 local function main()
 	local last_spell_count = 0
@@ -94,7 +87,7 @@ local function main()
 				lua.KillScriptIfRunning('petbot')
 				lua.KillScriptIfRunning('songbot')
 				lua.KillScriptIfRunning('meleebot')
-				mq.exit()
+				Running = false
 			end
 		end
 	)
@@ -112,12 +105,6 @@ local function main()
 	local tlo_co = ManagedCoroutine:new(
 		function()
 			tlo.Run()
-		end
-	)
-	mychar.Init(Config)
-	local mychar_co = ManagedCoroutine:new(
-		function()
-			mychar.Run()
 		end
 	)
 	teameventbot.Init(Config)
@@ -165,20 +152,19 @@ local function main()
 	local ecstate_co = ManagedCoroutine:new(
 		function()
 			while true do
-				if Config:State():EarlyCombatActive() and not mychar.InCombat() and Config:State():EarlyCombatActiveSince() + 10000 < mq.gettime() then
-					Config:State():UpdateEarlyCombatInactive()
+				if mq.TLO.DaveBot.States.IsEarlyCombatActive() and not mychar.InCombat() and mq.TLO.DaveBot.States.EarlyCombatActiveSince() + 10000 < mq.gettime() then
+					mq.TLO.DaveBot.States.EarlyCombatIsInactive()
 				end
 				co.yield()
 			end
 		end
 	)
 
-	print('davebot loaded')
+	print('DaveBot running')
 	while Running == true do
 		mq.doevents()
 
 		tlo_co:Resume()
-		mychar_co:Resume()
 		teameventbot_co:Resume()
 		drivebot_co:Resume()
 
@@ -232,7 +218,7 @@ local function main()
 
 		Config:Reload(10000)
 
-		mq.delay(1)
+		mq.delay(10)
 	end
 end
 

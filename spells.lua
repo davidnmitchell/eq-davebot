@@ -216,16 +216,16 @@ function spells.MemorizeAndBlock(spell, gem_number)
 	end
 end
 
-function spells.UpdateBardCastActive()
-	mq.cmd('/echo NOTIFY BCACTIVE')
-end
+-- function spells.UpdateBardCastActive()
+-- 	mq.cmd('/echo NOTIFY BCACTIVE')
+-- end
 
-function spells.UpdateBardCastInactive()
-	mq.cmd('/echo NOTIFY BCINACTIVE')
-end
+-- function spells.UpdateBardCastInactive()
+-- 	mq.cmd('/echo NOTIFY BCINACTIVE')
+-- end
 
 function spells.BardCast(spell, gem_number, target_id)
-	spells.UpdateBardCastActive()
+	mq.TLO.DaveBot.States.BardCastIsActive()
 	mq.delay(250)
 	mq.cmd('/twist clear')
 	mq.delay(500)
@@ -236,7 +236,7 @@ function spells.BardCast(spell, gem_number, target_id)
 	end
 	mq.cmd('/cast ' .. gem_number)
 	mq.delay((mq.TLO.Spell(spell).CastTime.Seconds() + 2) * 1000)
-	spells.UpdateBardCastInactive()
+	mq.TLO.DaveBot.States.BardCastIsInactive()
 end
 
 return spells

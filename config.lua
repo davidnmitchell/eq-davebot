@@ -20,16 +20,14 @@ function Config:new(type)
 
 	mt._type = type
 	if mt._type == 'davebot' then
-		mt._state = BotState:new(mt._ini, true, type, true, true)
 		mt._spells = SpellsConfig:new(mt._ini)
-		mt._spellbar = SpellBarConfig:new(mt._ini, mt._state, mt._spells)
-		mt._autosit = AutoSitConfig:new(mt._ini, mt._state)
-		mt._tether = TetherConfig:new(mt._ini, mt._state)
-		mt._twist = TwistConfig:new(mt._ini, mt._state)
-		mt._teamevents = TeamEventsConfig:new(mt._ini, mt._state)
+		mt._spellbar = SpellBarConfig:new(mt._ini, mt._spells)
+		mt._autosit = AutoSitConfig:new(mt._ini)
+		mt._tether = TetherConfig:new(mt._ini)
+		mt._twist = TwistConfig:new(mt._ini)
+		mt._teamevents = TeamEventsConfig:new(mt._ini)
 	elseif mt._type == 'meleebot' then
-		mt._state = BotState:new(mt._ini, false, type, false, false)
-		mt._melee = MeleeConfig:new(mt._ini, mt._state)
+		mt._melee = MeleeConfig:new(mt._ini)
 	else
 		local watch_cc = false
 		if mt._type == 'debuffbot' or mt._type == 'dotbot' or mt._type == 'nukebot' or mt._type == 'songbot' then
@@ -39,34 +37,33 @@ function Config:new(type)
 		if mt._type == 'gembot' or mt._type == 'songbot' then
 			watch_bc = true
 		end
-		mt._state = BotState:new(mt._ini, false, type, watch_cc, watch_bc)
 		mt._spells = SpellsConfig:new(mt._ini)
-		mt._spellbar = SpellBarConfig:new(mt._ini, mt._state, mt._spells)
+		mt._spellbar = SpellBarConfig:new(mt._ini, mt._spells)
 	end
 
 	if mt._type == 'castqueue' then
-		mt._castqueue = CastQueueConfig:new(mt._ini, mt._state)
+		mt._castqueue = CastQueueConfig:new(mt._ini)
 	end
 	if mt._type == 'buffbot' then
-		mt._buff = BuffConfig:new(mt._ini, mt._state)
+		mt._buff = BuffConfig:new(mt._ini)
 	end
 	if mt._type == 'crowdcontrolbot' then
-		mt._cc = CrowdControlConfig:new(mt._ini, mt._state)
+		mt._cc = CrowdControlConfig:new(mt._ini)
 	end
 	if mt._type == 'debuffbot' then
-		mt._debuff = DebuffConfig:new(mt._ini, mt._state)
+		mt._debuff = DebuffConfig:new(mt._ini)
 	end
 	if mt._type == 'dotbot' then
-		mt._dot = DotConfig:new(mt._ini, mt._state)
+		mt._dot = DotConfig:new(mt._ini)
 	end
 	if mt._type == 'healbot' then
-		mt._heal = HealConfig:new(mt._ini, mt._state)
+		mt._heal = HealConfig:new(mt._ini)
 	end
 	if mt._type == 'nukebot' then
-		mt._dd = DdConfig:new(mt._ini, mt._state)
+		mt._dd = DdConfig:new(mt._ini)
 	end
 	if mt._type == 'petbot' then
-		mt._pet = PetConfig:new(mt._ini, mt._state)
+		mt._pet = PetConfig:new(mt._ini)
 	end
 
 	mt._last_load_time = mq.gettime()
@@ -77,7 +74,6 @@ end
 function Config:Reload(min_interval)
 	if mq.gettime() >= self._last_load_time + (min_interval or 10000) then
 		self._ini:Reload()
-		self._state:Calculate()
 
 		co.yield()
 
@@ -135,10 +131,6 @@ function Config:Reload(min_interval)
 
 		self._last_load_time = mq.gettime()
 	end
-end
-
-function Config:State()
-	return self._state
 end
 
 function Config:Spells()
@@ -222,7 +214,7 @@ end
 SpellBarConfig = {}
 SpellBarConfig.__index = SpellBarConfig
 
-function SpellBarConfig:new(ini, state_config, spells_config)
+function SpellBarConfig:new(ini, spells_config)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -231,7 +223,6 @@ function SpellBarConfig:new(ini, state_config, spells_config)
 	mt._flag_overlays = {}
 	mt._mode_flag_overlays = {}
 	mt._ini = ini
-	mt._state_config = state_config
 	mt._spells_config = spells_config
 	mt:Calculate()
 
@@ -298,8 +289,12 @@ function SpellBarConfig:Calculate()
 end
 
 function SpellBarConfig:Gems()
-	local mode = self._state_config:Mode()
-	local flags = self._state_config:Flags()
+	local mode = mq.TLO.DaveBot.Mode.Mode()
+	local flags = {}
+	for i=1,mq.TLO.DaveBot.Mode.FlagCount() do
+		table.insert(flags, mq.TLO.DaveBot.Mode.Flag(i))
+	end
+
 	local overlaid = {}
 	for k,v in pairs(self._defaults) do
 		overlaid[k] = v
@@ -311,6 +306,9 @@ function SpellBarConfig:Gems()
 		local flag_overlay = self._flag_overlays[flag] or {}
 		for k,v in pairs(flag_overlay) do
 			overlaid[k] = v
+		end
+		if mode == nil then
+			print('config.lua 311: mode is nil')
 		end
 		local mode_flag_overlay = self._mode_flag_overlays[mode][flag] or {}
 		for k,v in pairs(mode_flag_overlay) do
@@ -402,8 +400,13 @@ local function defaults_from_ini(ini, type)
 	return ini:Section('Default:' .. type):ToTable() or {}
 end
 
-local function mode_value(defaults, mode_overlays, flag_overlays, mode_flag_overlays, mode, flags, key, default)
-	if not flags then flags = {} end
+local function mode_value(defaults, mode_overlays, flag_overlays, mode_flag_overlays, key, default)
+	local mode = mq.TLO.DaveBot.Mode.Mode()
+	local flags = {}
+	for i=1,mq.TLO.DaveBot.Mode.FlagCount() do
+		table.insert(flags, mq.TLO.DaveBot.Mode.Flag(i))
+	end
+
 	local value = defaults[key]
 	if mode_overlays[mode] then
 		if mode_overlays[mode][key] then
@@ -434,7 +437,7 @@ end
 CastQueueConfig = {}
 CastQueueConfig.__index = CastQueueConfig
 
-function CastQueueConfig:new(ini, state_config)
+function CastQueueConfig:new(ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -444,7 +447,6 @@ function CastQueueConfig:new(ini, state_config)
 	mt._mode_flag_overlays = {}
 
 	mt._ini = ini
-	mt._state_config = state_config
 	mt:Calculate()
 
 	return mt
@@ -462,7 +464,7 @@ function CastQueueConfig:Calculate()
 end
 
 function CastQueueConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, self._state_config:Mode(), self._state_config:Flags(), key, default)
+	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function CastQueueConfig:Print()
@@ -481,7 +483,7 @@ end
 AutoSitConfig = {}
 AutoSitConfig.__index = AutoSitConfig
 
-function AutoSitConfig:new(ini, state_config)
+function AutoSitConfig:new(ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -491,7 +493,6 @@ function AutoSitConfig:new(ini, state_config)
 	mt._mode_flag_overlays = {}
 
 	mt._ini = ini
-	mt._state_config = state_config
 	mt:Calculate()
 
 	return mt
@@ -509,7 +510,7 @@ function AutoSitConfig:Calculate()
 end
 
 function AutoSitConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, self._state_config:Mode(), self._state_config:Flags(), key, default)
+	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function AutoSitConfig:Enabled()
@@ -540,7 +541,7 @@ end
 BuffConfig = {}
 BuffConfig.__index = BuffConfig
 
-function BuffConfig:new(ini, state_config)
+function BuffConfig:new(ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -550,7 +551,6 @@ function BuffConfig:new(ini, state_config)
 	mt._mode_flag_overlays = {}
 
 	mt._ini = ini
-	mt._state_config = state_config
 	mt:Calculate()
 
 	return mt
@@ -568,7 +568,7 @@ function BuffConfig:Calculate()
 end
 
 function BuffConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, self._state_config:Mode(), self._state_config:Flags(), key, default)
+	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function BuffConfig:Enabled()
@@ -620,7 +620,7 @@ end
 CrowdControlConfig = {}
 CrowdControlConfig.__index = CrowdControlConfig
 
-function CrowdControlConfig:new(ini, state_config)
+function CrowdControlConfig:new(ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -630,7 +630,6 @@ function CrowdControlConfig:new(ini, state_config)
 	mt._mode_flag_overlays = {}
 
 	mt._ini = ini
-	mt._state_config = state_config
 	mt:Calculate()
 
 	return mt
@@ -648,7 +647,7 @@ function CrowdControlConfig:Calculate()
 end
 
 function CrowdControlConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, self._state_config:Mode(), self._state_config:Flags(), key, default)
+	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function CrowdControlConfig:Enabled()
@@ -671,7 +670,7 @@ end
 DebuffConfig = {}
 DebuffConfig.__index = DebuffConfig
 
-function DebuffConfig:new(ini, state_config)
+function DebuffConfig:new(ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -681,7 +680,6 @@ function DebuffConfig:new(ini, state_config)
 	mt._mode_flag_overlays = {}
 
 	mt._ini = ini
-	mt._state_config = state_config
 	mt:Calculate()
 
 	return mt
@@ -699,7 +697,7 @@ function DebuffConfig:Calculate()
 end
 
 function DebuffConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, self._state_config:Mode(), self._state_config:Flags(), key, default)
+	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function DebuffConfig:Enabled()
@@ -728,7 +726,7 @@ end
 DotConfig = {}
 DotConfig.__index = DotConfig
 
-function DotConfig:new(ini, state_config)
+function DotConfig:new(ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -738,7 +736,6 @@ function DotConfig:new(ini, state_config)
 	mt._mode_flag_overlays = {}
 
 	mt._ini = ini
-	mt._state_config = state_config
 	mt:Calculate()
 
 	return mt
@@ -756,7 +753,7 @@ function DotConfig:Calculate()
 end
 
 function DotConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, self._state_config:Mode(), self._state_config:Flags(), key, default)
+	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function DotConfig:Enabled()
@@ -785,7 +782,7 @@ end
 HealConfig = {}
 HealConfig.__index = HealConfig
 
-function HealConfig:new(ini, state_config)
+function HealConfig:new(ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -795,7 +792,6 @@ function HealConfig:new(ini, state_config)
 	mt._mode_flag_overlays = {}
 
 	mt._ini = ini
-	mt._state_config = state_config
 	mt:Calculate()
 
 	return mt
@@ -813,7 +809,7 @@ function HealConfig:Calculate()
 end
 
 function HealConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, self._state_config:Mode(), self._state_config:Flags(), key, default)
+	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function HealConfig:Enabled()
@@ -869,7 +865,7 @@ end
 MeleeConfig = {}
 MeleeConfig.__index = MeleeConfig
 
-function MeleeConfig:new(ini, state_config)
+function MeleeConfig:new(ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -879,7 +875,6 @@ function MeleeConfig:new(ini, state_config)
 	mt._mode_flag_overlays = {}
 
 	mt._ini = ini
-	mt._state_config = state_config
 	mt:Calculate()
 
 	return mt
@@ -897,7 +892,7 @@ function MeleeConfig:Calculate()
 end
 
 function MeleeConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, self._state_config:Mode(), self._state_config:Flags(), key, default)
+	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function MeleeConfig:Enabled()
@@ -920,7 +915,7 @@ end
 DdConfig = {}
 DdConfig.__index = DdConfig
 
-function DdConfig:new(ini, state_config)
+function DdConfig:new(ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -930,7 +925,6 @@ function DdConfig:new(ini, state_config)
 	mt._mode_flag_overlays = {}
 
 	mt._ini = ini
-	mt._state_config = state_config
 	mt:Calculate()
 
 	return mt
@@ -948,7 +942,7 @@ function DdConfig:Calculate()
 end
 
 function DdConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, self._state_config:Mode(), self._state_config:Flags(), key, default)
+	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function DdConfig:Enabled()
@@ -1001,7 +995,7 @@ local function default_pet_type()
 	return type
 end
 
-function PetConfig:new(ini, state_config)
+function PetConfig:new(ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -1013,7 +1007,6 @@ function PetConfig:new(ini, state_config)
 	mt._mode_flag_overlays = {}
 
 	mt._ini = ini
-	mt._state_config = state_config
 	mt:Calculate()
 
 	return mt
@@ -1031,7 +1024,7 @@ function PetConfig:Calculate()
 end
 
 function PetConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, self._state_config:Mode(), self._state_config:Flags(), key, default)
+	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function PetConfig:AutoCast()
@@ -1066,7 +1059,7 @@ end
 TwistConfig = {}
 TwistConfig.__index = TwistConfig
 
-function TwistConfig:new(ini, state_config)
+function TwistConfig:new(ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -1076,7 +1069,6 @@ function TwistConfig:new(ini, state_config)
 	mt._mode_flag_overlays = {}
 
 	mt._ini = ini
-	mt._state_config = state_config
 	mt:Calculate()
 
 	return mt
@@ -1094,7 +1086,7 @@ function TwistConfig:Calculate()
 end
 
 function TwistConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, self._state_config:Mode(), self._state_config:Flags(), key, default)
+	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function TwistConfig:Enabled()
@@ -1117,7 +1109,7 @@ end
 TetherConfig = {}
 TetherConfig.__index = TetherConfig
 
-function TetherConfig:new(ini, state_config)
+function TetherConfig:new(ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -1127,7 +1119,6 @@ function TetherConfig:new(ini, state_config)
 	mt._mode_flag_overlays = {}
 
 	mt._ini = ini
-	mt._state_config = state_config
 	mt:Calculate()
 
 	return mt
@@ -1145,7 +1136,7 @@ function TetherConfig:Calculate()
 end
 
 function TetherConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, self._state_config:Mode(), self._state_config:Flags(), key, default)
+	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function TetherConfig:Mode()
@@ -1180,7 +1171,7 @@ end
 TeamEventsConfig = {}
 TeamEventsConfig.__index = TeamEventsConfig
 
-function TeamEventsConfig:new(ini, state_config)
+function TeamEventsConfig:new(ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -1190,7 +1181,6 @@ function TeamEventsConfig:new(ini, state_config)
 	mt._mode_flag_overlays = {}
 
 	mt._ini = ini
-	mt._state_config = state_config
 	mt:Calculate()
 
 	return mt
@@ -1208,7 +1198,7 @@ function TeamEventsConfig:Calculate()
 end
 
 function TeamEventsConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, self._state_config:Mode(), self._state_config:Flags(), key, default)
+	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function TeamEventsConfig:OnPullStart()
@@ -1225,257 +1215,4 @@ end
 
 function TeamEventsConfig:OnEngage()
 	return self:_mode_value('OnEngage', '')
-end
-
-
---
--- State
---
-
-StateConfig = {}
-StateConfig.__index = StateConfig
-
-function StateConfig:new(ini, persist)
-	local mt = {}
-	setmetatable(mt, self)
-
-	mt._persist = persist or false
-
-	mt._mode = 1
-	mt._flags = {}
-	mt._tether = 'NONE'
-	mt._ini = ini
-	mt:Calculate()
-
-	return mt
-end
-
-function StateConfig:Calculate()
-	self._mode = self._ini:Number('State', 'Mode', 1)
-	self._flags = str.Split(self._ini:String('State', 'Flags', ''), ',')
-end
-
-function StateConfig:Mode()
-	return self._mode
-end
-
-function StateConfig:Flags()
-	return self._flags
-end
-
-function StateConfig:Tether()
-	return self._tether
-end
-
-function StateConfig:UpdateMode(mode)
-	self._mode = mode
-	if self._persist then
-		self._ini:WriteNumber('State', 'Mode', self._mode)
-	end
-end
-
-function StateConfig:SetFlag(flag)
-	if not common.ArrayHasValue(self._flags, flag) then
-		table.insert(self._flags, flag)
-		if self._persist then
-			local csv = common.TableAsCsv(self._flags)
-			self._ini:WriteString('State', 'Flags', csv)
-		end
-	end
-end
-
-function StateConfig:UnsetFlag(flag)
-	local idx = common.TableIndexOf(self._flags, flag)
-	if idx > 0 then
-		table.remove(self._flags, idx)
-		if self._persist then
-			local csv = common.TableAsCsv(self._flags)
-			self._ini:WriteString('State', 'Flags', csv)
-		end
-	end
-end
-
-
---
--- BotState
---
-
-BotState = {}
-BotState.__index = BotState
-
-local function log(self, msg)
-	print('(' .. self.ProcessName .. ') ' .. msg)
-end
-
-local function _bot_mode_callback(self)
-	return function(line, mode)
-		self._config:UpdateMode(tonumber(mode))
-		log(self, 'Mode set to ' .. self._config:Mode())
-	end
-end
-
-local function _bot_flag_set_callback(self)
-	return function(line, flag)
-		self._config:SetFlag(flag)
-		log(self, 'Flag set ' .. flag)
-	end
-end
-
-local function _bot_flag_unset_callback(self)
-	return function(line, flag)
-		self._config:UnsetFlag(flag)
-		log(self, 'Flag unset ' .. flag)
-	end
-end
-
-local function _early_combat_active_callback(self)
-	return function (line)
-		self._early_combat_active = true
-		self._early_combat_active_since = mq.gettime()
-		log(self, 'Early combat active')
-	end
-end
-
-local function _early_combat_inactive_callback(self)
-	return function (line)
-		self._early_combat_active = false
-		log(self, 'Early combat inactive')
-	end
-end
-
-local function _crowd_control_active_callback(self)
-	return function (line)
-		self._crowd_control_active = true
-		log(self, 'Crowd control active')
-	end
-end
-
-local function _crowd_control_inactive_callback(self)
-	return function (line)
-		self._crowd_control_active = false
-		log(self, 'Crowd control inactive')
-	end
-end
-
-local function _bard_cast_active_callback(self)
-	return function (line)
-		self._bard_cast_active = true
-		log(self, 'Bard cast active')
-	end
-end
-
-local function _bard_cast_inactive_callback(self)
-	return function (line)
-		self._bard_cast_active = false
-		log(self, 'Bard cast inactive')
-	end
-end
-
-
-local function _listen(self)
-	mq.event('mode_set', '#*#NOTIFY BOTMODE #1#', _bot_mode_callback(self))
-	mq.event('flag_set', '#*#NOTIFY FLAGSET #1#', _bot_flag_set_callback(self))
-	mq.event('flag_unset', '#*#NOTIFY FLAGUNSET #1#', _bot_flag_unset_callback(self))
-	--mq.event('autocombat_mode_set', '#*#NOTIFY BOTAUTOCOMBATMODEIS #1#', _auto_combat_mode_callback(self))
-
-	mq.event('ecactive', 'NOTIFY ECACTIVE', _early_combat_active_callback(self))
-	mq.event('ecinactive', 'NOTIFY ECINACTIVE', _early_combat_inactive_callback(self))
-
-	if self._watch_cc then
-		mq.event('ccactive', 'NOTIFY CCACTIVE', _crowd_control_active_callback(self))
-		mq.event('ccinactive', 'NOTIFY CCINACTIVE', _crowd_control_inactive_callback(self))
-	end
-	if self._watch_bc then
-		mq.event('bcactive', 'NOTIFY BCACTIVE', _bard_cast_active_callback(self))
-		mq.event('bcinactive', 'NOTIFY BCINACTIVE', _bard_cast_inactive_callback(self))
-	end
-end
-
-function BotState:new(ini, persist, process_name, watch_cc, watch_bc)
-	local mt = {}
-	setmetatable(mt, self)
-
-	mt.ProcessName = process_name or 'bot'
-
-	mt._config = StateConfig:new(ini, persist)
-	mt._early_combat_active = false
-	mt._early_combat_active_since = 0
-	mt._crowd_control_active = false
-	mt._bard_cast_active = false
-
-	-- self.ManualMode = 1
-	-- self.ManagedMode = 2
-	-- self.TravelMode = 3
-	-- self.CampMode = 4
-
-	mt._watch_cc = true
-	if watch_cc ~= nil then mt._watch_cc = watch_cc end
-	mt._watch_bc = watch_bc
-	if watch_bc ~= nil then mt._watch_bc = watch_bc end
-
-	_listen(mt)
-	log(mt, 'Current mode: ' .. mt._config:Mode())
-	return mt
-end
-
-function BotState:Calculate()
-	self._config:Calculate()
-end
-
-function BotState:Mode()
-	return self._config:Mode()
-end
-
-function BotState:Flags()
-	return self._config:Flags()
-end
-
-function BotState:EarlyCombatActive()
-	return self._early_combat_active
-end
-
-function BotState:EarlyCombatActiveSince()
-	return self._early_combat_active_since
-end
-
-function BotState:UpdateEarlyCombatActive()
-	mq.cmd('/echo NOTIFY ECACTIVE')
-end
-
-function BotState:UpdateEarlyCombatInactive()
-	mq.cmd('/echo NOTIFY ECINACTIVE')
-end
-
-function BotState:CrowdControlActive()
-	if not self._watch_cc then log(self, 'Crowd control not watched') end
-	return self._crowd_control_active
-end
-
-function BotState:UpdateCrowdControlActive()
-	mq.cmd('/echo NOTIFY CCACTIVE')
-end
-
-function BotState:UpdateCrowdControlInactive()
-	mq.cmd('/echo NOTIFY CCINACTIVE')
-end
-
-function BotState:BardCastActive()
-	if not self._watch_bc then log(self, 'Bard cast not watched') end
-	return self._bard_cast_active
-end
-
-function BotState:UpdateBardCastActive()
-	if not self._watch_bc then
-		log(self, 'Bard cast not watched')
-	else
-		self._bard_cast_active = true
-	end
-end
-
-function BotState:UpdateBardCastInactive()
-	if not self._watch_bc then
-		log(self, 'Bard cast not watched')
-	else
-		self._bard_cast_active = false
-	end
 end

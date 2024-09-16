@@ -79,7 +79,7 @@ local function main()
 		while Running == true do
 			mq.doevents()
 
-			if Config:Debuff():Enabled() and mychar.InCombat() and not Config:State():CrowdControlActive() then
+			if Config:Debuff():Enabled() and mychar.InCombat() and not mq.TLO.DaveBot.States.IsCrowdControlActive() then
 				CheckDebuffs()
 			end
 
