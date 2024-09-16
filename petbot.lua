@@ -66,7 +66,7 @@ local function main()
 		end
 		if i_have_a_pet and Config:Pet():AutoAttack() and mychar.InCombat() and mq.TLO.Pet.Combat() and (not mq.TLO.Pet.Target() or mq.TLO.Pet.Target() ~= mq.TLO.Me.GroupAssistTarget() or mq.TLO.Me.GroupAssistTarget.PctHPs() > Config:Pet():EngageTargetHPs()) then
 			log('Telling pet to back off')
-			mq.cmd('/pet as you were')
+			mq.cmd('/pet back')
 		end
 
 		Config:Reload(10000)
