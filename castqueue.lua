@@ -123,7 +123,7 @@ local function prune_dead()
 		co.yield()
 
 		local cast = table.remove(Queue, dead_idx)
-		cast:Skip('target is dead')
+		if cast ~= nil then cast:Skip('target is dead') end
 
 		dead_idx = find_dead()
 		i = i + 1
