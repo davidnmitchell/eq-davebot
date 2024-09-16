@@ -80,7 +80,7 @@ function teameventbot.Init(cfg)
 	mq.event('teamevent3.1', "#1# tells the group, in #*#, 'Waiting to engage #2#'", callback_pre_engage)
 	mq.event('teamevent4', "#1# tells the group, 'Engaging #2#'", callback_engaging)
 	mq.event('teamevent4.1', "#1# tells the group, in #*#, 'Engaging #2#'", callback_engaging)
-	
+
 	log('Initialized')
 end
 

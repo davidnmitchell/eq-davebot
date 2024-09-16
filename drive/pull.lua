@@ -65,11 +65,14 @@ local function shd_pull()
     local result = mq.TLO.Cast.Result()
     if result == 'CAST_SUCCESS' or result == 'CAST_RESIST' or result == 'CAST_IMMUNE' then
         mq.cmd('/dbtether return')
-        co.delay(500)
+        co.delay(1000)
+        if mq.TLO.Pet() ~= 'NO PET' then
+            mq.cmd('/pet back')
+        end
         while mq.TLO.MoveTo.Moving() do
             co.delay(50)
         end
-
+-- TODO make this exit-able
         teamevents.PullEnd()
         mq.cmd('/drive attack')
     else

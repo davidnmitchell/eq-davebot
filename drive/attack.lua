@@ -5,8 +5,9 @@ local teamevents = require('teamevents')
 require('eqclass')
 
 local MyClass = EQClass:new()
+local EngageDistance = 80
 
-local function shd_attack()
+local function tank_attack()
     local target = tonumber(mq.TLO.Me.GroupAssistTarget.ID())
 
     if target == nil or target == 0 then
@@ -28,43 +29,30 @@ local function shd_attack()
 	local mob = mq.TLO.Spawn(target).Name()
 	teamevents.PreEngage(mob)
 	mq.cmd('/face')
-	co.delay(50)
-	while mq.TLO.Target.Distance() > 80 do
-		co.delay(50)
-		mq.cmd('/face')
-	end
-	teamevents.Engage(mob)
-	mq.cmd('/attack on')
 
-    -- local aggro = spells.FindSpell('Utility Detrimental', 'Jolt', 'Single')
-    -- local artap = common.findspell('Taps', 'Power Tap', 'Single', 2)
-    -- local actap = common.findspell('Taps', 'Power Tap', 'Single')
-    -- local hptap = common.findspell('Taps', 'Duration Tap', 'Single')
-    -- local dd = common.findspell('Direct Damage', 'Disease', 'Single')
-    -- local dot = common.findspell('Damage Over Time', 'Disease', 'Single')
-
-    -- if target ~= nil and target ~= 0 then
-    --     spells.CastAndBlock(aggro, 2, target)
-    --     mq.cmd('/target id ' .. target)
-    --     mq.delay(250)
-    --     mq.cmd('/attack on')
-    --     mq.delay(250)
-    --     if mq.TLO.Pet() ~= "NO PET" then
-    --         mq.cmd('/pet attack')
-    --     end
-    --     mq.delay(2250)
-    --     --common.castAndBlock(dd, 1, target)
-    --     --common.castAndBlock(artap, 5, target)
-    --     --common.castAndBlock(actap, 9, target)
-    --     --common.castAndBlock(dot, 6, target)
-    -- end
+    co.delay(
+        30000,
+        function()
+            mq.cmd('/face')
+            return mq.TLO.Target.Distance() <= EngageDistance
+        end
+    )
+    if mq.TLO.Target.Distance() <= EngageDistance then
+        teamevents.Engage(mob)
+        while not mq.TLO.Me.Combat() do
+            mq.cmd('/attack on')
+            co.delay(50)
+        end
+    else
+        print('Auto-engage timeout, you will need to manually engage')
+    end
 
 end
 
 return {
     Run = function(...)
         if MyClass.Name == 'Shadow Knight' then
-            shd_attack()
+            tank_attack()
         end
     end
 }
