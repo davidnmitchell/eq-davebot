@@ -110,7 +110,23 @@ function Ini:new(filename)
 	return mt
 end
 
+function Ini:_copy_sample()
+	local file = assert(io.open(mq.TLO.Lua.Dir() .. '\\config\\Sample.ini', 'r'))
+	local content = file:read('*a')
+	file:close()
+
+	file = assert(io.open(self._path, 'w'))
+	file:write(content)
+	file:close()
+end
+
 function Ini:Reload()
+	local file, err = io.open(self._path, 'r')
+	if err then
+		self:_copy_sample()
+	else
+		file:close()
+	end
 	self._data = lip.load(self._path)
 end
 
