@@ -42,11 +42,8 @@ local function tank_attack()
 
     if not in_xtargets(target) then
         local first = mq.TLO.Me.XTarget(1).ID()
-        if first ~= nil then
+        if first ~= nil and first ~= 0 then
             target = first
-        else
-            print('No targets')
-            return
         end
     end
 
@@ -76,6 +73,8 @@ end
 return {
     Run = function(...)
         if MyClass.Name == 'Shadow Knight' then
+            tank_attack()
+        elseif MyClass.Name == 'Paladin' then
             tank_attack()
         end
     end
