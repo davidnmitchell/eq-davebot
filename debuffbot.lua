@@ -27,8 +27,8 @@ local function log(msg)
 	print('(' .. ProcessName .. ') ' .. msg)
 end
 
-function HasDebuff(debuff_name, id)
-	return mq.TLO.Spawn(id).Buff(debuff_name)() ~= nil
+function HasDebuff(spell, id)
+	return mq.TLO.Spawn(id).Buff(spell.Effect)() ~= nil
 end
 
 function CastDebuffOn(spell_name, gem, id, order)
@@ -53,7 +53,8 @@ end
 function CheckDebuffs()
 	local i = 1
 	for pct,spell_key in pairs(Config:Debuff():AtTargetHpPcts()) do
-		local gem, spell_name, err = Config:SpellBar():GemAndSpellByKey(spell_key)
+		local spell = Config:Spells():Spell(spell_key)
+		local gem, err = Config:SpellBar():GemBySpell(spell)
 		if gem < 1 then
 			log(err)
 		else
@@ -61,8 +62,8 @@ function CheckDebuffs()
 			local group_target_id = mq.TLO.Me.GroupAssistTarget.ID()
 			local group_target_pct_hps = mq.TLO.Spawn(group_target_id).PctHPs()
 
-			if group_target_id and not target.IsInGroup(group_target_id) and group_target_pct_hps and group_target_pct_hps < pct and group_target_pct_hps >= Config:Debuff():MinTargetHpPct() and not HasDebuff(spell_name, group_target_id) then
-				CastDebuffOn(spell_name, gem, group_target_id, i)
+			if group_target_id and not target.IsInGroup(group_target_id) and group_target_pct_hps and group_target_pct_hps < pct and group_target_pct_hps >= Config:Debuff():MinTargetHpPct() and not HasDebuff(spell, group_target_id) then
+				CastDebuffOn(spell.Name, gem, group_target_id, i)
 			end
 		end
 		i = i + 1

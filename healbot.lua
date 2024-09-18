@@ -61,11 +61,12 @@ function CheckTank()
 		if mq.TLO.Group.MainTank() ~= nil then
 			local pct_hps = mq.TLO.Group.MainTank.PctHPs()
 			if pct_hps ~= nil and pct_hps <= pct then
-				local gem, spell_name, err = Config:SpellBar():GemAndSpellByKey(spell_key)
+				local spell = Config:Spells():Spell(spell_key)
+				local gem, err = Config:SpellBar():GemBySpell(spell)
 				if gem < 1 then
 					log(err)
 				else
-					spells.QueueSpellIfNotQueued(spell_name, 'gem' .. gem, mq.TLO.Group.MainTank.ID(), 'Healing ' .. mq.TLO.Group.MainTank.Name() .. ' with ' .. spell_name, 0, 0, 1, 30)
+					spells.QueueSpellIfNotQueued(spell.Name, 'gem' .. gem, mq.TLO.Group.MainTank.ID(), 'Healing ' .. mq.TLO.Group.MainTank.Name() .. ' with ' .. spell.Name, 0, 0, 1, 30)
 				end
 			end
 		else
@@ -80,22 +81,24 @@ end
 function CheckGroupMembers()
 	local to_heal = LowestHPsGroupMember()
 	if to_heal.id ~= 0 then
-		local gem, spell_name, err = Config:SpellBar():GemAndSpellByKey(to_heal.spell_key)
+		local spell = Config:Spells():Spell(to_heal.spell_key)
+		local gem, err = Config:SpellBar():GemBySpell(spell)
 		if gem < 1 then
 			log(err)
 		else
-			spells.QueueSpellIfNotQueued(spell_name, 'gem' .. gem, to_heal.id, 'Healing ' .. to_heal.name .. ' with ' .. spell_name, 0, 0, 1, 30)
+			spells.QueueSpellIfNotQueued(spell.Name, 'gem' .. gem, to_heal.id, 'Healing ' .. to_heal.name .. ' with ' .. spell.Name, 0, 0, 1, 30)
 		end
 	end
 end
 
 function GroupHeal(pct, spell_key)
-	local gem, spell_name, err = Config:SpellBar():GemAndSpellByKey(spell_key)
+	local spell = Config:Spells():Spell(spell_key)
+	local gem, err = Config:SpellBar():GemBySpell(spell_key)
 	if gem < 1 then
 		log(err)
 	else
-		if mq.TLO.Me.CurrentMana() > mq.TLO.Spell(spell_name).Mana() then
-			spells.QueueSpellIfNotQueued(spell_name, 'gem' .. gem, mq.TLO.Me.ID(), 'Healing group with ' .. spell_name, 0, 0, 1, 20)
+		if mq.TLO.Me.CurrentMana() > mq.TLO.Spell(spell.Name).Mana() then
+			spells.QueueSpellIfNotQueued(spell.Name, 'gem' .. gem, mq.TLO.Me.ID(), 'Healing group with ' .. spell.Name, 0, 0, 1, 20)
 		end
 	end
 end
@@ -107,11 +110,12 @@ function CheckPets()
 		for i=0,group_size do
 			if not mq.TLO.Group.Member(i).Pet() == nil then
 				if mq.TLO.Group.Member(i).Pet.PctHPs() < pct then
-					local gem, spell_name, err = Config:SpellBar():GemAndSpellByKey(spell_key)
+					local spell = Config:Spells():Spell(spell_key)
+					local gem, err = Config:SpellBar():GemBySpell(spell_key)
 					if gem < 1 then
 						log(err)
 					else
-						spells.QueueSpellIfNotQueued(spell_name, 'gem' .. gem, mq.TLO.Group.Member(i).Pet.ID(), 'Healing ' .. mq.TLO.Group.Member(i).Name() .. '\'s pet with ' .. spell_name, 0, 0, 1, 60)
+						spells.QueueSpellIfNotQueued(spell.Name, 'gem' .. gem, mq.TLO.Group.Member(i).Pet.ID(), 'Healing ' .. mq.TLO.Group.Member(i).Name() .. '\'s pet with ' .. spell.Name, 0, 0, 1, 60)
 					end
 				end
 			end
@@ -124,17 +128,18 @@ function CheckSelf()
 	if pct ~= 0 then
 		local pct_hps = mq.TLO.Me.PctHPs()
 		if pct_hps ~= nil and pct_hps <= pct then
-			local gem, spell_name, err = Config:SpellBar():GemAndSpellByKey(spell_key)
+			local spell = Config:Spells():Spell(spell_key)
+			local gem, err = Config:SpellBar():GemBySpell(spell_key)
 			if gem < 1 then
 				log(err)
 			else
-				local spell_target = mq.TLO.Spell(spell_name).TargetType()
+				local spell_target = mq.TLO.Spell(spell.Name).TargetType()
 				if spell_target == 'LifeTap' then
 					if mq.TLO.Target() then
-						spells.QueueSpellIfNotQueued(spell_name, 'gem' .. gem, mq.TLO.Target.ID(), 'Tapping ' .. mq.TLO.Target.Name() .. ' with ' .. spell_name, 0, 0, 1, 30)
+						spells.QueueSpellIfNotQueued(spell.Name, 'gem' .. gem, mq.TLO.Target.ID(), 'Tapping ' .. mq.TLO.Target.Name() .. ' with ' .. spell.Name, 0, 0, 1, 30)
 					end
 				else
-					spells.QueueSpellIfNotQueued(spell_name, 'gem' .. gem, mq.TLO.Me.ID(), 'Healing ' .. mq.TLO.Me.Name() .. ' with ' .. spell_name, 0, 0, 1, 30)
+					spells.QueueSpellIfNotQueued(spell.Name, 'gem' .. gem, mq.TLO.Me.ID(), 'Healing ' .. mq.TLO.Me.Name() .. ' with ' .. spell.Name, 0, 0, 1, 30)
 				end
 			end
 		end
@@ -146,11 +151,12 @@ function CheckMyPet()
 	if pct ~= 0 then
 		local pct_hps = mq.TLO.Pet.PctHPs()
 		if pct_hps and pct_hps <= pct then
-			local gem, spell_name, err = Config:SpellBar():GemAndSpellByKey(spell_key)
+			local spell = Config:Spells():Spell(spell_key)
+			local gem, err = Config:SpellBar():GemBySpell(spell_key)
 			if gem < 1 then
 				log(err)
 			else
-				spells.QueueSpellIfNotQueued(spell_name, 'gem' .. gem, mq.TLO.Pet.ID(), 'Healing ' .. mq.TLO.Pet.Name() .. ' with ' .. spell_name, 0, 0, 1, 60)
+				spells.QueueSpellIfNotQueued(spell.Name, 'gem' .. gem, mq.TLO.Pet.ID(), 'Healing ' .. mq.TLO.Pet.Name() .. ' with ' .. spell.Name, 0, 0, 1, 60)
 			end
 		end
 	end

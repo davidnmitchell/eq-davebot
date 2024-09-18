@@ -5,6 +5,7 @@ local spells = require('spells')
 local co = require('co')
 require('ini')
 require('eqclass')
+require('spell')
 
 MyClass = EQClass:new()
 
@@ -207,7 +208,7 @@ function SpellsConfig:new(ini)
 end
 
 function SpellsConfig:Spell(spell_key)
-	return self._ini:String('Spells', spell_key, '')
+	return Spell:new(spell_key, self._ini:String('Spells', spell_key, ''))
 end
 
 
@@ -315,25 +316,19 @@ function SpellBarConfig:Gems()
 	return overlaid
 end
 
-function SpellBarConfig:GemAndSpellByKey(spell_key)
-	if spell_key == '' then
-		return -3, '', 'Spell not defined'
+function SpellBarConfig:GemBySpell(spell)
+	if spell.Error ~= nil then
+		return -1, spell.Error
 	else
-		local ref = self._spells_config:Spell(spell_key)
-		if ref == '' then
-			return -2, '', 'Cannot find spell key: ' .. spell_key
+		if spell.Name == '' then
+			return -2, 'Spell not defined'
 		else
-			local spell_name = spells.ReferenceSpell(ref)
-			if spell_name == '' then
-				return -1, '', 'Cannot find spell for reference: ' .. ref
+			local gem = self:GemBySpellKey(spell.Key)
+			if gem == 0 then gem = self:FirstOpenGem() end
+			if gem == 0 then
+				return 0, 'Cannot find gem for key: ' .. spell.Key
 			else
-				local gem = self:GemBySpellKey(spell_key)
-				if gem == 0 then gem = self:FirstOpenGem() end
-				if gem == 0 then
-					return 0, spell_name, 'Cannot find gem for key: ' .. spell_key
-				else
-					return gem, spell_name, ''
-				end
+				return gem, ''
 			end
 		end
 	end
@@ -344,10 +339,10 @@ function SpellBarConfig:SpellKeyByGem(gem)
 	return spell_bar[gem]
 end
 
-function SpellBarConfig:GemBySpellKey(spell)
+function SpellBarConfig:GemBySpellKey(spell_key)
 	local spell_bar = self:Gems()
 	for k,v in pairs(spell_bar) do
-		if spell == v then return k end
+		if spell_key == v then return k end
 	end
 	return 0
 end

@@ -62,6 +62,9 @@ end
 -- TODO: Loot
 -- TODO: Auto social build
 -- TODO: Match category names across all bots
+-- TODO: Items and Alt to other bots besides buffbot
+-- TODO: Magician summon weapons
+-- TODO: When enchanter is cycling for mez, pet isn't attacking or is attacking wrong target
 -- TODO: GUI? (see autotoon)
 
 local function main()

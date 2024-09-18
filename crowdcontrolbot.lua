@@ -64,13 +64,14 @@ end
 local function CCTargetByID(idx, target_id, cast_function)
 	if WantToControl(idx, target_id) and not IsControlled(target_id) then
 		local spell_key = Config:CrowdControl():Spell()
-		local gem, spell_name, err = Config:SpellBar():GemAndSpellByKey(spell_key)
+		local spell = Config:Spells():Spell(spell_key)
+		local gem, err = Config:SpellBar():GemBySpell(spell)
 		if gem < 1 then
 			log(err)
 		else
 			local target_name = mq.TLO.Spawn(target_id).Name()
 			if target_name then
-				cast_function(spell_name, gem, target_name)
+				cast_function(spell.Name, gem, target_name)
 			end
 		end
 	end

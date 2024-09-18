@@ -27,8 +27,8 @@ local function log(msg)
 	print('(' .. ProcessName .. ') ' .. msg)
 end
 
-function HasDot(dot_name, id)
-	return mq.TLO.Spawn(id).Buff(dot_name)() ~= nil
+function HasDot(spell, id)
+	return mq.TLO.Spawn(id).Buff(spell.Effect)() ~= nil
 end
 
 function CastDotOn(spell_name, gem, id, order)
@@ -53,7 +53,8 @@ end
 function CheckDots()
 	local i = 1
 	for pct, spell_key in pairs(Config:Dot():AtTargetHpPcts()) do
-		local gem, spell_name, err = Config:SpellBar():GemAndSpellByKey(spell_key)
+		local spell = Config:Spells():Spell(spell_key)
+		local gem, err = Config:SpellBar():GemBySpell(spell)
 		if gem < 1 then
 			log(err)
 		else
@@ -61,8 +62,8 @@ function CheckDots()
 			local group_target_id = mq.TLO.Me.GroupAssistTarget.ID()
 			local group_target_pct_hps = mq.TLO.Spawn(group_target_id).PctHPs()
 
-			if group_target_id and not target.IsInGroup(group_target_id) and group_target_pct_hps and group_target_pct_hps < pct and group_target_pct_hps >= Config:Dot():MinTargetHpPct() and not HasDot(spell_name, group_target_id) then
-				CastDotOn(spell_name, gem, group_target_id, i)
+			if group_target_id and not target.IsInGroup(group_target_id) and group_target_pct_hps and group_target_pct_hps < pct and group_target_pct_hps >= Config:Dot():MinTargetHpPct() and not HasDot(spell, group_target_id) then
+				CastDotOn(spell.Name, gem, group_target_id, i)
 			end
 		end
 		i = i + 1

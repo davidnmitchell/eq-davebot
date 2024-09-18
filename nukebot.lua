@@ -33,7 +33,8 @@ end
 function CheckNukes()
 	if mychar.InCombat() and mq.TLO.Me.GroupAssistTarget() then
 		for pct,spell_key in pairs(Config:Dd():AtTargetHpPcts()) do
-			local gem, spell_name, err = Config:SpellBar():GemAndSpellByKey(spell_key)
+			local spell = Config:Spells():Spell(spell_key)
+			local gem, err = Config:SpellBar():GemBySpell(spell)
 			if gem < 1 then
 				log(err)
 			else
@@ -44,9 +45,9 @@ function CheckNukes()
 
 				if group_target_id then
 					local pctHPs = mq.TLO.Spawn(group_target_id).PctHPs()
-					if pctHPs and pctHPs < pct and not History['' .. spell_name .. group_target_id .. group_target_name] then
-						CastNukeOn(spell_name, gem, group_target_id)
-						History['' .. spell_name .. group_target_id .. group_target_name] = true
+					if pctHPs and pctHPs < pct and not History['' .. spell.Name .. group_target_id .. group_target_name] then
+						CastNukeOn(spell.Name, gem, group_target_id)
+						History['' .. spell.Name .. group_target_id .. group_target_name] = true
 					end
 				end
 			end
