@@ -134,21 +134,44 @@ function BuffBot:CastBuffOn(buff_name, gem, id, char_name, order)
 	end
 end
 
+local function non_spell_entry(ref)
+	local parts = str.Split(ref, ',')
+	local method = parts[1]
+	local name = parts[2]
+	local effect = parts[2]
+	if #parts == 3 then effect = parts[3] end
+	return method, name, effect
+end
+
 function BuffBot:CheckOnBuffsForId(package, target_id, char_name, key_order)
 	for i, spell_key in ipairs(package) do
-		local gem, spell_name, err = Config:SpellBar():GemAndSpellByKey(spell_key)
-		if gem < 0 then
-			log(err)
+		local ref = Config:Spells():Spell(spell_key):lower()
+		if str.StartsWith(ref, 'item,') or str.StartsWith(ref, 'alt,') then
+			local method, name, effect = non_spell_entry(ref)
+			local ready = false
+			if method == 'item' then
+				ready = mq.TLO.Me.ItemReady(name)()
+			else
+				ready = mq.TLO.Me.AltAbilityReady(name)()
+			end
+			if ready and not self:HasBuff(effect, target_id) then
+				spells.QueueSpellIfNotQueued(name, method, target_id, 'Buffing ' .. char_name .. ' with ' .. name, 0, 0, 1, 89)
+			end
 		else
-			--print(char_name .. ':' .. tostring(self:HasBuff(spell_name, target_id)))
-			if not excepted(spell_name, target_id) and not self:HasBuff(spell_name, target_id) then
-				if gem ~= 0 then
-					self:CastBuffOn(spell_name, gem, target_id, char_name, common.TableIndexOf(key_order, spell_key))
-				else
-					if MyClass.IsBard then
-						self:CastBuffOn(spell_name, 1, target_id, char_name, common.TableIndexOf(key_order, spell_key))
+			local gem, spell_name, err = Config:SpellBar():GemAndSpellByKey(spell_key)
+			if gem < 0 then
+				log(err)
+			else
+				--print(char_name .. ':' .. tostring(self:HasBuff(spell_name, target_id)))
+				if not excepted(spell_name, target_id) and not self:HasBuff(spell_name, target_id) then
+					if gem ~= 0 then
+						self:CastBuffOn(spell_name, gem, target_id, char_name, common.TableIndexOf(key_order, spell_key))
 					else
-						log(err)
+						if MyClass.IsBard then
+							self:CastBuffOn(spell_name, 1, target_id, char_name, common.TableIndexOf(key_order, spell_key))
+						else
+							log(err)
+						end
 					end
 				end
 			end

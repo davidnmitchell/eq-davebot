@@ -181,10 +181,16 @@ end
 function spells.ReferenceSpell(spell_or_csv)
 	if spell_or_csv and spell_or_csv:find(',') ~= nil then
 		local parts = str.Split(spell_or_csv, ',')
-		if #parts == 3 then
-			return spells.FindSpell(parts[1], parts[2], parts[3])
+		if parts[1]:lower() == 'item' then
+			return parts[2]
+		elseif parts[1]:lower() == 'aa' then
+			return parts[2]
 		else
-			return spells.FindSpell(parts[1], parts[2], parts[3], parts[4])
+			if #parts == 3 then
+				return spells.FindSpell(parts[1], parts[2], parts[3])
+			else
+				return spells.FindSpell(parts[1], parts[2], parts[3], parts[4])
+			end
 		end
 	end
 	return spell_or_csv or ''

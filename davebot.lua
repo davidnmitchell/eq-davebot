@@ -43,13 +43,10 @@ end
 --
 -- Main
 --
--- TODO: Key off of MainAssist instead of MainTank
 -- TODO: Individual class spell lists/abilities (scan Book and write to ini?)
 -- TODO: Warn when MainTank/MainAssist not set (idles most offense routines and does not say anyting about it)
 -- TODO: Check for a more powerful buff before buffing (see autotoon)
--- TODO: Replace camp plugin (see autotoon)
 -- TODO: Immunity/resist memory by mob name/type (save to ini?)
--- TODO: Pre-populated spells in configs
 -- TODO: Summon food/drink (MQ2FeedMe?)
 -- TODO: Stuns
 -- TODO: AoE
@@ -59,11 +56,12 @@ end
 -- TODO: Short lived combat buffs
 -- TODO: Cure detrimental effects (target datatype)
 -- TODO: Finding and pulling (see autotoon)
--- TODO: Item Buffs
 -- TODO: Lose aggro logic
 -- TODO: Have all CC members communicate
 -- TODO: /setwintitle, /foreground /setprio
 -- TODO: Loot
+-- TODO: Auto social build
+-- TODO: Match category names across all bots
 -- TODO: GUI? (see autotoon)
 
 local function main()
