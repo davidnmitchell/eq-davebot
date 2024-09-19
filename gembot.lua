@@ -3,42 +3,29 @@ local spells = require('spells')
 local mychar = require('mychar')
 local co = require('co')
 
+local gembot = {}
+
 
 --
 -- Globals
 --
 
-GemBot = {}
-GemBot.__index = GemBot
+local Config = {}
 
 
 --
--- CTor
+-- Functions
 --
 
-function GemBot:new(config)
-	local obj = {}
-	setmetatable(obj, GemBot)
-
-	obj._config = config
-
-	return obj
-end
-
-
---
--- Methods
---
-
-function GemBot:_log(msg)
+local function log(msg)
 	print('(gembot) ' .. msg)
 end
 
-function GemBot:Memorize()
-	local gems = self._config:SpellBar():Gems()
+local function do_memorize()
+	local gems = Config:SpellBar():Gems()
 	for gem,spell_key in pairs(gems) do
 		if spell_key ~= 'OPEN' then
-			local spell = self._config:Spells():Spell(spell_key)
+			local spell = Config:Spells():Spell(spell_key)
 			if spell.Error == nil then
 				if mq.TLO.Me.Gem(gem).Name() ~= spell.Name then
 
@@ -65,18 +52,34 @@ function GemBot:Memorize()
 
 				end
 			else
-				self:_log(spell.Error)
+				log(spell.Error)
 			end
 		end
 	end
 end
 
-function GemBot:Run()
+
+--
+-- Init
+--
+
+function gembot.Init(cfg)
+	Config = cfg
+end
+
+
+---
+--- Main Loop
+---
+
+function gembot.Run()
 	while true do
 		if not mychar.InCombat() then
-			self:Memorize()
+			do_memorize()
 		end
 
 		co.yield()
 	end
 end
+
+return gembot

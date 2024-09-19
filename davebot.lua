@@ -7,8 +7,6 @@ local heartbeat = require('heartbeat')
 local bc     = require('bc')
 require('eqclass')
 require('config')
-require('autositbot')
-require('gembot')
 local tlo = require('tlo')
 local mychar = require('mychar')
 local drivebot = require('drivebot')
@@ -16,6 +14,8 @@ local songbot = require('songbot')
 local targetbot = require('targetbot')
 local tetherbot = require('tetherbot')
 local teameventbot = require('teameventbot')
+local autositbot   = require('autositbot')
+local gembot       = require('gembot')
 
 
 --
@@ -126,14 +126,16 @@ local function main()
 			drivebot.Run()
 		end
 	)
+	autositbot.Init(Config)
 	local autositbot_co = ManagedCoroutine:new(
 		function()
-			AutoSitBot:new(Config):Run()
+			autositbot.Run()
 		end
 	)
+	gembot.Init(Config)
 	local gembot_co = ManagedCoroutine:new(
 		function()
-			GemBot:new(Config):Run()
+			gembot.Run()
 		end
 	)
 	targetbot.Init(Config)
