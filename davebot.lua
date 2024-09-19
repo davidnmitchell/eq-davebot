@@ -40,6 +40,22 @@ local function CheckBot(name)
 	end
 end
 
+local function Shutdown()
+	lua.KillScriptIfRunning('gembot')
+	lua.KillScriptIfRunning('castqueue')
+	lua.KillScriptIfRunning('dotbot')
+	lua.KillScriptIfRunning('nukebot')
+	lua.KillScriptIfRunning('buffbot')
+	lua.KillScriptIfRunning('healbot')
+	lua.KillScriptIfRunning('crowdcontrolbot')
+	lua.KillScriptIfRunning('debuffbot')
+	lua.KillScriptIfRunning('petbot')
+	lua.KillScriptIfRunning('songbot')
+	lua.KillScriptIfRunning('meleebot')
+	Running = false
+end
+
+
 --
 -- Main
 --
@@ -65,6 +81,7 @@ end
 -- TODO: Items and Alt to other bots besides buffbot
 -- TODO: Magician summon weapons
 -- TODO: When enchanter is cycling for mez, pet isn't attacking or is attacking wrong target
+-- TODO: Secondary mez takes over when primary is OOM
 -- TODO: GUI? (see autotoon)
 
 local function main()
@@ -77,18 +94,7 @@ local function main()
 		function(...)
 			local args = { ... }
 			if args[1] == 'shutdown' then
-				lua.KillScriptIfRunning('gembot')
-				lua.KillScriptIfRunning('castqueue')
-				lua.KillScriptIfRunning('dotbot')
-				lua.KillScriptIfRunning('nukebot')
-				lua.KillScriptIfRunning('buffbot')
-				lua.KillScriptIfRunning('healbot')
-				lua.KillScriptIfRunning('crowdcontrolbot')
-				lua.KillScriptIfRunning('debuffbot')
-				lua.KillScriptIfRunning('petbot')
-				lua.KillScriptIfRunning('songbot')
-				lua.KillScriptIfRunning('meleebot')
-				Running = false
+				Shutdown()
 			end
 		end
 	)
@@ -204,9 +210,7 @@ local function main()
 			CheckBot('petbot')
 		end
 
-		if MyClass.IsBard then
-			songbot_co:Resume()
-		end
+		if MyClass.IsBard then songbot_co:Resume() end
 
 		if MyClass.IsMelee then
 			CheckBot('meleebot')
@@ -218,6 +222,8 @@ local function main()
 		ecstate_co:Resume()
 
 		Config:Reload(10000)
+
+		if mq.TLO.Me.Zoning() then Shutdown() end
 
 		mq.delay(10)
 	end
