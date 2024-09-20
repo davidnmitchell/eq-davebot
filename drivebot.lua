@@ -80,9 +80,9 @@ end
 ---
 
 function drivebot.Run()
+	log('Up and running')
 	while true do
 		do_drive()
-
 		co.yield()
 	end
 end

@@ -237,8 +237,6 @@ function tlo.Init(cfg)
 
 	mq.TLO.DaveBot.Mode.Read()
 	mq.TLO.DaveBot.Tether.Read()
-
-	log('Initialized')
 end
 
 
@@ -247,6 +245,7 @@ end
 ---
 
 function tlo.Run()
+	log('Up and running')
 	while true do
 		if moving() then
 			MyChar.StillSince = mq.gettime()

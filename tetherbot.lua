@@ -106,8 +106,6 @@ function tetherbot.Init(cfg)
 	Config = cfg
 
 	mq.bind('/dbtether', callback_dbtether)
-
-	log('Initialized')
 end
 
 
@@ -116,9 +114,9 @@ end
 ---
 
 function tetherbot.Run()
+	log('Up and running')
 	while true do
 		do_tether()
-
 		co.yield()
 	end
 end

@@ -58,6 +58,46 @@ local function do_history()
 end
 
 
+-- --
+-- -- TLO
+-- --
+
+-- function targetbot.TLOData()
+-- 	return { LockOwner = '', LockTimeout = 0 }
+-- end
+
+-- function targetbot.TLOType()
+-- 	return mq.DataType.new('TargetType', {
+-- 		Members = {
+-- 			MyLock = function(owner, target)
+-- 				return 'bool', target.LockOwner == owner and target.LockTimeout > mq.gettime()
+-- 			end
+-- 		},
+
+-- 		Methods = {
+-- 			AcquireLock = function(owner, target)
+-- 				if target.LockOwner == '' or target.LockOwner == owner or target.LockTimeout <= mq.gettime() then
+-- 					target.LockOwner = owner
+-- 					target.LockTimeout = mq.gettime() + 1000
+-- 				end
+-- 			end,
+-- 			ReleaseLock = function(owner, target)
+-- 				if target.LockOwner == owner and target.LockTimeout > mq.gettime() then
+-- 					target.LockOwner = ''
+-- 					target.LockTimeout = 0
+-- 				end
+-- 			end,
+-- 			Target = function(id, target)
+-- 				mq.cmd('/target id ' .. id)
+-- 			end
+-- 		},
+-- 		ToString = function(_)
+-- 			return string.format('')
+-- 		end
+-- 	})
+-- end
+
+
 --
 -- Init
 --
@@ -74,9 +114,9 @@ end
 ---
 
 function targetbot.Run()
+	log('Up and running')
 	while true do
 		do_history()
-
 		co.yield()
 	end
 end

@@ -17,6 +17,7 @@ local teameventbot = require('teameventbot')
 local autositbot   = require('autositbot')
 local gembot       = require('gembot')
 local healbot      = require('healbot')
+local meleebot     = require('meleebot')
 
 
 --
@@ -42,16 +43,13 @@ local function CheckBot(name)
 end
 
 local function Shutdown()
-	lua.KillScriptIfRunning('gembot')
 	lua.KillScriptIfRunning('castqueue')
 	lua.KillScriptIfRunning('dotbot')
 	lua.KillScriptIfRunning('nukebot')
 	lua.KillScriptIfRunning('buffbot')
-	lua.KillScriptIfRunning('healbot')
 	lua.KillScriptIfRunning('crowdcontrolbot')
 	lua.KillScriptIfRunning('debuffbot')
 	lua.KillScriptIfRunning('petbot')
-	lua.KillScriptIfRunning('songbot')
 	lua.KillScriptIfRunning('meleebot')
 	Running = false
 end
@@ -151,6 +149,12 @@ local function main()
 			healbot.Run()
 		end
 	)
+	meleebot.Init(Config)
+	local meleebot_co = ManagedCoroutine:new(
+		function()
+			meleebot.Run()
+		end
+	)
 	tetherbot.Init(Config)
 	local tetherbot_co = ManagedCoroutine:new(
 		function()
@@ -222,7 +226,7 @@ local function main()
 
 		CheckBot('buffbot')
 
-		healbot_co:Resume()
+		if Config:Heal():Enabled() then healbot_co:Resume() end
 
 		if MyClass.IsCrowdController then
 			CheckBot('crowdcontrolbot')
@@ -238,14 +242,13 @@ local function main()
 
 		if MyClass.IsBard then songbot_co:Resume() end
 
-		if MyClass.IsMelee then
-			CheckBot('meleebot')
-		end
+		if Config:Melee():Enabled() then meleebot_co:Resume() end
+		if Config:AutoSit():Enabled() then autositbot_co:Resume() end
 
-		autositbot_co:Resume()
 		targetbot_co:Resume()
 		tetherbot_co:Resume()
 		ecstate_co:Resume()
+		warnings_co:Resume()
 
 		Config:Reload(10000)
 

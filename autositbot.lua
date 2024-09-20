@@ -62,11 +62,9 @@ end
 ---
 
 function autositbot.Run()
+	log('Up and running')
 	while true do
-		if Config:AutoSit():Enabled() then
-			do_check()
-		end
-
+		do_check()
 		co.yield()
 	end
 end

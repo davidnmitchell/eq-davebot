@@ -100,8 +100,6 @@ function teameventbot.Init(cfg)
 	mq.event('teamevent4', "#1# tells the group, 'Engaging #2#'", callback_engaging)
 	mq.event('teamevent4.1', "#1# tells the group, in #*#, 'Engaging #2#'", callback_engaging)
 	mq.event('teamevent4.2', "You tell your party, 'Engaging #1#'", callback_engaging_me)
-
-	log('Initialized')
 end
 
 
@@ -110,6 +108,7 @@ end
 ---
 
 function teameventbot.Run()
+	log('Up and running')
 	while true do
 		co.yield()
 	end

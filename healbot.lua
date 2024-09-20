@@ -68,11 +68,6 @@ local function CheckTank()
 					spells.QueueSpellIfNotQueued(spell.Name, 'gem' .. gem, mq.TLO.Group.MainTank.ID(), 'Healing ' .. mq.TLO.Group.MainTank.Name() .. ' with ' .. spell.Name, 0, 0, 1, 30)
 				end
 			end
-		else
-			if not NoTankWarningPrinted then
-				NoTankWarningPrinted = true
-				log('No MainTank set in group')
-			end
 		end
 	end
 end
@@ -197,11 +192,9 @@ end
 ---
 
 function healbot.Run()
+	log('Up and running')
 	while true do
-		if Config:Heal():Enabled() then
-			CheckHitPoints()
-		end
-
+		CheckHitPoints()
 		co.yield()
 	end
 end

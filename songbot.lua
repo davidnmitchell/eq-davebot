@@ -101,6 +101,7 @@ end
 ---
 
 function songbot.Run()
+	log('Up and running')
 	while true do
 		if PauseUntil ~= 0 and not Paused then
 			Paused = true
