@@ -18,6 +18,7 @@ local autositbot   = require('autositbot')
 local gembot       = require('gembot')
 local healbot      = require('healbot')
 local meleebot     = require('meleebot')
+local petbot       = require('petbot')
 
 
 --
@@ -149,6 +150,12 @@ local function main()
 			healbot.Run()
 		end
 	)
+	petbot.Init(Config)
+	local petbot_co = ManagedCoroutine:new(
+		function()
+			petbot.Run()
+		end
+	)
 	meleebot.Init(Config)
 	local meleebot_co = ManagedCoroutine:new(
 		function()
@@ -236,14 +243,11 @@ local function main()
 			CheckBot('debuffbot')
 		end
 
-		if MyClass.HasPet then
-			CheckBot('petbot')
-		end
-
-		if MyClass.IsBard then songbot_co:Resume() end
-
+		if Config:Pet():AutoCast() or Config:Pet():AutoAttack() then petbot_co:Resume() end
 		if Config:Melee():Enabled() then meleebot_co:Resume() end
 		if Config:AutoSit():Enabled() then autositbot_co:Resume() end
+
+		if MyClass.IsBard then songbot_co:Resume() end
 
 		targetbot_co:Resume()
 		tetherbot_co:Resume()
