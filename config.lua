@@ -28,8 +28,10 @@ function Config:new(type)
 		mt._twist = TwistConfig:new(mt._ini)
 		mt._teamevents = TeamEventsConfig:new(mt._ini)
 		mt._heal = HealConfig:new(mt._ini)
-	elseif mt._type == 'meleebot' then
 		mt._melee = MeleeConfig:new(mt._ini)
+		mt._pet = PetConfig:new(mt._ini)
+		mt._debuff = DebuffConfig:new(mt._ini)
+		mt._cc = CrowdControlConfig:new(mt._ini)
 	else
 		local watch_cc = false
 		if mt._type == 'debuffbot' or mt._type == 'dotbot' or mt._type == 'nukebot' or mt._type == 'songbot' then
@@ -49,23 +51,11 @@ function Config:new(type)
 	if mt._type == 'buffbot' then
 		mt._buff = BuffConfig:new(mt._ini)
 	end
-	if mt._type == 'crowdcontrolbot' then
-		mt._cc = CrowdControlConfig:new(mt._ini)
-	end
-	if mt._type == 'debuffbot' then
-		mt._debuff = DebuffConfig:new(mt._ini)
-	end
 	if mt._type == 'dotbot' then
 		mt._dot = DotConfig:new(mt._ini)
 	end
-	if mt._type == 'healbot' then
-		mt._heal = HealConfig:new(mt._ini)
-	end
 	if mt._type == 'nukebot' then
 		mt._dd = DdConfig:new(mt._ini)
-	end
-	if mt._type == 'petbot' then
-		mt._pet = PetConfig:new(mt._ini)
 	end
 
 	mt._last_load_time = mq.gettime()
@@ -81,18 +71,29 @@ function Config:Reload(min_interval)
 
 		if self._type == 'davebot' then
 			self._tether:Calculate()
+			co.yield()
 			self._teamevents:Calculate()
+			co.yield()
 			self._autosit:Calculate()
+			co.yield()
+			self._melee:Calculate()
+			co.yield()
+			self._cc:Calculate()
+			co.yield()
+			self._debuff:Calculate()
+			co.yield()
+			self._heal:Calculate()
+			co.yield()
+			self._pet:Calculate()
+			co.yield()
 			if MyClass.HasSpells or MyClass.IsBard then
 				self._spellbar:Calculate()
+				co.yield()
 			end
 			if MyClass.IsBard then
 				self._twist:Calculate()
+				co.yield()
 			end
-			co.yield()
-		elseif self._type == 'meleebot' then
-			self._melee:Calculate()
-			co.yield()
 		else
 			self._spellbar:Calculate()
 			co.yield()
@@ -106,28 +107,12 @@ function Config:Reload(min_interval)
 			self._buff:Calculate()
 			co.yield()
 		end
-		if self._type == 'crowdcontrolbot' then
-			self._cc:Calculate()
-			co.yield()
-		end
-		if self._type == 'debuffbot' then
-			self._debuff:Calculate()
-			co.yield()
-		end
 		if self._type == 'dotbot' then
 			self._dot:Calculate()
 			co.yield()
 		end
-		if self._type == 'healbot' then
-			self._heal:Calculate()
-			co.yield()
-		end
 		if self._type == 'nukebot' then
 			self._dd:Calculate()
-			co.yield()
-		end
-		if self._type == 'petbot' then
-			self._pet:Calculate()
 			co.yield()
 		end
 

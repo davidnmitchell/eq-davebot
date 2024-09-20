@@ -1,20 +1,19 @@
 local mq = require('mq')
+local co = require('co')
 local spells = require('spells')
 local mychar = require('mychar')
-local heartbeat = require('heartbeat')
 require('eqclass')
-require('config')
+
+local crowdcontrolbot = {}
 
 
 --
 -- Globals
 --
 
-local ProcessName = 'crowdcontrolbot'
+local Config = {}
 local MyClass = EQClass:new()
-local Config = Config:new(ProcessName)
 
-local Running = true
 local CCRunning = false
 
 
@@ -23,24 +22,18 @@ local CCRunning = false
 --
 
 local function log(msg)
-	print('(' .. ProcessName .. ') ' .. msg)
+	print('(crowdcontrolbot) ' .. msg)
 end
 
 local function IsControlled(spawn_id)
-	local timeout = mq.gettime() + 3500
-	while mq.TLO.Target.ID() ~= spawn_id and timeout > mq.gettime() do
-		mq.cmd('/target id ' .. spawn_id)
-		mq.delay(10)
-	end
+	co.delay(
+		3500,
+		function()
+			mq.cmd('/target id ' .. spawn_id)
+			return mq.TLO.Target.ID() == spawn_id
+		end
+	)
 	return mq.TLO.Target.Mezzed()
-	-- local count = mq.TLO.Spawn(spawn_id).BuffCount()
-	-- if count == nil then count = 0 end
-	-- for i=1,count do
-	-- 	if mq.TLO.Spawn(spawn_id).Buff(i).Spell.Category() == 'Utility Detrimental' and mq.TLO.Spawn(spawn_id).Buff(i).Spell.Subcategory() == 'Enthrall' then
-	-- 		return true
-	-- 	end
-	-- end
-	-- return false
 end
 
 local function WantToControl(idx, target_id)
@@ -100,22 +93,22 @@ local function BardCCMode()
 	log('Crowd control active')
 	CCRunning = true
 	mq.TLO.DaveBot.States.CrowdControlIsActive()
-	mq.delay(100)
+	co.delay(100)
 	mq.cmd('/attack off')
 	mq.cmd('/twist clear')
 end
 
-function BardCCTargetByID(idx, target_id)
+local function BardCCTargetByID(idx, target_id)
 	CCTargetByID(
 		idx,
 		target_id,
 		function(spell, gem, name)
 			log('Controlling ' .. name)
 			mq.cmd('/target id ' .. target_id)
-			mq.delay(50)
+			co.delay(50)
 			mq.cmd('/twist hold ' .. gem)
 			while WantToControl(idx, target_id) and not IsControlled(target_id) and mq.TLO.Spawn(target_id).State() ~= "DEAD" and mq.TLO.Spawn(target_id).State() ~= "STUN" do
-				mq.delay(250)
+				co.delay(250)
 			end
 			if IsControlled(target_id) then
 				log('Controlled ' .. name)
@@ -124,7 +117,7 @@ function BardCCTargetByID(idx, target_id)
 	)
 end
 
-function CheckCC(my_class)
+local function do_crowdcontrol(my_class)
 	local i_am_primary = Config:CrowdControl():IAmPrimary()
 
 	local threshold = 3
@@ -193,32 +186,26 @@ end
 
 
 --
--- Main
+-- Init
 --
 
-local function main()
-	if MyClass.IsCrowdController then
-		while Running == true do
-			mq.doevents()
-
-			if Config:CrowdControl():Enabled() and mychar.InCombat() then
-				CheckCC(MyClass.Name)
-			end
-
-			Config:Reload(10000)
-
-			heartbeat.SendHeartBeat(ProcessName)
-			mq.delay(10)
-		end
-	else
-		log('No support for ' .. MyClass.Name)
-		log('Exiting...')
-	end
+function crowdcontrolbot.Init(cfg)
+	Config = cfg
 end
 
 
---
--- Execution
---
+---
+--- Main Loop
+---
 
-main()
+function crowdcontrolbot.Run()
+	log('Up and running')
+	while true do
+		if mychar.InCombat() then
+			do_crowdcontrol(MyClass.Name)
+		end
+		co.yield()
+	end
+end
+
+return crowdcontrolbot

@@ -19,6 +19,8 @@ local gembot       = require('gembot')
 local healbot      = require('healbot')
 local meleebot     = require('meleebot')
 local petbot       = require('petbot')
+local debuffbot    = require('debuffbot')
+local crowdcontrolbot = require('crowdcontrolbot')
 
 
 --
@@ -49,9 +51,6 @@ local function Shutdown()
 	lua.KillScriptIfRunning('nukebot')
 	lua.KillScriptIfRunning('buffbot')
 	lua.KillScriptIfRunning('crowdcontrolbot')
-	lua.KillScriptIfRunning('debuffbot')
-	lua.KillScriptIfRunning('petbot')
-	lua.KillScriptIfRunning('meleebot')
 	Running = false
 end
 
@@ -150,6 +149,18 @@ local function main()
 			healbot.Run()
 		end
 	)
+	crowdcontrolbot.Init(Config)
+	local crowdcontrolbot_co = ManagedCoroutine:new(
+		function()
+			crowdcontrolbot.Run()
+		end
+	)
+	debuffbot.Init(Config)
+	local debuffbot_co = ManagedCoroutine:new(
+		function()
+			debuffbot.Run()
+		end
+	)
 	petbot.Init(Config)
 	local petbot_co = ManagedCoroutine:new(
 		function()
@@ -235,14 +246,8 @@ local function main()
 
 		if Config:Heal():Enabled() then healbot_co:Resume() end
 
-		if MyClass.IsCrowdController then
-			CheckBot('crowdcontrolbot')
-		end
-
-		if MyClass.IsDebuffer then
-			CheckBot('debuffbot')
-		end
-
+		if Config:CrowdControl():Enabled() then crowdcontrolbot_co:Resume() end
+		if Config:Debuff():Enabled() then debuffbot_co:Resume() end
 		if Config:Pet():AutoCast() or Config:Pet():AutoAttack() then petbot_co:Resume() end
 		if Config:Melee():Enabled() then meleebot_co:Resume() end
 		if Config:AutoSit():Enabled() then autositbot_co:Resume() end
