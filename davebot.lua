@@ -16,6 +16,7 @@ local tetherbot = require('tetherbot')
 local teameventbot = require('teameventbot')
 local autositbot   = require('autositbot')
 local gembot       = require('gembot')
+local healbot      = require('healbot')
 
 
 --
@@ -144,6 +145,12 @@ local function main()
 			targetbot.Run()
 		end
 	)
+	healbot.Init(Config)
+	local healbot_co = ManagedCoroutine:new(
+		function()
+			healbot.Run()
+		end
+	)
 	tetherbot.Init(Config)
 	local tetherbot_co = ManagedCoroutine:new(
 		function()
@@ -163,6 +170,25 @@ local function main()
 			while true do
 				if mq.TLO.DaveBot.States.IsEarlyCombatActive() and not mychar.InCombat() and mq.TLO.DaveBot.States.EarlyCombatActiveSince() + 10000 < mq.gettime() then
 					mq.TLO.DaveBot.States.EarlyCombatIsInactive()
+				end
+				co.yield()
+			end
+		end
+	)
+	local warnings_co = ManagedCoroutine:new(
+		function()
+			local last_printed_main_assist = 0
+			local last_printed_main_tank = 0
+			while true do
+				if mq.TLO.Group() then
+					if mq.TLO.Group.MainAssist() == nil and last_printed_main_assist + 60000 < mq.gettime() then
+						print('No MainAssist set in group')
+						last_printed_main_assist = mq.gettime()
+					end
+					if mq.TLO.Group.MainTank() == nil and last_printed_main_tank + 60000 < mq.gettime() then
+						print('No MainTank set in group')
+						last_printed_main_tank = mq.gettime()
+					end
 				end
 				co.yield()
 			end
@@ -196,9 +222,7 @@ local function main()
 
 		CheckBot('buffbot')
 
-		if MyClass.IsHealer or MyClass.Name == 'Shadow Knight' then
-			CheckBot('healbot')
-		end
+		healbot_co:Resume()
 
 		if MyClass.IsCrowdController then
 			CheckBot('crowdcontrolbot')
@@ -225,7 +249,7 @@ local function main()
 
 		Config:Reload(10000)
 
-		if mq.TLO.Me.Zoning() then Shutdown() end
+		-- if mq.TLO.Me.Zoning() then Shutdown() end
 
 		mq.delay(10)
 	end

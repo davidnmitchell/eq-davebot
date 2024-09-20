@@ -1,19 +1,18 @@
 local mq = require('mq')
+local co = require('co')
 local spells = require('spells')
-local heartbeat = require('heartbeat')
 require('eqclass')
 require('config')
+
+local healbot = {}
 
 
 --
 -- Globals
 --
 
-local ProcessName = 'healbot'
+local Config = {}
 local MyClass = EQClass:new()
-local Config = Config:new(ProcessName)
-
-local Running = true
 
 
 --
@@ -21,7 +20,7 @@ local Running = true
 --
 
 local function log(msg)
-	print('(' .. ProcessName .. ') ' .. msg)
+	print('(healbot) ' .. msg)
 end
 
 local function ClassAtHpPct(class)
@@ -32,7 +31,7 @@ local function ClassAtHpPct(class)
 	end
 end
 
-function LowestHPsGroupMember()
+local function LowestHPsGroupMember()
 	local groupSize = mq.TLO.Group.Members()
 	local lowestMember = {id=0, hps=101}
 	for i=0,groupSize do
@@ -55,7 +54,7 @@ function LowestHPsGroupMember()
 	return lowestMember
 end
 
-function CheckTank()
+local function CheckTank()
 	local pct, spell_key = Config:Heal():TankAtHpPct()
 	if pct ~= 0 then
 		if mq.TLO.Group.MainTank() ~= nil then
@@ -78,7 +77,7 @@ function CheckTank()
 	end
 end
 
-function CheckGroupMembers()
+local function CheckGroupMembers()
 	local to_heal = LowestHPsGroupMember()
 	if to_heal.id ~= 0 then
 		local spell = Config:Spells():Spell(to_heal.spell_key)
@@ -91,7 +90,7 @@ function CheckGroupMembers()
 	end
 end
 
-function GroupHeal(pct, spell_key)
+local function GroupHeal(pct, spell_key)
 	local spell = Config:Spells():Spell(spell_key)
 	local gem, err = Config:SpellBar():GemBySpell(spell_key)
 	if gem < 1 then
@@ -103,7 +102,7 @@ function GroupHeal(pct, spell_key)
 	end
 end
 
-function CheckPets()
+local function CheckPets()
 	local pct, spell_key = Config:Heal():PetAtHpPct()
 	if pct ~= 0 then
 		local group_size = mq.TLO.Group.Members()
@@ -123,7 +122,7 @@ function CheckPets()
 	end
 end
 
-function CheckSelf()
+local function CheckSelf()
 	local pct, spell_key = Config:Heal():SelfAtHpPct()
 	if pct ~= 0 then
 		local pct_hps = mq.TLO.Me.PctHPs()
@@ -146,7 +145,7 @@ function CheckSelf()
 	end
 end
 
-function CheckMyPet()
+local function CheckMyPet()
 	local pct, spell_key = Config:Heal():SelfpetAtHpPct()
 	if pct ~= 0 then
 		local pct_hps = mq.TLO.Pet.PctHPs()
@@ -162,8 +161,8 @@ function CheckMyPet()
 	end
 end
 
-function CheckHitPoints()
-	if MyClass.IsHealer and mq.TLO.Group() then
+local function CheckHitPoints()
+	if mq.TLO.Group() then
 		CheckTank()
 
 		if MyClass.HasGroupHeals then
@@ -177,41 +176,34 @@ function CheckHitPoints()
 
 		CheckPets()
 	end
-	if not MyClass.IsHealer then
-		CheckSelf()
-		if MyClass.HasPet then
-			CheckMyPet()
-		end
+	CheckSelf()
+	if MyClass.HasPet then
+		CheckMyPet()
 	end
 end
 
 
 --
--- Main
+-- Init
 --
 
-local function main()
-	if MyClass.IsHealer or MyClass.Name == 'Shadow Knight' then
+function healbot.Init(cfg)
+	Config = cfg
+end
 
-		while Running == true do
-			mq.doevents()
 
+---
+--- Main Loop
+---
+
+function healbot.Run()
+	while true do
+		if Config:Heal():Enabled() then
 			CheckHitPoints()
-
-			Config:Reload(10000)
-
-			heartbeat.SendHeartBeat(ProcessName)
-			mq.delay(10)
 		end
-	else
-		print('(healbot)No support for ' .. MyClass.Name)
-		print('(healbot)Exiting...')
+
+		co.yield()
 	end
 end
 
-
---
--- Execution
---
-
-main()
+return healbot

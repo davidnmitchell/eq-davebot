@@ -27,6 +27,7 @@ function Config:new(type)
 		mt._tether = TetherConfig:new(mt._ini)
 		mt._twist = TwistConfig:new(mt._ini)
 		mt._teamevents = TeamEventsConfig:new(mt._ini)
+		mt._heal = HealConfig:new(mt._ini)
 	elseif mt._type == 'meleebot' then
 		mt._melee = MeleeConfig:new(mt._ini)
 	else
