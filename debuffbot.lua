@@ -82,6 +82,7 @@ end
 function debuffbot.Run()
 	log('Up and running')
 	while true do
+		---@diagnostic disable-next-line: undefined-field
 		if mychar.InCombat() and not mq.TLO.DaveBot.States.IsCrowdControlActive() then
 			do_debuffs()
 		end

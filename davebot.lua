@@ -1,26 +1,27 @@
-local mq = require('mq')
-local co     = require('co')
-local str    = require('str')
-local spells = require('spells')
-local lua = require('lua')
-local heartbeat = require('heartbeat')
-local bc     = require('bc')
+local mq              = require('mq')
+local co              = require('co')
+local spells          = require('spells')
+local lua             = require('lua')
+local heartbeat       = require('heartbeat')
+local tlo             = require('tlo')
+local mychar          = require('mychar')
+local drivebot        = require('drivebot')
+local songbot         = require('songbot')
+local targetbot       = require('targetbot')
+local tetherbot       = require('tetherbot')
+local teameventbot    = require('teameventbot')
+local autositbot      = require('autositbot')
+local gembot          = require('gembot')
+local healbot         = require('healbot')
+local meleebot        = require('meleebot')
+local petbot          = require('petbot')
+local debuffbot       = require('debuffbot')
+local crowdcontrolbot = require('crowdcontrolbot')
+local dotbot          = require('dotbot')
+local nukebot         = require('nukebot')
+local buffbot         = require('buffbot')
 require('eqclass')
 require('config')
-local tlo = require('tlo')
-local mychar = require('mychar')
-local drivebot = require('drivebot')
-local songbot = require('songbot')
-local targetbot = require('targetbot')
-local tetherbot = require('tetherbot')
-local teameventbot = require('teameventbot')
-local autositbot   = require('autositbot')
-local gembot       = require('gembot')
-local healbot      = require('healbot')
-local meleebot     = require('meleebot')
-local petbot       = require('petbot')
-local debuffbot    = require('debuffbot')
-local crowdcontrolbot = require('crowdcontrolbot')
 
 
 --
@@ -32,6 +33,7 @@ local Config = Config:new('davebot')
 
 local Running = true
 local LastHeardFrom = {}
+
 
 --
 -- Functions
@@ -47,10 +49,6 @@ end
 
 local function Shutdown()
 	lua.KillScriptIfRunning('castqueue')
-	lua.KillScriptIfRunning('dotbot')
-	lua.KillScriptIfRunning('nukebot')
-	lua.KillScriptIfRunning('buffbot')
-	lua.KillScriptIfRunning('crowdcontrolbot')
 	Running = false
 end
 
@@ -84,8 +82,6 @@ end
 -- TODO: GUI? (see autotoon)
 
 local function main()
-	local last_spell_count = 0
-
 	mq.cmd('/setwintitle ' .. mq.TLO.Me.Name())
 
 	mq.bind(
@@ -105,7 +101,7 @@ local function main()
 		end
 	)
 
-	bc.InitServer()
+	--bc.InitServer()
 
 	tlo.Init(Config)
 	local tlo_co = ManagedCoroutine:new(
@@ -155,10 +151,28 @@ local function main()
 			crowdcontrolbot.Run()
 		end
 	)
+	dotbot.Init(Config)
+	local dotbot_co = ManagedCoroutine:new(
+		function()
+			dotbot.Run()
+		end
+	)
 	debuffbot.Init(Config)
 	local debuffbot_co = ManagedCoroutine:new(
 		function()
 			debuffbot.Run()
+		end
+	)
+	nukebot.Init(Config)
+	local ddbot_co = ManagedCoroutine:new(
+		function()
+			nukebot.Run()
+		end
+	)
+	buffbot.Init(Config)
+	local buffbot_co = ManagedCoroutine:new(
+		function()
+			buffbot.Run()
 		end
 	)
 	petbot.Init(Config)
@@ -190,7 +204,9 @@ local function main()
 	local ecstate_co = ManagedCoroutine:new(
 		function()
 			while true do
+				---@diagnostic disable-next-line: undefined-field
 				if mq.TLO.DaveBot.States.IsEarlyCombatActive() and not mychar.InCombat() and mq.TLO.DaveBot.States.EarlyCombatActiveSince() + 10000 < mq.gettime() then
+					---@diagnostic disable-next-line: undefined-field
 					mq.TLO.DaveBot.States.EarlyCombatIsInactive()
 				end
 				co.yield()
@@ -216,46 +232,51 @@ local function main()
 			end
 		end
 	)
+	local spellwrite_co = ManagedCoroutine:new(
+		function()
+			local last_spell_count = 0
+			while true do
+				local spell_count = spells.KnownSpellCount()
+				if spell_count > last_spell_count then
+					last_spell_count = spell_count
+					local ini = Ini:new()
+					spells.DumpSpellBook(ini, 'Spells')
+				end
+			end
+		end
+	)
 
 	print('DaveBot running')
 	while Running == true do
 		mq.doevents()
 
-		tlo_co:Resume()
-		teameventbot_co:Resume()
-		drivebot_co:Resume()
-
 		if MyClass.HasSpells or MyClass.IsBard then
-			local spell_count = spells.KnownSpellCount()
-			if spell_count > last_spell_count then
-				last_spell_count = spell_count
-				local ini = Ini:new()
-				spells.DumpSpellBook(ini, 'Spells')
-			end
-
 			gembot_co:Resume()
+			spellwrite_co:Resume()
 		end
 
 		if MyClass.HasSpells then
 			CheckBot('castqueue')
-			CheckBot('dotbot')
-			CheckBot('nukebot')
 		end
 
-		CheckBot('buffbot')
-
 		if Config:Heal():Enabled() then healbot_co:Resume() end
-
 		if Config:CrowdControl():Enabled() then crowdcontrolbot_co:Resume() end
 		if Config:Debuff():Enabled() then debuffbot_co:Resume() end
-		if Config:Pet():AutoCast() or Config:Pet():AutoAttack() then petbot_co:Resume() end
+		if Config:Dot():Enabled() then dotbot_co:Resume() end
+		if Config:Dd():Enabled() then ddbot_co:Resume() end
 		if Config:Melee():Enabled() then meleebot_co:Resume() end
+
+		if Config:Buff():Enabled() then buffbot_co:Resume() end
+		if Config:Pet():AutoCast() or Config:Pet():AutoAttack() then petbot_co:Resume() end
 		if Config:AutoSit():Enabled() then autositbot_co:Resume() end
 
-		if MyClass.IsBard then songbot_co:Resume() end
+		if MyClass.IsBard and Config:Twist():Enabled() then songbot_co:Resume() end
 
+		tlo_co:Resume()
+		teameventbot_co:Resume()
 		targetbot_co:Resume()
 		tetherbot_co:Resume()
+		drivebot_co:Resume()
 		ecstate_co:Resume()
 		warnings_co:Resume()
 

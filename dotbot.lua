@@ -1,22 +1,18 @@
 local mq = require('mq')
+local co = require('co')
 local spells = require('spells')
 local target = require('target')
 local mychar = require('mychar')
-local group = require('group')
-local heartbeat = require('heartbeat')
-require('eqclass')
-require('config')
+
+
+local dotbot = {}
 
 
 --
 -- Globals
 --
 
-local ProcessName = 'dotbot'
-local MyClass = EQClass:new()
-local Config = Config:new(ProcessName)
-
-local Running = true
+local Config = {}
 
 
 --
@@ -24,14 +20,14 @@ local Running = true
 --
 
 local function log(msg)
-	print('(' .. ProcessName .. ') ' .. msg)
+	print('(dotbot) ' .. msg)
 end
 
-function HasDot(spell, id)
+local function HasDot(spell, id)
 	return mq.TLO.Spawn(id).Buff(spell.Effect)() ~= nil
 end
 
-function CastDotOn(spell_name, gem, id, order)
+local function CastDotOn(spell_name, gem, id, order)
 	local priority = 50 + order
 	local name = mq.TLO.Spell(spell_name).Name()
 	if name then
@@ -50,7 +46,7 @@ function CastDotOn(spell_name, gem, id, order)
 	end
 end
 
-function CheckDots()
+local function do_dots()
 	local i = 1
 	for pct, spell_key in pairs(Config:Dot():AtTargetHpPcts()) do
 		local spell = Config:Spells():Spell(spell_key)
@@ -72,31 +68,27 @@ end
 
 
 --
--- Main
+-- Init
 --
 
-local function main()
-	while Running == true do
-		mq.doevents()
-
-		if Config:Dot():Enabled() and mychar.InCombat() and not mq.TLO.DaveBot.States.IsCrowdControlActive() then
-			CheckDots()
-		end
-
-		if group.MainAssistCheck(60000) then
-			log('Group main assist is not set')
-		end
-
-		Config:Reload(10000)
-
-		heartbeat.SendHeartBeat(ProcessName)
-		mq.delay(10)
-	end
+function dotbot.Init(cfg)
+	Config = cfg
 end
 
 
---
--- Execution
---
+---
+--- Main Loop
+---
 
-main()
+function dotbot.Run()
+	log('Up and running')
+	while true do
+		---@diagnostic disable-next-line: undefined-field
+		if mychar.InCombat() and not mq.TLO.DaveBot.States.IsCrowdControlActive() then
+			do_dots()
+		end
+		co.yield()
+	end
+end
+
+return dotbot

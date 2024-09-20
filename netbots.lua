@@ -6,12 +6,14 @@ local str = require('str')
 local netbots = {}
 
 function netbots.Peers()
+	---@diagnostic disable-next-line: missing-parameter
 	return str.Split(mq.TLO.NetBots.Client(), ' ')
 end
 
 function netbots.PeerIds()
 	local value = {}
 	for i, name in ipairs(netbots.Peers()) do
+		---@diagnostic disable-next-line: undefined-field
 		table.insert(value, tonumber(mq.TLO.NetBots(name).ID()))
 	end
 	return value
@@ -30,6 +32,7 @@ end
 
 function netbots.PeerById(id)
 	for i, name in ipairs(netbots.Peers()) do
+		---@diagnostic disable-next-line: undefined-field
 		if id == mq.TLO.NetBots(name).ID() then
 			return name
 		end

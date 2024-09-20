@@ -74,6 +74,7 @@ end
 local function EnchanterCCMode()
 	log('Crowd control active')
 	CCRunning = true
+	---@diagnostic disable-next-line: undefined-field
 	mq.TLO.DaveBot.States.CrowdControlIsActive()
 	spells.WipeQueue()
 	mq.cmd('/interrupt')
@@ -92,6 +93,7 @@ end
 local function BardCCMode()
 	log('Crowd control active')
 	CCRunning = true
+	---@diagnostic disable-next-line: undefined-field
 	mq.TLO.DaveBot.States.CrowdControlIsActive()
 	co.delay(100)
 	mq.cmd('/attack off')
@@ -150,6 +152,7 @@ local function do_crowdcontrol(my_class)
 		else
 			if CCRunning then
 				CCRunning = false
+				---@diagnostic disable-next-line: undefined-field
 				mq.TLO.DaveBot.States.CrowdControlIsInactive()
 			end
 		end
@@ -178,6 +181,7 @@ local function do_crowdcontrol(my_class)
 		else
 			if CCRunning then
 				CCRunning = false
+				---@diagnostic disable-next-line: undefined-field
 				mq.TLO.DaveBot.States.CrowdControlIsInactive()
 			end
 		end

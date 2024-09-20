@@ -1,7 +1,5 @@
 local mq = require('mq')
 local str = require('str')
-local common = require('common')
-local spells = require('spells')
 local co = require('co')
 require('ini')
 require('eqclass')
@@ -32,30 +30,15 @@ function Config:new(type)
 		mt._pet = PetConfig:new(mt._ini)
 		mt._debuff = DebuffConfig:new(mt._ini)
 		mt._cc = CrowdControlConfig:new(mt._ini)
-	else
-		local watch_cc = false
-		if mt._type == 'debuffbot' or mt._type == 'dotbot' or mt._type == 'nukebot' or mt._type == 'songbot' then
-			watch_cc = true
-		end
-		local watch_bc = false
-		if mt._type == 'gembot' or mt._type == 'songbot' then
-			watch_bc = true
-		end
-		mt._spells = SpellsConfig:new(mt._ini)
-		mt._spellbar = SpellBarConfig:new(mt._ini, mt._spells)
+		mt._buff = BuffConfig:new(mt._ini)
+		mt._dot = DotConfig:new(mt._ini)
+		mt._dd = DdConfig:new(mt._ini)
 	end
 
 	if mt._type == 'castqueue' then
+		mt._spells = SpellsConfig:new(mt._ini)
+		mt._spellbar = SpellBarConfig:new(mt._ini, mt._spells)
 		mt._castqueue = CastQueueConfig:new(mt._ini)
-	end
-	if mt._type == 'buffbot' then
-		mt._buff = BuffConfig:new(mt._ini)
-	end
-	if mt._type == 'dotbot' then
-		mt._dot = DotConfig:new(mt._ini)
-	end
-	if mt._type == 'nukebot' then
-		mt._dd = DdConfig:new(mt._ini)
 	end
 
 	mt._last_load_time = mq.gettime()
@@ -86,6 +69,12 @@ function Config:Reload(min_interval)
 			co.yield()
 			self._pet:Calculate()
 			co.yield()
+			self._buff:Calculate()
+			co.yield()
+			self._dot:Calculate()
+			co.yield()
+			self._dd:Calculate()
+			co.yield()
 			if MyClass.HasSpells or MyClass.IsBard then
 				self._spellbar:Calculate()
 				co.yield()
@@ -94,25 +83,12 @@ function Config:Reload(min_interval)
 				self._twist:Calculate()
 				co.yield()
 			end
-		else
-			self._spellbar:Calculate()
-			co.yield()
 		end
 
 		if self._type == 'castqueue' then
+			self._spellbar:Calculate()
+			co.yield()
 			self._castqueue:Calculate()
-			co.yield()
-		end
-		if self._type == 'buffbot' then
-			self._buff:Calculate()
-			co.yield()
-		end
-		if self._type == 'dotbot' then
-			self._dot:Calculate()
-			co.yield()
-		end
-		if self._type == 'nukebot' then
-			self._dd:Calculate()
 			co.yield()
 		end
 
@@ -276,9 +252,12 @@ function SpellBarConfig:Calculate()
 end
 
 function SpellBarConfig:Gems()
+	---@diagnostic disable-next-line: undefined-field
 	local mode = mq.TLO.DaveBot.Mode.Mode()
 	local flags = {}
+	---@diagnostic disable-next-line: undefined-field
 	for i=1,mq.TLO.DaveBot.Mode.FlagCount() do
+		---@diagnostic disable-next-line: undefined-field
 		table.insert(flags, mq.TLO.DaveBot.Mode.Flag(i))
 	end
 
@@ -379,9 +358,12 @@ local function defaults_from_ini(ini, type)
 end
 
 local function mode_value(defaults, mode_overlays, flag_overlays, mode_flag_overlays, key, default)
+	---@diagnostic disable-next-line: undefined-field
 	local mode = mq.TLO.DaveBot.Mode.Mode()
 	local flags = {}
+	---@diagnostic disable-next-line: undefined-field
 	for i=1,mq.TLO.DaveBot.Mode.FlagCount() do
+		---@diagnostic disable-next-line: undefined-field
 		table.insert(flags, mq.TLO.DaveBot.Mode.Flag(i))
 	end
 
@@ -568,31 +550,6 @@ end
 function BuffConfig:PackageByName(name)
 	return str.Split(self:_mode_value(name, ''), ',')
 end
-
--- function BuffConfig:TankPackage()
--- 	return str.Split(self:_mode_value('Tank', ''), ',')
--- end
-
--- function BuffConfig:MeleePackage()
--- 	return str.Split(self:_mode_value('Melee', ''), ',')
--- end
-
--- function BuffConfig:CasterPackage()
--- 	return str.Split(self:_mode_value('Caster', ''), ',')
--- end
-
--- function BuffConfig:PetPackage()
--- 	return str.Split(self:_mode_value('Pet', ''), ',')
--- end
-
--- function BuffConfig:SelfPackage()
--- 	return str.Split(self:_mode_value('Self', ''), ',')
--- end
-
--- function BuffConfig:SelfpetPackage()
--- 	return str.Split(self:_mode_value('Selfpet', ''), ',')
--- end
-
 
 
 CrowdControlConfig = {}

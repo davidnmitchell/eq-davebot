@@ -223,6 +223,7 @@ function spells.MemorizeAndBlock(spell, gem_number)
 end
 
 function spells.BardCast(spell, gem_number, target_id)
+	---@diagnostic disable-next-line: undefined-field
 	mq.TLO.DaveBot.States.BardCastIsActive()
 	mq.delay(250)
 	mq.cmd('/twist clear')
@@ -234,6 +235,7 @@ function spells.BardCast(spell, gem_number, target_id)
 	end
 	mq.cmd('/cast ' .. gem_number)
 	mq.delay((mq.TLO.Spell(spell).CastTime.Seconds() + 2) * 1000)
+	---@diagnostic disable-next-line: undefined-field
 	mq.TLO.DaveBot.States.BardCastIsInactive()
 end
 

@@ -31,6 +31,7 @@ local function interrupt()
 end
 
 local function check_twist(order)
+	---@diagnostic disable-next-line: undefined-field
 	if not mq.TLO.DaveBot.States.IsCrowdControlActive() and not mq.TLO.DaveBot.States.IsBardCastActive() then
 		local gem_order = {}
 		for i,spell_key in ipairs(order) do
@@ -110,9 +111,7 @@ function songbot.Run()
 		end
 
 		if not Paused then
-			if Config:Twist():Enabled() then
-				do_twisting()
-			end
+			do_twisting()
 		else
 			if mq.gettime() >= PauseUntil then
 				Paused = false

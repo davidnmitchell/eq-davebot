@@ -1,20 +1,16 @@
 local mq = require('mq')
+local co = require('co')
 local spells = require('spells')
 local mychar = require('mychar')
-local heartbeat = require('heartbeat')
-require('eqclass')
-require('config')
+
+local nukebot = {}
 
 
 --
 -- Globals
 --
 
-local ProcessName = 'nukebot'
-local MyClass = EQClass:new()
-local Config = Config:new(ProcessName)
-
-local Running = true
+local Config = {}
 local History = {}
 
 
@@ -23,15 +19,15 @@ local History = {}
 --
 
 local function log(msg)
-	print('(' .. ProcessName .. ') ' .. msg)
+	print('(nukebot) ' .. msg)
 end
 
-function CastNukeOn(spell_name, gem, id)
+local function CastNukeOn(spell_name, gem, id)
 	spells.QueueSpell(spell_name, 'gem' .. gem, id, 'Nuking ' .. mq.TLO.Spawn(id).Name() .. ' with ' .. spell_name, Config:Dd():MinMana(), Config:Dd():MinTargetHpPct(), 2, 70)
 end
 
-function CheckNukes()
-	if mychar.InCombat() and mq.TLO.Me.GroupAssistTarget() then
+local function do_nukes()
+	if mq.TLO.Me.GroupAssistTarget() then
 		for pct,spell_key in pairs(Config:Dd():AtTargetHpPcts()) do
 			local spell = Config:Spells():Spell(spell_key)
 			local gem, err = Config:SpellBar():GemBySpell(spell)
@@ -57,27 +53,27 @@ end
 
 
 --
--- Main
+-- Init
 --
 
-local function main()
-	while Running == true do
-		mq.doevents()
-
-		if Config:Dd():Enabled() and mychar.InCombat() and not mq.TLO.DaveBot.States.IsCrowdControlActive() then
-			CheckNukes()
-		end
-
-		Config:Reload(10000)
-
-		heartbeat.SendHeartBeat(ProcessName)
-		mq.delay(10)
-	end
+function nukebot.Init(cfg)
+	Config = cfg
 end
 
 
---
--- Execution
---
+---
+--- Main Loop
+---
 
-main()
+function nukebot.Run()
+	log('Up and running')
+	while true do
+		---@diagnostic disable-next-line: undefined-field
+		if mychar.InCombat() and not mq.TLO.DaveBot.States.IsCrowdControlActive() then
+			do_nukes()
+		end
+		co.yield()
+	end
+end
+
+return nukebot
