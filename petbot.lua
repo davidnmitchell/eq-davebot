@@ -10,6 +10,7 @@ local petbot = {}
 -- Globals
 --
 
+local State = {}
 local Config = {}
 
 
@@ -25,7 +26,7 @@ local function CastPet()
 	local gem = Config:SpellBar():FirstOpenGem()
 	if gem ~= 0 then
 		local spell = spells.ReferenceSpell('Pet,Sum: ' .. Config:Pet():Type() .. ',Self')
-		spells.QueueSpellIfNotQueued(spell, 'gem' .. gem, mq.TLO.Me.ID(), 'Casting pet: ' .. spell, Config:Pet():MinMana(), 0, 1, 80)
+		spells.QueueSpellIfNotQueued(State, spell, 'gem' .. gem, mq.TLO.Me.ID(), 'Casting pet: ' .. spell, Config:Pet():MinMana(), 0, 1, 80)
 	else
 		log('Cannot find open gem to cast pet')
 	end
@@ -66,7 +67,8 @@ end
 -- Init
 --
 
-function petbot.Init(cfg)
+function petbot.Init(state, cfg)
+	State = state
 	Config = cfg
 end
 

@@ -12,6 +12,7 @@ local meleebot = {}
 -- Globals
 --
 
+local State = {}
 local Config = {}
 local MyClass = EQClass:new()
 
@@ -73,7 +74,8 @@ end
 -- Init
 --
 
-function meleebot.Init(cfg)
+function meleebot.Init(state, cfg)
+	State = state
 	Config = cfg
 end
 

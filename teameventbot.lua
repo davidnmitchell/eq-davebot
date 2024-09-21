@@ -10,8 +10,8 @@ local teameventbot = {}
 -- Globals
 --
 
+local State = {}
 local Config = {}
-local Ini = {}
 
 
 --
@@ -84,9 +84,9 @@ end
 -- Init
 --
 
-function teameventbot.Init(cfg)
+function teameventbot.Init(state, cfg)
+	State = state
 	Config = cfg
-	Ini = cfg._ini
 
 	mq.event('teamevent1', "#1# tells the group, 'Pulling #2#'", callback_pull_start)
 	mq.event('teamevent1.1', "#1# tells the group, in #*#, 'Pulling #2#'", callback_pull_start)

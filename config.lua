@@ -11,34 +11,35 @@ MyClass = EQClass:new()
 Config = {}
 Config.__index = Config
 
-function Config:new(type)
+function Config:new(type, state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
-	mt._ini = Ini:new()
+	mt._state = state
+	mt._ini = ini
 
 	mt._type = type
 	if mt._type == 'davebot' then
-		mt._spells = SpellsConfig:new(mt._ini)
-		mt._spellbar = SpellBarConfig:new(mt._ini, mt._spells)
-		mt._autosit = AutoSitConfig:new(mt._ini)
-		mt._tether = TetherConfig:new(mt._ini)
-		mt._twist = TwistConfig:new(mt._ini)
-		mt._teamevents = TeamEventsConfig:new(mt._ini)
-		mt._heal = HealConfig:new(mt._ini)
-		mt._melee = MeleeConfig:new(mt._ini)
-		mt._pet = PetConfig:new(mt._ini)
-		mt._debuff = DebuffConfig:new(mt._ini)
-		mt._cc = CrowdControlConfig:new(mt._ini)
-		mt._buff = BuffConfig:new(mt._ini)
-		mt._dot = DotConfig:new(mt._ini)
-		mt._dd = DdConfig:new(mt._ini)
+		mt._spells = SpellsConfig:new(mt._state, mt._ini)
+		mt._spellbar = SpellBarConfig:new(mt._state, mt._ini, mt._spells)
+		mt._autosit = AutoSitConfig:new(mt._state, mt._ini)
+		mt._tether = TetherConfig:new(mt._state, mt._ini)
+		mt._twist = TwistConfig:new(mt._state, mt._ini)
+		mt._teamevents = TeamEventsConfig:new(mt._state, mt._ini)
+		mt._heal = HealConfig:new(mt._state, mt._ini)
+		mt._melee = MeleeConfig:new(mt._state, mt._ini)
+		mt._pet = PetConfig:new(mt._state, mt._ini)
+		mt._debuff = DebuffConfig:new(mt._state, mt._ini)
+		mt._cc = CrowdControlConfig:new(mt._state, mt._ini)
+		mt._buff = BuffConfig:new(mt._state, mt._ini)
+		mt._dot = DotConfig:new(mt._state, mt._ini)
+		mt._dd = DdConfig:new(mt._state, mt._ini)
 	end
 
 	if mt._type == 'castqueue' then
-		mt._spells = SpellsConfig:new(mt._ini)
-		mt._spellbar = SpellBarConfig:new(mt._ini, mt._spells)
-		mt._castqueue = CastQueueConfig:new(mt._ini)
+		mt._spells = SpellsConfig:new(mt._state, mt._ini)
+		mt._spellbar = SpellBarConfig:new(mt._state, mt._ini, mt._spells)
+		mt._castqueue = CastQueueConfig:new(mt._state, mt._ini)
 	end
 
 	mt._last_load_time = mq.gettime()
@@ -160,11 +161,12 @@ end
 SpellsConfig = {}
 SpellsConfig.__index = SpellsConfig
 
-function SpellsConfig:new(ini)
+function SpellsConfig:new(state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
 	mt._ini = ini
+	mt._state = state
 
 	return mt
 end
@@ -177,7 +179,7 @@ end
 SpellBarConfig = {}
 SpellBarConfig.__index = SpellBarConfig
 
-function SpellBarConfig:new(ini, spells_config)
+function SpellBarConfig:new(state, ini, spells_config)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -185,6 +187,7 @@ function SpellBarConfig:new(ini, spells_config)
 	mt._mode_overlays = {}
 	mt._flag_overlays = {}
 	mt._mode_flag_overlays = {}
+	mt._state = state
 	mt._ini = ini
 	mt._spells_config = spells_config
 	mt:Calculate()
@@ -252,14 +255,7 @@ function SpellBarConfig:Calculate()
 end
 
 function SpellBarConfig:Gems()
-	---@diagnostic disable-next-line: undefined-field
-	local mode = mq.TLO.DaveBot.Mode.Mode()
-	local flags = {}
-	---@diagnostic disable-next-line: undefined-field
-	for i=1,mq.TLO.DaveBot.Mode.FlagCount() do
-		---@diagnostic disable-next-line: undefined-field
-		table.insert(flags, mq.TLO.DaveBot.Mode.Flag(i))
-	end
+	local mode = self._state.Mode
 
 	local overlaid = {}
 	for k,v in pairs(self._defaults) do
@@ -268,7 +264,7 @@ function SpellBarConfig:Gems()
 	for k,v in pairs(self._mode_overlays[mode] or {}) do
 		overlaid[k] = v
 	end
-	for i, flag in ipairs(flags) do
+	for i, flag in ipairs(self._state.Flags) do
 		local flag_overlay = self._flag_overlays[flag] or {}
 		for k,v in pairs(flag_overlay) do
 			overlaid[k] = v
@@ -357,31 +353,22 @@ local function defaults_from_ini(ini, type)
 	return ini:Section('Default:' .. type):ToTable() or {}
 end
 
-local function mode_value(defaults, mode_overlays, flag_overlays, mode_flag_overlays, key, default)
-	---@diagnostic disable-next-line: undefined-field
-	local mode = mq.TLO.DaveBot.Mode.Mode()
-	local flags = {}
-	---@diagnostic disable-next-line: undefined-field
-	for i=1,mq.TLO.DaveBot.Mode.FlagCount() do
-		---@diagnostic disable-next-line: undefined-field
-		table.insert(flags, mq.TLO.DaveBot.Mode.Flag(i))
-	end
-
+local function mode_value(state, defaults, mode_overlays, flag_overlays, mode_flag_overlays, key, default)
 	local value = defaults[key]
-	if mode_overlays[mode] then
-		if mode_overlays[mode][key] then
-			value = mode_overlays[mode][key]
+	if mode_overlays[state.Mode] then
+		if mode_overlays[state.Mode][key] then
+			value = mode_overlays[state.Mode][key]
 		end
 	end
-	for i, flag in ipairs(flags) do
+	for i, flag in ipairs(state.Flags) do
 		if flag_overlays[flag] and flag_overlays[flag][key] then
 			value = flag_overlays[flag][key]
 		end
 	end
-	if mode_flag_overlays[mode] then
-		for i, flag in ipairs(flags) do
-			if mode_flag_overlays[mode][flag] and mode_flag_overlays[mode][flag][key] then
-				value = mode_flag_overlays[mode][flag][key]
+	if mode_flag_overlays[state.Mode] then
+		for i, flag in ipairs(state.Flags) do
+			if mode_flag_overlays[state.Mode][flag] and mode_flag_overlays[state.Mode][flag][key] then
+				value = mode_flag_overlays[state.Mode][flag][key]
 			end
 		end
 	end
@@ -397,7 +384,7 @@ end
 CastQueueConfig = {}
 CastQueueConfig.__index = CastQueueConfig
 
-function CastQueueConfig:new(ini)
+function CastQueueConfig:new(state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -406,6 +393,7 @@ function CastQueueConfig:new(ini)
 	mt._flag_overlays = {}
 	mt._mode_flag_overlays = {}
 
+	mt._state = state
 	mt._ini = ini
 	mt:Calculate()
 
@@ -424,7 +412,7 @@ function CastQueueConfig:Calculate()
 end
 
 function CastQueueConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
+	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function CastQueueConfig:Print()
@@ -443,7 +431,7 @@ end
 AutoSitConfig = {}
 AutoSitConfig.__index = AutoSitConfig
 
-function AutoSitConfig:new(ini)
+function AutoSitConfig:new(state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -452,6 +440,7 @@ function AutoSitConfig:new(ini)
 	mt._flag_overlays = {}
 	mt._mode_flag_overlays = {}
 
+	mt._state = state
 	mt._ini = ini
 	mt:Calculate()
 
@@ -470,7 +459,7 @@ function AutoSitConfig:Calculate()
 end
 
 function AutoSitConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
+	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function AutoSitConfig:Enabled()
@@ -501,7 +490,7 @@ end
 BuffConfig = {}
 BuffConfig.__index = BuffConfig
 
-function BuffConfig:new(ini)
+function BuffConfig:new(state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -510,6 +499,7 @@ function BuffConfig:new(ini)
 	mt._flag_overlays = {}
 	mt._mode_flag_overlays = {}
 
+	mt._state = state
 	mt._ini = ini
 	mt:Calculate()
 
@@ -528,7 +518,7 @@ function BuffConfig:Calculate()
 end
 
 function BuffConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
+	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function BuffConfig:Enabled()
@@ -555,7 +545,7 @@ end
 CrowdControlConfig = {}
 CrowdControlConfig.__index = CrowdControlConfig
 
-function CrowdControlConfig:new(ini)
+function CrowdControlConfig:new(state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -564,6 +554,7 @@ function CrowdControlConfig:new(ini)
 	mt._flag_overlays = {}
 	mt._mode_flag_overlays = {}
 
+	mt._state = state
 	mt._ini = ini
 	mt:Calculate()
 
@@ -582,7 +573,7 @@ function CrowdControlConfig:Calculate()
 end
 
 function CrowdControlConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
+	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function CrowdControlConfig:Enabled()
@@ -605,7 +596,7 @@ end
 DebuffConfig = {}
 DebuffConfig.__index = DebuffConfig
 
-function DebuffConfig:new(ini)
+function DebuffConfig:new(state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -614,6 +605,7 @@ function DebuffConfig:new(ini)
 	mt._flag_overlays = {}
 	mt._mode_flag_overlays = {}
 
+	mt._state = state
 	mt._ini = ini
 	mt:Calculate()
 
@@ -632,7 +624,7 @@ function DebuffConfig:Calculate()
 end
 
 function DebuffConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
+	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function DebuffConfig:Enabled()
@@ -661,7 +653,7 @@ end
 DotConfig = {}
 DotConfig.__index = DotConfig
 
-function DotConfig:new(ini)
+function DotConfig:new(state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -670,6 +662,7 @@ function DotConfig:new(ini)
 	mt._flag_overlays = {}
 	mt._mode_flag_overlays = {}
 
+	mt._state = state
 	mt._ini = ini
 	mt:Calculate()
 
@@ -688,7 +681,7 @@ function DotConfig:Calculate()
 end
 
 function DotConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
+	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function DotConfig:Enabled()
@@ -717,7 +710,7 @@ end
 HealConfig = {}
 HealConfig.__index = HealConfig
 
-function HealConfig:new(ini)
+function HealConfig:new(state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -726,6 +719,7 @@ function HealConfig:new(ini)
 	mt._flag_overlays = {}
 	mt._mode_flag_overlays = {}
 
+	mt._state = state
 	mt._ini = ini
 	mt:Calculate()
 
@@ -744,7 +738,7 @@ function HealConfig:Calculate()
 end
 
 function HealConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
+	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function HealConfig:Enabled()
@@ -800,7 +794,7 @@ end
 MeleeConfig = {}
 MeleeConfig.__index = MeleeConfig
 
-function MeleeConfig:new(ini)
+function MeleeConfig:new(state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -809,6 +803,7 @@ function MeleeConfig:new(ini)
 	mt._flag_overlays = {}
 	mt._mode_flag_overlays = {}
 
+	mt._state = state
 	mt._ini = ini
 	mt:Calculate()
 
@@ -827,7 +822,7 @@ function MeleeConfig:Calculate()
 end
 
 function MeleeConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
+	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function MeleeConfig:Enabled()
@@ -850,7 +845,7 @@ end
 DdConfig = {}
 DdConfig.__index = DdConfig
 
-function DdConfig:new(ini)
+function DdConfig:new(state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -859,6 +854,7 @@ function DdConfig:new(ini)
 	mt._flag_overlays = {}
 	mt._mode_flag_overlays = {}
 
+	mt._state = state
 	mt._ini = ini
 	mt:Calculate()
 
@@ -877,7 +873,7 @@ function DdConfig:Calculate()
 end
 
 function DdConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
+	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function DdConfig:Enabled()
@@ -930,7 +926,7 @@ local function default_pet_type()
 	return type
 end
 
-function PetConfig:new(ini)
+function PetConfig:new(state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -941,6 +937,7 @@ function PetConfig:new(ini)
 	mt._flag_overlays = {}
 	mt._mode_flag_overlays = {}
 
+	mt._state = state
 	mt._ini = ini
 	mt:Calculate()
 
@@ -959,7 +956,7 @@ function PetConfig:Calculate()
 end
 
 function PetConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
+	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function PetConfig:AutoCast()
@@ -994,7 +991,7 @@ end
 TwistConfig = {}
 TwistConfig.__index = TwistConfig
 
-function TwistConfig:new(ini)
+function TwistConfig:new(state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -1003,6 +1000,7 @@ function TwistConfig:new(ini)
 	mt._flag_overlays = {}
 	mt._mode_flag_overlays = {}
 
+	mt._state = state
 	mt._ini = ini
 	mt:Calculate()
 
@@ -1021,7 +1019,7 @@ function TwistConfig:Calculate()
 end
 
 function TwistConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
+	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function TwistConfig:Enabled()
@@ -1044,7 +1042,7 @@ end
 TetherConfig = {}
 TetherConfig.__index = TetherConfig
 
-function TetherConfig:new(ini)
+function TetherConfig:new(state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -1053,6 +1051,7 @@ function TetherConfig:new(ini)
 	mt._flag_overlays = {}
 	mt._mode_flag_overlays = {}
 
+	mt._state = state
 	mt._ini = ini
 	mt:Calculate()
 
@@ -1071,7 +1070,7 @@ function TetherConfig:Calculate()
 end
 
 function TetherConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
+	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function TetherConfig:Mode()
@@ -1106,7 +1105,7 @@ end
 TeamEventsConfig = {}
 TeamEventsConfig.__index = TeamEventsConfig
 
-function TeamEventsConfig:new(ini)
+function TeamEventsConfig:new(state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
@@ -1115,6 +1114,7 @@ function TeamEventsConfig:new(ini)
 	mt._flag_overlays = {}
 	mt._mode_flag_overlays = {}
 
+	mt._state = state
 	mt._ini = ini
 	mt:Calculate()
 
@@ -1133,7 +1133,7 @@ function TeamEventsConfig:Calculate()
 end
 
 function TeamEventsConfig:_mode_value(key, default)
-	return mode_value(self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
+	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
 end
 
 function TeamEventsConfig:OnPullStart()

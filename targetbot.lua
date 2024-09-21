@@ -9,6 +9,7 @@ local targetbot = {}
 -- Globals
 --
 
+local State = {}
 local Config = {}
 local History = {}
 
@@ -102,7 +103,8 @@ end
 -- Init
 --
 
-function targetbot.Init(cfg)
+function targetbot.Init(state, cfg)
+	State = state
 	Config = cfg
 
 	mq.bind('/dbt', callback_dbt)

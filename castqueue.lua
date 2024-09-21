@@ -9,6 +9,7 @@ require('ini')
 require('config')
 require('eqclass')
 require('cast')
+require('state')
 
 --
 -- Priorities
@@ -29,8 +30,10 @@ require('cast')
 --
 
 local ProcessName = 'castqueue'
+local Ini = Ini:new()
 local MyClass = EQClass:new()
-local Config = Config:new(ProcessName)
+local State = BotState:new(Ini)
+local Config = Config:new(ProcessName, State, Ini)
 
 Running = true
 PauseUntil = 0

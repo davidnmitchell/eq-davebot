@@ -50,17 +50,17 @@ local function dbcq_queue_cmd(unique, spell, gem, target_id, msg, min_mana_pct, 
 	return cmd
 end
 
-function spells.QueueSpell(spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
+function spells.QueueSpell(state, spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
 	table.insert(History, { spell=spell, targetid=target_id, timestamp=os.clock() })
 	if not AmBard then
 		local cmd = dbcq_queue_cmd(false, spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
 		mq.cmd(cmd)
 	else
-		spells.BardCast(spell, gem, target_id)
+		spells.BardCast(state, spell, gem, target_id)
 	end
 end
 
-function spells.QueueSpellIfNotQueued(spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
+function spells.QueueSpellIfNotQueued(state, spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
 	if not in_history(spell, target_id) then
 		table.insert(History, { spell=spell, targetid=target_id, timestamp=os.clock() })
 
@@ -70,12 +70,12 @@ function spells.QueueSpellIfNotQueued(spell, gem, target_id, msg, min_mana_pct, 
 		else
 			if type(gem) == 'string' then
 				if gem:find('^gem') ~= nil then
-					spells.BardCast(spell, tonumber(gem:sub(4, gem:len())), target_id)
+					spells.BardCast(state, spell, tonumber(gem:sub(4, gem:len())), target_id)
 				else
 					print('Unexpected string for gem: ' .. gem)
 				end
 			else
-				spells.BardCast(spell, gem, target_id)
+				spells.BardCast(state, spell, gem, target_id)
 			end
 		end
 	end
@@ -222,9 +222,8 @@ function spells.MemorizeAndBlock(spell, gem_number)
 	end
 end
 
-function spells.BardCast(spell, gem_number, target_id)
-	---@diagnostic disable-next-line: undefined-field
-	mq.TLO.DaveBot.States.BardCastIsActive()
+function spells.BardCast(state, spell, gem_number, target_id)
+	state:MarkBardCastActive()
 	mq.delay(250)
 	mq.cmd('/twist clear')
 	mq.delay(500)
@@ -235,8 +234,7 @@ function spells.BardCast(spell, gem_number, target_id)
 	end
 	mq.cmd('/cast ' .. gem_number)
 	mq.delay((mq.TLO.Spell(spell).CastTime.Seconds() + 2) * 1000)
-	---@diagnostic disable-next-line: undefined-field
-	mq.TLO.DaveBot.States.BardCastIsInactive()
+	state:MarkBardCastInactive()
 end
 
 return spells

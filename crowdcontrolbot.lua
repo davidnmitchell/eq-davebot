@@ -11,6 +11,7 @@ local crowdcontrolbot = {}
 -- Globals
 --
 
+local State = {}
 local Config = {}
 local MyClass = EQClass:new()
 
@@ -74,8 +75,7 @@ end
 local function EnchanterCCMode()
 	log('Crowd control active')
 	CCRunning = true
-	---@diagnostic disable-next-line: undefined-field
-	mq.TLO.DaveBot.States.CrowdControlIsActive()
+	State:MarkCrowdControlActive()
 	spells.WipeQueue()
 	mq.cmd('/interrupt')
 end
@@ -85,7 +85,7 @@ local function EnchanterCCTargetByID(idx, target_id)
 		idx,
 		target_id,
 		function(spell, gem, name)
-			spells.QueueSpellIfNotQueued(spell, 'gem' .. gem, target_id, 'Controlling ' .. name, Config:CrowdControl():MinMana(), 1, 3, 10)
+			spells.QueueSpellIfNotQueued(State, spell, 'gem' .. gem, target_id, 'Controlling ' .. name, Config:CrowdControl():MinMana(), 1, 3, 10)
 		end
 	)
 end
@@ -93,8 +93,7 @@ end
 local function BardCCMode()
 	log('Crowd control active')
 	CCRunning = true
-	---@diagnostic disable-next-line: undefined-field
-	mq.TLO.DaveBot.States.CrowdControlIsActive()
+	State:MarkCrowdControlActive()
 	co.delay(100)
 	mq.cmd('/attack off')
 	mq.cmd('/twist clear')
@@ -152,8 +151,7 @@ local function do_crowdcontrol(my_class)
 		else
 			if CCRunning then
 				CCRunning = false
-				---@diagnostic disable-next-line: undefined-field
-				mq.TLO.DaveBot.States.CrowdControlIsInactive()
+				State:MarkCrowdControlInactive()
 			end
 		end
 	elseif my_class == 'Bard' then
@@ -181,8 +179,7 @@ local function do_crowdcontrol(my_class)
 		else
 			if CCRunning then
 				CCRunning = false
-				---@diagnostic disable-next-line: undefined-field
-				mq.TLO.DaveBot.States.CrowdControlIsInactive()
+				State:MarkCrowdControlInactive()
 			end
 		end
 	end
@@ -193,7 +190,8 @@ end
 -- Init
 --
 
-function crowdcontrolbot.Init(cfg)
+function crowdcontrolbot.Init(state, cfg)
+	State = state
 	Config = cfg
 end
 

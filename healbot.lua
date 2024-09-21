@@ -11,6 +11,7 @@ local healbot = {}
 -- Globals
 --
 
+local State = {}
 local Config = {}
 local MyClass = EQClass:new()
 
@@ -65,7 +66,7 @@ local function CheckTank()
 				if gem < 1 then
 					log(err)
 				else
-					spells.QueueSpellIfNotQueued(spell.Name, 'gem' .. gem, mq.TLO.Group.MainTank.ID(), 'Healing ' .. mq.TLO.Group.MainTank.Name() .. ' with ' .. spell.Name, 0, 0, 1, 30)
+					spells.QueueSpellIfNotQueued(State, spell.Name, 'gem' .. gem, mq.TLO.Group.MainTank.ID(), 'Healing ' .. mq.TLO.Group.MainTank.Name() .. ' with ' .. spell.Name, 0, 0, 1, 30)
 				end
 			end
 		end
@@ -80,7 +81,7 @@ local function CheckGroupMembers()
 		if gem < 1 then
 			log(err)
 		else
-			spells.QueueSpellIfNotQueued(spell.Name, 'gem' .. gem, to_heal.id, 'Healing ' .. to_heal.name .. ' with ' .. spell.Name, 0, 0, 1, 30)
+			spells.QueueSpellIfNotQueued(State, spell.Name, 'gem' .. gem, to_heal.id, 'Healing ' .. to_heal.name .. ' with ' .. spell.Name, 0, 0, 1, 30)
 		end
 	end
 end
@@ -92,7 +93,7 @@ local function GroupHeal(pct, spell_key)
 		log(err)
 	else
 		if mq.TLO.Me.CurrentMana() > mq.TLO.Spell(spell.Name).Mana() then
-			spells.QueueSpellIfNotQueued(spell.Name, 'gem' .. gem, mq.TLO.Me.ID(), 'Healing group with ' .. spell.Name, 0, 0, 1, 20)
+			spells.QueueSpellIfNotQueued(State, spell.Name, 'gem' .. gem, mq.TLO.Me.ID(), 'Healing group with ' .. spell.Name, 0, 0, 1, 20)
 		end
 	end
 end
@@ -109,7 +110,7 @@ local function CheckPets()
 					if gem < 1 then
 						log(err)
 					else
-						spells.QueueSpellIfNotQueued(spell.Name, 'gem' .. gem, mq.TLO.Group.Member(i).Pet.ID(), 'Healing ' .. mq.TLO.Group.Member(i).Name() .. '\'s pet with ' .. spell.Name, 0, 0, 1, 60)
+						spells.QueueSpellIfNotQueued(State, spell.Name, 'gem' .. gem, mq.TLO.Group.Member(i).Pet.ID(), 'Healing ' .. mq.TLO.Group.Member(i).Name() .. '\'s pet with ' .. spell.Name, 0, 0, 1, 60)
 					end
 				end
 			end
@@ -130,10 +131,10 @@ local function CheckSelf()
 				local spell_target = mq.TLO.Spell(spell.Name).TargetType()
 				if spell_target == 'LifeTap' then
 					if mq.TLO.Target() then
-						spells.QueueSpellIfNotQueued(spell.Name, 'gem' .. gem, mq.TLO.Target.ID(), 'Tapping ' .. mq.TLO.Target.Name() .. ' with ' .. spell.Name, 0, 0, 1, 30)
+						spells.QueueSpellIfNotQueued(State, spell.Name, 'gem' .. gem, mq.TLO.Target.ID(), 'Tapping ' .. mq.TLO.Target.Name() .. ' with ' .. spell.Name, 0, 0, 1, 30)
 					end
 				else
-					spells.QueueSpellIfNotQueued(spell.Name, 'gem' .. gem, mq.TLO.Me.ID(), 'Healing ' .. mq.TLO.Me.Name() .. ' with ' .. spell.Name, 0, 0, 1, 30)
+					spells.QueueSpellIfNotQueued(State, spell.Name, 'gem' .. gem, mq.TLO.Me.ID(), 'Healing ' .. mq.TLO.Me.Name() .. ' with ' .. spell.Name, 0, 0, 1, 30)
 				end
 			end
 		end
@@ -150,7 +151,7 @@ local function CheckMyPet()
 			if gem < 1 then
 				log(err)
 			else
-				spells.QueueSpellIfNotQueued(spell.Name, 'gem' .. gem, mq.TLO.Pet.ID(), 'Healing ' .. mq.TLO.Pet.Name() .. ' with ' .. spell.Name, 0, 0, 1, 60)
+				spells.QueueSpellIfNotQueued(State, spell.Name, 'gem' .. gem, mq.TLO.Pet.ID(), 'Healing ' .. mq.TLO.Pet.Name() .. ' with ' .. spell.Name, 0, 0, 1, 60)
 			end
 		end
 	end
@@ -182,7 +183,8 @@ end
 -- Init
 --
 
-function healbot.Init(cfg)
+function healbot.Init(state, cfg)
+	State = state
 	Config = cfg
 end
 

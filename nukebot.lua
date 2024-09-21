@@ -10,6 +10,7 @@ local nukebot = {}
 -- Globals
 --
 
+local State = {}
 local Config = {}
 local History = {}
 
@@ -23,7 +24,7 @@ local function log(msg)
 end
 
 local function CastNukeOn(spell_name, gem, id)
-	spells.QueueSpell(spell_name, 'gem' .. gem, id, 'Nuking ' .. mq.TLO.Spawn(id).Name() .. ' with ' .. spell_name, Config:Dd():MinMana(), Config:Dd():MinTargetHpPct(), 2, 70)
+	spells.QueueSpell(State, spell_name, 'gem' .. gem, id, 'Nuking ' .. mq.TLO.Spawn(id).Name() .. ' with ' .. spell_name, Config:Dd():MinMana(), Config:Dd():MinTargetHpPct(), 2, 70)
 end
 
 local function do_nukes()
@@ -56,7 +57,8 @@ end
 -- Init
 --
 
-function nukebot.Init(cfg)
+function nukebot.Init(state, cfg)
+	State = state
 	Config = cfg
 end
 
@@ -68,8 +70,7 @@ end
 function nukebot.Run()
 	log('Up and running')
 	while true do
-		---@diagnostic disable-next-line: undefined-field
-		if mychar.InCombat() and not mq.TLO.DaveBot.States.IsCrowdControlActive() then
+		if mychar.InCombat() and not State.IsCrowdControlActive then
 			do_nukes()
 		end
 		co.yield()

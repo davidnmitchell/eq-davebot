@@ -5,12 +5,16 @@ local spells = require('spells')
 local inventory = require('inventory')
 require('eqclass')
 
+
 local MyClass = EQClass:new()
+local State = {}
+local Config = {}
+
 
 local function summon(spell, timer, item)
     if not mychar.InCombat() then
         mq.cmd.echo(string.format('\awSummoning \ag%s', item))
-        spells.QueueSpellIfNotQueued(spell)
+        spells.QueueSpellIfNotQueued(State, spell)
         co.delay(timer + 10000, function() return mq.TLO.Cursor.ID() ~= nil end)
         co.delay(500)
         mq.cmd('/autoinventory')
@@ -66,5 +70,9 @@ return {
                 end
             end
         end
+    end,
+    Init = function(state, cfg)
+        State = state
+        Config = cfg
     end
 }

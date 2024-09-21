@@ -27,7 +27,8 @@ local str = require('str')
 
 local LIP = {};
 
-local function StripComment(s)
+function LIP.StripComment(s)
+	assert(s)
 	local idx = s:find(';')
 	if not idx then return s end
 	return s:sub(1, idx - 1)
@@ -49,7 +50,7 @@ function LIP.load(fileName)
 		end
 		local param, value = line:match('^([%w|_]+)%s-=%s-(.+)$')
 		if(param and value ~= nil)then
-			value = str.Trim(StripComment(value))
+			value = str.Trim(LIP.StripComment(value))
 			if(tonumber(value))then
 				value = tonumber(value)
 			elseif(value:lower() == 'true')then

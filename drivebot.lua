@@ -9,6 +9,7 @@ local drivebot = {}
 -- Globals
 --
 
+local State = {}
 local Config = {}
 
 
@@ -51,6 +52,9 @@ local function callback_drive(...)
 				print(err)
 			else
 				local package = f()
+				if package.Init ~= nil then
+					package.Init(State, Config)
+				end
 				---@diagnostic disable-next-line: deprecated
 				package.Run(unpack(ps))
 			end
@@ -68,7 +72,8 @@ end
 -- Init
 --
 
-function drivebot.Init(cfg)
+function drivebot.Init(state, cfg)
+	State = state
 	Config = cfg
 
 	mq.bind('/drive', callback_drive)

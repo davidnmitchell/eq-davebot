@@ -9,6 +9,7 @@ local autositbot = {}
 -- Globals
 --
 
+local State = {}
 local Config = {}
 local Sitting = false
 local OverrideTimeout = 0
@@ -52,7 +53,8 @@ end
 -- Init
 --
 
-function autositbot.Init(cfg)
+function autositbot.Init(state, cfg)
+	State = state
 	Config = cfg
 end
 

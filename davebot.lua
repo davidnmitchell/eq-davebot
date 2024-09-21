@@ -22,6 +22,7 @@ local nukebot         = require('nukebot')
 local buffbot         = require('buffbot')
 require('eqclass')
 require('config')
+require('state')
 
 
 --
@@ -29,7 +30,9 @@ require('config')
 --
 
 local MyClass = EQClass:new()
-local Config = Config:new('davebot')
+local Ini = Ini:new()
+local State = BotState:new(Ini)
+local Config = Config:new('davebot', State, Ini)
 
 local Running = true
 local LastHeardFrom = {}
@@ -103,98 +106,103 @@ local function main()
 
 	--bc.InitServer()
 
-	tlo.Init(Config)
-	local tlo_co = ManagedCoroutine:new(
+	local state_co = ManagedCoroutine:new(
 		function()
-			tlo.Run()
+			State:Run()
 		end
 	)
-	teameventbot.Init(Config)
+	-- tlo.Init(Config)
+	-- local tlo_co = ManagedCoroutine:new(
+	-- 	function()
+	-- 		tlo.Run()
+	-- 	end
+	-- )
+	teameventbot.Init(State, Config)
 	local teameventbot_co = ManagedCoroutine:new(
 		function()
 			teameventbot.Run()
 		end
 	)
-	drivebot.Init(Config)
+	drivebot.Init(State, Config)
 	local drivebot_co = ManagedCoroutine:new(
 		function()
 			drivebot.Run()
 		end
 	)
-	autositbot.Init(Config)
+	autositbot.Init(State, Config)
 	local autositbot_co = ManagedCoroutine:new(
 		function()
 			autositbot.Run()
 		end
 	)
-	gembot.Init(Config)
+	gembot.Init(State, Config)
 	local gembot_co = ManagedCoroutine:new(
 		function()
 			gembot.Run()
 		end
 	)
-	targetbot.Init(Config)
+	targetbot.Init(State, Config)
 	local targetbot_co = ManagedCoroutine:new(
 		function()
 			targetbot.Run()
 		end
 	)
-	healbot.Init(Config)
+	healbot.Init(State, Config)
 	local healbot_co = ManagedCoroutine:new(
 		function()
 			healbot.Run()
 		end
 	)
-	crowdcontrolbot.Init(Config)
+	crowdcontrolbot.Init(State, Config)
 	local crowdcontrolbot_co = ManagedCoroutine:new(
 		function()
 			crowdcontrolbot.Run()
 		end
 	)
-	dotbot.Init(Config)
+	dotbot.Init(State, Config)
 	local dotbot_co = ManagedCoroutine:new(
 		function()
 			dotbot.Run()
 		end
 	)
-	debuffbot.Init(Config)
+	debuffbot.Init(State, Config)
 	local debuffbot_co = ManagedCoroutine:new(
 		function()
 			debuffbot.Run()
 		end
 	)
-	nukebot.Init(Config)
+	nukebot.Init(State, Config)
 	local ddbot_co = ManagedCoroutine:new(
 		function()
 			nukebot.Run()
 		end
 	)
-	buffbot.Init(Config)
+	buffbot.Init(State, Config)
 	local buffbot_co = ManagedCoroutine:new(
 		function()
 			buffbot.Run()
 		end
 	)
-	petbot.Init(Config)
+	petbot.Init(State, Config)
 	local petbot_co = ManagedCoroutine:new(
 		function()
 			petbot.Run()
 		end
 	)
-	meleebot.Init(Config)
+	meleebot.Init(State, Config)
 	local meleebot_co = ManagedCoroutine:new(
 		function()
 			meleebot.Run()
 		end
 	)
-	tetherbot.Init(Config)
+	tetherbot.Init(State, Config)
 	local tetherbot_co = ManagedCoroutine:new(
 		function()
 			tetherbot.Run()
 		end
 	)
 	if MyClass.IsBard then
-		songbot.Init(Config)
+		songbot.Init(State, Config)
 	end
 	local songbot_co = ManagedCoroutine:new(
 		function()
@@ -204,10 +212,8 @@ local function main()
 	local ecstate_co = ManagedCoroutine:new(
 		function()
 			while true do
-				---@diagnostic disable-next-line: undefined-field
-				if mq.TLO.DaveBot.States.IsEarlyCombatActive() and not mychar.InCombat() and mq.TLO.DaveBot.States.EarlyCombatActiveSince() + 10000 < mq.gettime() then
-					---@diagnostic disable-next-line: undefined-field
-					mq.TLO.DaveBot.States.EarlyCombatIsInactive()
+				if State.IsEarlyCombatActive and not mychar.InCombat() and State.EarlyCombatActiveSince + 10000 < mq.gettime() then
+					State:MarkEarlyCombatInactive()
 				end
 				co.yield()
 			end
@@ -239,8 +245,7 @@ local function main()
 				local spell_count = spells.KnownSpellCount()
 				if spell_count > last_spell_count then
 					last_spell_count = spell_count
-					local ini = Ini:new()
-					spells.DumpSpellBook(ini, 'Spells')
+					spells.DumpSpellBook(Ini, 'Spells')
 				end
 			end
 		end
@@ -272,7 +277,8 @@ local function main()
 
 		if MyClass.IsBard and Config:Twist():Enabled() then songbot_co:Resume() end
 
-		tlo_co:Resume()
+		state_co:Resume()
+		-- tlo_co:Resume()
 		teameventbot_co:Resume()
 		targetbot_co:Resume()
 		tetherbot_co:Resume()

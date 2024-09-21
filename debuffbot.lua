@@ -11,6 +11,7 @@ local debuffbot = {}
 -- Globals
 --
 
+local State = {}
 local Config = {}
 
 
@@ -32,6 +33,7 @@ local function CastDebuffOn(spell_name, gem, id, order)
 	if name then
 		if not mq.TLO.Spawn(id).Buff(name).Name() then
 			spells.QueueSpellIfNotQueued(
+				State,
 				name,
 				'gem' .. gem,
 				id,
@@ -70,7 +72,8 @@ end
 -- Init
 --
 
-function debuffbot.Init(cfg)
+function debuffbot.Init(state, cfg)
+	State = state
 	Config = cfg
 end
 
@@ -82,8 +85,7 @@ end
 function debuffbot.Run()
 	log('Up and running')
 	while true do
-		---@diagnostic disable-next-line: undefined-field
-		if mychar.InCombat() and not mq.TLO.DaveBot.States.IsCrowdControlActive() then
+		if mychar.InCombat() and not State.IsCrowdControlActive then
 			do_debuffs()
 		end
 		co.yield()

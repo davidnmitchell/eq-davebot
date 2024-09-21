@@ -11,6 +11,7 @@ local songbot = {}
 -- Globals
 --
 
+local State = {}
 local Config = {}
 local Paused = false
 local PauseUntil = 0
@@ -31,8 +32,7 @@ local function interrupt()
 end
 
 local function check_twist(order)
-	---@diagnostic disable-next-line: undefined-field
-	if not mq.TLO.DaveBot.States.IsCrowdControlActive() and not mq.TLO.DaveBot.States.IsBardCastActive() then
+	if not State.IsCrowdControlActive and not State.IsBardCastActive then
 		local gem_order = {}
 		for i,spell_key in ipairs(order) do
 			gem_order[i] = Config:SpellBar():GemBySpellKey(spell_key)
@@ -77,7 +77,8 @@ end
 -- Init
 --
 
-function songbot.Init(cfg)
+function songbot.Init(state, cfg)
+	State = state
 	Config = cfg
 
 	mq.bind(

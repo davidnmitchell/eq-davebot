@@ -12,6 +12,7 @@ local dotbot = {}
 -- Globals
 --
 
+local State = {}
 local Config = {}
 
 
@@ -33,6 +34,7 @@ local function CastDotOn(spell_name, gem, id, order)
 	if name then
 		if not mq.TLO.Spawn(id).Buff(name).Name() then
 			spells.QueueSpellIfNotQueued(
+				State,
 				name,
 				'gem' .. gem,
 				id,
@@ -71,7 +73,8 @@ end
 -- Init
 --
 
-function dotbot.Init(cfg)
+function dotbot.Init(state, cfg)
+	State = state
 	Config = cfg
 end
 
@@ -84,7 +87,7 @@ function dotbot.Run()
 	log('Up and running')
 	while true do
 		---@diagnostic disable-next-line: undefined-field
-		if mychar.InCombat() and not mq.TLO.DaveBot.States.IsCrowdControlActive() then
+		if mychar.InCombat() and not State.IsCrowdControlActive then
 			do_dots()
 		end
 		co.yield()

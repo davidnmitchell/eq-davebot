@@ -79,12 +79,12 @@ function Section:Boolean(key, default)
 end
 
 function Section:WriteString(key, value)
-	self._data[key] = value
+	self._data[key] = str.Trim(lip.StripComment(value))
 	mq.cmd('/ini "' .. self._filename .. '" "' .. self._name .. '" "' .. key .. '" "' .. value .. '"')
 end
 
 function Section:WriteNumber(key, value)
-	self:WriteString(key, value)
+	self:WriteString(key, tostring(value))
 end
 
 function Section:WriteBoolean(key, value)

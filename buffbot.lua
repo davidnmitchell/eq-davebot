@@ -16,6 +16,7 @@ local buffbot = {}
 --
 
 local Config = {}
+local State = {}
 local MyClass = EQClass:new()
 
 local BCNameById = {}
@@ -98,8 +99,10 @@ local function HasBuff(spell_name, target_id)
 end
 
 local function CastBuffOn(buff_name, gem, id, char_name, order)
+	assert(id)
+	assert(buff_name)
 	if mq.TLO.Spawn(id)() and mq.TLO.Spawn(id).Distance() <= mq.TLO.Spell(buff_name).Range() then
-		spells.QueueSpellIfNotQueued(buff_name, 'gem' .. gem, id, 'Buffing ' .. char_name .. ' with ' .. buff_name, Config:Buff():MinMana(), 0, 1, 90 + order)
+		spells.QueueSpellIfNotQueued(State, buff_name, 'gem' .. gem, id, 'Buffing ' .. char_name .. ' with ' .. buff_name, Config:Buff():MinMana(), 0, 1, 90 + order)
 	end
 end
 
@@ -109,12 +112,12 @@ local function CheckOnBuffsForId(package, target_id, char_name, key_order)
 		if spell.Type == 'item' then
 			local ready = mq.TLO.Me.ItemReady(spell.Name)()
 			if ready and not HasBuff(spell.Effect, target_id) then
-				spells.QueueSpellIfNotQueued(spell.Name, spell.Type, target_id, 'Buffing ' .. char_name .. ' with ' .. spell.Name, 0, 0, 1, 89)
+				spells.QueueSpellIfNotQueued(State, spell.Name, spell.Type, target_id, 'Buffing ' .. char_name .. ' with ' .. spell.Name, 0, 0, 1, 89)
 			end
 		elseif spell.Type == 'alt' then
 			local ready = mq.TLO.Me.AltAbilityReady(spell.Name)()
 			if ready and not HasBuff(spell.Effect, target_id) then
-				spells.QueueSpellIfNotQueued(spell.Name, spell.Type, target_id, 'Buffing ' .. char_name .. ' with ' .. spell.Name, 0, 0, 1, 89)
+				spells.QueueSpellIfNotQueued(State, spell.Name, spell.Type, target_id, 'Buffing ' .. char_name .. ' with ' .. spell.Name, 0, 0, 1, 89)
 			end
 		else
 			local gem, err = Config:SpellBar():GemBySpell(spell)
@@ -290,7 +293,8 @@ end
 -- Init
 --
 
-function buffbot.Init(cfg)
+function buffbot.Init(state, cfg)
+	State = state
 	Config = cfg
 
 	mq.event('exception1', 'Your #1# spell did not take hold.#*#', exception1)
@@ -306,7 +310,7 @@ function buffbot.Run()
 	log('Up and running')
 	while true do
 		---@diagnostic disable-next-line: undefined-field
-		if not mychar.InCombat() and not mq.TLO.DaveBot.States.IsEarlyCombatActive() then
+		if not mychar.InCombat() and not State.IsEarlyCombatActive then
 			do_buffs()
 		end
 		co.yield()

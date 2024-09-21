@@ -10,6 +10,7 @@ local gembot = {}
 -- Globals
 --
 
+local State = {}
 local Config = {}
 
 
@@ -29,9 +30,9 @@ local function do_memorize()
 			if spell.Error == nil then
 				if mq.TLO.Me.Gem(gem).Name() ~= spell.Name then
 
-					if not MyClass.IsBard or not mq.TLO.DaveBot.States.IsBardCastActive() then
+					if not MyClass.IsBard or not State.IsBardCastActive then
 						if MyClass.IsBard then
-							mq.TLO.DaveBot.States.BardCastIsActive()
+							State:MarkBardCastActive()
 							mq.cmd('/twist clear')
 							co.delay(100)
 						end
@@ -46,7 +47,7 @@ local function do_memorize()
 						---@diagnostic disable-next-line: undefined-field
 						co.delay(10000, function() return mq.TLO.Cast.Ready(gem)() end)
 						if MyClass.IsBard then
-							mq.TLO.DaveBot.States.BardCastIsInactive()
+							State:MarkBardCastInactive()
 						end
 					end
 
@@ -63,7 +64,8 @@ end
 -- Init
 --
 
-function gembot.Init(cfg)
+function gembot.Init(state, cfg)
+	State = state
 	Config = cfg
 end
 
