@@ -1,0 +1,90 @@
+local co = require('co')
+local common = require('common')
+require('actions.action')
+
+function Script(script_type, name, queue, timeout, priority, blocking, callback)
+    assert(name ~= nil and name:len() > 0)
+    queue = queue or {}
+    timeout = timeout or 10000
+    priority = priority or 99
+    callback = callback or function() end
+
+    local context = {}
+
+    local self = Action(blocking)
+
+    self.Name = name
+    self.Type = script_type
+    self.Timeout = timeout
+    self.Priority = priority
+    self.Callback = callback
+
+    if type(priority) == 'boolean' then
+        print('------------- ' .. name)
+    end
+
+    self.IsSame = function(script)
+        return script_type == script.Type and name == script.Name
+    end
+
+    self.Add = function(action)
+        table.insert(queue, assert(action))
+    end
+
+    ---@diagnostic disable-next-line: duplicate-set-field
+    self.Run = function(state, cfg, ctx)
+        context = common.CopyAndOverlay(ctx, context)
+        for i, action in ipairs(queue) do
+            action.Ready = false
+            action.Coroutine = coroutine.create(
+                function()
+                    local skip, reason = action.ShouldSkip(state, cfg, context)
+                    if not skip then
+                        local ready = co.delay(action.ReadyTimeout, function() return action.IsReady(state, cfg, context) end)
+                        if ready then
+                            action.Ready = true
+                            co.yield()
+                            action.Run(state, cfg, context)
+                            local finished = co.delay(action.FinishTimeout, function() return action.IsFinished(state, cfg, context) end)
+                            if finished then
+                                action.PostAction(state, cfg, context)
+                            end
+                        end
+                    end
+                end
+            )
+        end
+
+        local head = 1
+        local tail = 1
+        while head <= #queue do
+            local e = tail
+            if e > #queue then e = #queue end
+            for i = head, e do
+                local s, err = coroutine.resume(queue[i].Coroutine)
+                if not s then
+                    print(err)
+                end
+                if i == head and coroutine.status(queue[i].Coroutine) == 'dead' then
+                    head = head + 1
+                    if tail < head then
+                        tail = head
+                    end
+                end
+                if i == tail and not queue[i].Blocking and queue[i].Ready then
+                    tail = tail + 1
+                end
+                co.yield()
+            end
+        end
+    end
+
+    ---@diagnostic disable-next-line: duplicate-set-field
+    self.OnInterrupt = function(state, cfg, ctx)
+        for i, action in ipairs(queue) do
+            queue[i].OnInterrupt(state, cfg, ctx)
+        end
+    end
+
+    return self
+end
