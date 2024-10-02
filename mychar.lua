@@ -14,12 +14,14 @@ function mychar.ReadyToCast()
 		and not mq.TLO.Me.Mezzed()
 		and not mq.TLO.Me.Invulnerable()
 		and not mq.TLO.Me.Moving()
+		---@diagnostic disable-next-line: undefined-field
 		and mq.TLO.Cast.Status() == 'I'
 end
 
 function mychar.Casting()
+	---@diagnostic disable-next-line: undefined-field
 	local status = mq.TLO.Cast.Status()
-	return status ~= 'C'
+	return status ~= 'I'
 end
 
 function mychar.InCombat()
@@ -42,6 +44,9 @@ function mychar.Standing()
 	return mq.TLO.Me.State() == 'STAND'
 end
 
+function mychar.IAmInvisible()
+	return mq.TLO.Me.Invis('ANY')()
+end
 
 -- local function moving()
 -- 	local loc = mq.TLO.Me.MQLoc()

@@ -2,6 +2,8 @@ local mq = require('mq')
 local spells = require('spells')
 local mychar = require('mychar')
 local co = require('co')
+require('actions.s_memorize')
+
 
 local gembot = {}
 
@@ -9,6 +11,8 @@ local gembot = {}
 --
 -- Globals
 --
+
+local actionqueue = {}
 
 local State = {}
 local Config = {}
@@ -24,33 +28,19 @@ end
 
 local function do_memorize()
 	local gems = Config:SpellBar():Gems()
-	for gem,spell_key in pairs(gems) do
+	for gem, spell_key in pairs(gems) do
 		if spell_key ~= 'OPEN' then
 			local spell = Config:Spells():Spell(spell_key)
 			if spell.Error == nil then
 				if mq.TLO.Me.Gem(gem).Name() ~= spell.Name then
-
-					if not MyClass.IsBard or not State.IsBardCastActive then
-						if MyClass.IsBard then
-							State:MarkBardCastActive()
-							mq.cmd('/twist clear')
-							co.delay(100)
-						end
-
-						if mq.TLO.Me.Gem(spell_key) then
-							mq.cmd('/memspellslot ' .. gem ..' 0')
-							co.delay(500)
-						end
-
-						mq.cmd('/memorize "' .. spell.Name .. '" gem' .. gem)
-
-						---@diagnostic disable-next-line: undefined-field
-						co.delay(10000, function() return mq.TLO.Cast.Ready(gem)() end)
-						if MyClass.IsBard then
-							State:MarkBardCastInactive()
-						end
-					end
-
+					actionqueue.AddUnique(
+						ScpMemorize(
+							spell.Name,
+							'gem' .. gem,
+							false,
+							99
+						)
+					)
 				end
 			else
 				log(spell.Error)
@@ -64,9 +54,10 @@ end
 -- Init
 --
 
-function gembot.Init(state, cfg)
+function gembot.Init(state, cfg, aq)
 	State = state
 	Config = cfg
+	actionqueue = aq
 end
 
 

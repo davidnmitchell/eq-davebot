@@ -11,36 +11,28 @@ MyClass = EQClass:new()
 Config = {}
 Config.__index = Config
 
-function Config:new(type, state, ini)
+function Config:new(state, ini)
 	local mt = {}
 	setmetatable(mt, self)
 
 	mt._state = state
 	mt._ini = ini
 
-	mt._type = type
-	if mt._type == 'davebot' then
-		mt._spells = SpellsConfig:new(mt._state, mt._ini)
-		mt._spellbar = SpellBarConfig:new(mt._state, mt._ini, mt._spells)
-		mt._autosit = AutoSitConfig:new(mt._state, mt._ini)
-		mt._tether = TetherConfig:new(mt._state, mt._ini)
-		mt._twist = TwistConfig:new(mt._state, mt._ini)
-		mt._teamevents = TeamEventsConfig:new(mt._state, mt._ini)
-		mt._heal = HealConfig:new(mt._state, mt._ini)
-		mt._melee = MeleeConfig:new(mt._state, mt._ini)
-		mt._pet = PetConfig:new(mt._state, mt._ini)
-		mt._debuff = DebuffConfig:new(mt._state, mt._ini)
-		mt._cc = CrowdControlConfig:new(mt._state, mt._ini)
-		mt._buff = BuffConfig:new(mt._state, mt._ini)
-		mt._dot = DotConfig:new(mt._state, mt._ini)
-		mt._dd = DdConfig:new(mt._state, mt._ini)
-	end
-
-	if mt._type == 'castqueue' then
-		mt._spells = SpellsConfig:new(mt._state, mt._ini)
-		mt._spellbar = SpellBarConfig:new(mt._state, mt._ini, mt._spells)
-		mt._castqueue = CastQueueConfig:new(mt._state, mt._ini)
-	end
+	mt._spells = SpellsConfig:new(mt._state, mt._ini)
+	mt._spellbar = SpellBarConfig:new(mt._state, mt._ini, mt._spells)
+	mt._castqueue = CastQueueConfig:new(mt._state, mt._ini)
+	mt._autosit = AutoSitConfig:new(mt._state, mt._ini)
+	mt._tether = TetherConfig:new(mt._state, mt._ini)
+	mt._twist = TwistConfig:new(mt._state, mt._ini)
+	mt._teamevents = TeamEventsConfig:new(mt._state, mt._ini)
+	mt._heal = HealConfig:new(mt._state, mt._ini)
+	mt._melee = MeleeConfig:new(mt._state, mt._ini)
+	mt._pet = PetConfig:new(mt._state, mt._ini)
+	mt._debuff = DebuffConfig:new(mt._state, mt._ini)
+	mt._cc = CrowdControlConfig:new(mt._state, mt._ini)
+	mt._buff = BuffConfig:new(mt._state, mt._ini)
+	mt._dot = DotConfig:new(mt._state, mt._ini)
+	mt._dd = DdConfig:new(mt._state, mt._ini)
 
 	mt._last_load_time = mq.gettime()
 
@@ -53,43 +45,36 @@ function Config:Reload(min_interval)
 
 		co.yield()
 
-		if self._type == 'davebot' then
-			self._tether:Calculate()
-			co.yield()
-			self._teamevents:Calculate()
-			co.yield()
-			self._autosit:Calculate()
-			co.yield()
-			self._melee:Calculate()
-			co.yield()
-			self._cc:Calculate()
-			co.yield()
-			self._debuff:Calculate()
-			co.yield()
-			self._heal:Calculate()
-			co.yield()
-			self._pet:Calculate()
-			co.yield()
-			self._buff:Calculate()
-			co.yield()
-			self._dot:Calculate()
-			co.yield()
-			self._dd:Calculate()
-			co.yield()
-			if MyClass.HasSpells or MyClass.IsBard then
-				self._spellbar:Calculate()
-				co.yield()
-			end
-			if MyClass.IsBard then
-				self._twist:Calculate()
-				co.yield()
-			end
-		end
-
-		if self._type == 'castqueue' then
+		self._castqueue:Calculate()
+		co.yield()
+		self._tether:Calculate()
+		co.yield()
+		self._teamevents:Calculate()
+		co.yield()
+		self._autosit:Calculate()
+		co.yield()
+		self._melee:Calculate()
+		co.yield()
+		self._cc:Calculate()
+		co.yield()
+		self._debuff:Calculate()
+		co.yield()
+		self._heal:Calculate()
+		co.yield()
+		self._pet:Calculate()
+		co.yield()
+		self._buff:Calculate()
+		co.yield()
+		self._dot:Calculate()
+		co.yield()
+		self._dd:Calculate()
+		co.yield()
+		if MyClass.HasSpells or MyClass.IsBard then
 			self._spellbar:Calculate()
 			co.yield()
-			self._castqueue:Calculate()
+		end
+		if MyClass.IsBard then
+			self._twist:Calculate()
 			co.yield()
 		end
 
@@ -247,7 +232,7 @@ function SpellBarConfig:Calculate()
 	local start = mq.gettime()
 	self._defaults = self:_defaults_from_ini()
 	self._flag_overlays = self:_flag_overlays_from_ini()
-	for i=2,4 do
+	for i=1,4 do
 		self._mode_overlays[i] = self:_mode_overlays_from_ini(i)
 		self._mode_flag_overlays[i] = self:_mode_flag_overlays_from_ini(i)
 	end
@@ -304,6 +289,14 @@ function SpellBarConfig:GemBySpellKey(spell_key)
 	local spell_bar = self:Gems()
 	for k,v in pairs(spell_bar) do
 		if spell_key == v then return k end
+	end
+	return 0
+end
+
+function SpellBarConfig:GemBySpellName(spell_name)
+	local spell_bar = self:Gems()
+	for gem, spell_key in pairs(spell_bar) do
+		if self._spells_config:Spell(spell_key).Name == spell_name then return gem end
 	end
 	return 0
 end

@@ -23,6 +23,7 @@ local buffbot         = require('buffbot')
 require('eqclass')
 require('config')
 require('state')
+local actionqueue     = require('actionqueue')
 
 
 --
@@ -32,23 +33,23 @@ require('state')
 local MyClass = EQClass:new()
 local Ini = Ini:new()
 local State = BotState:new(Ini)
-local Config = Config:new('davebot', State, Ini)
+local Config = Config:new(State, Ini)
 
 local Running = true
-local LastHeardFrom = {}
+-- local LastHeardFrom = {}
 
 
 --
 -- Functions
 --
 
-local function CheckBot(name)
-	local timeout = 15000
-	if name == 'buffbot' then timeout = 20000 end
-	if heartbeat.CheckProcess(name, LastHeardFrom[name], timeout) then
-		LastHeardFrom[name] = mq.gettime()
-	end
-end
+-- local function CheckBot(name)
+-- 	local timeout = 15000
+-- 	if name == 'buffbot' then timeout = 20000 end
+-- 	if heartbeat.CheckProcess(name, LastHeardFrom[name], timeout) then
+-- 		LastHeardFrom[name] = mq.gettime()
+-- 	end
+-- end
 
 local function Shutdown()
 	lua.KillScriptIfRunning('castqueue')
@@ -59,6 +60,8 @@ end
 --
 -- Main
 --
+-- TODO: Pystoffe Order on Flag Underwater is broken
+-- TODO: SpellBar under a Flag has some sort of first OPEN option
 -- TODO: Individual class spell lists/abilities (scan Book and write to ini?)
 -- TODO: Warn when MainTank/MainAssist not set (idles most offense routines and does not say anyting about it)
 -- TODO: Check for a more powerful buff before buffing (see autotoon)
@@ -83,6 +86,11 @@ end
 -- TODO: When enchanter is cycling for mez, pet isn't attacking or is attacking wrong target
 -- TODO: Secondary mez takes over when primary is OOM
 -- TODO: GUI? (see autotoon)
+-- TODO: Meleebot needs to be able to switch to secondary targets if necessary
+-- TODO: Meleebot needs to be able to engage an add when tank is away on a pull
+-- TODO: CCbot needs a way to ignore an add
+-- TODO: Timmaayy is casting clarity on Pystoffe
+-- TODO: /drive grp shm heal maintank
 
 local function main()
 	mq.cmd('/setwintitle ' .. mq.TLO.Me.Name())
@@ -96,19 +104,25 @@ local function main()
 			end
 		end
 	)
-	mq.bind(
-		'/dbhb',
-		function(...)
-			local args = { ... }
-			LastHeardFrom[args[1]] = mq.gettime()
-		end
-	)
+	-- mq.bind(
+	-- 	'/dbhb',
+	-- 	function(...)
+	-- 		local args = { ... }
+	-- 		LastHeardFrom[args[1]] = mq.gettime()
+	-- 	end
+	-- )
 
 	--bc.InitServer()
 
 	local state_co = ManagedCoroutine:new(
 		function()
 			State:Run()
+		end
+	)
+	actionqueue.Init(State, Config)
+	local actionqueue_co = ManagedCoroutine:new(
+		function()
+			actionqueue.Run()
 		end
 	)
 	-- tlo.Init(Config)
@@ -123,86 +137,86 @@ local function main()
 			teameventbot.Run()
 		end
 	)
-	drivebot.Init(State, Config)
+	drivebot.Init(State, Config, actionqueue)
 	local drivebot_co = ManagedCoroutine:new(
 		function()
 			drivebot.Run()
 		end
 	)
-	autositbot.Init(State, Config)
+	autositbot.Init(State, Config, actionqueue)
 	local autositbot_co = ManagedCoroutine:new(
 		function()
 			autositbot.Run()
 		end
 	)
-	gembot.Init(State, Config)
+	gembot.Init(State, Config, actionqueue)
 	local gembot_co = ManagedCoroutine:new(
 		function()
 			gembot.Run()
 		end
 	)
-	targetbot.Init(State, Config)
+	targetbot.Init(State, Config, actionqueue)
 	local targetbot_co = ManagedCoroutine:new(
 		function()
 			targetbot.Run()
 		end
 	)
-	healbot.Init(State, Config)
+	healbot.Init(State, Config, actionqueue)
 	local healbot_co = ManagedCoroutine:new(
 		function()
 			healbot.Run()
 		end
 	)
-	crowdcontrolbot.Init(State, Config)
+	crowdcontrolbot.Init(State, Config, actionqueue)
 	local crowdcontrolbot_co = ManagedCoroutine:new(
 		function()
 			crowdcontrolbot.Run()
 		end
 	)
-	dotbot.Init(State, Config)
+	dotbot.Init(State, Config, actionqueue)
 	local dotbot_co = ManagedCoroutine:new(
 		function()
 			dotbot.Run()
 		end
 	)
-	debuffbot.Init(State, Config)
+	debuffbot.Init(State, Config, actionqueue)
 	local debuffbot_co = ManagedCoroutine:new(
 		function()
 			debuffbot.Run()
 		end
 	)
-	nukebot.Init(State, Config)
+	nukebot.Init(State, Config, actionqueue)
 	local ddbot_co = ManagedCoroutine:new(
 		function()
 			nukebot.Run()
 		end
 	)
-	buffbot.Init(State, Config)
+	buffbot.Init(State, Config, actionqueue)
 	local buffbot_co = ManagedCoroutine:new(
 		function()
 			buffbot.Run()
 		end
 	)
-	petbot.Init(State, Config)
+	petbot.Init(State, Config, actionqueue)
 	local petbot_co = ManagedCoroutine:new(
 		function()
 			petbot.Run()
 		end
 	)
-	meleebot.Init(State, Config)
+	meleebot.Init(State, Config, actionqueue)
 	local meleebot_co = ManagedCoroutine:new(
 		function()
 			meleebot.Run()
 		end
 	)
-	tetherbot.Init(State, Config)
+	tetherbot.Init(State, Config, actionqueue)
 	local tetherbot_co = ManagedCoroutine:new(
 		function()
 			tetherbot.Run()
 		end
 	)
 	if MyClass.IsBard then
-		songbot.Init(State, Config)
+		songbot.Init(State, Config, actionqueue)
 	end
 	local songbot_co = ManagedCoroutine:new(
 		function()
@@ -242,11 +256,12 @@ local function main()
 		function()
 			local last_spell_count = 0
 			while true do
-				local spell_count = spells.KnownSpellCount()
-				if spell_count > last_spell_count then
-					last_spell_count = spell_count
-					spells.DumpSpellBook(Ini, 'Spells')
+				local spell_book = spells.KnownSpells()
+				if #spell_book > last_spell_count then
+					last_spell_count = #spell_book
+					spells.DumpSpellBook(Ini, 'Spells', spell_book)
 				end
+				co.delay(1000)
 			end
 		end
 	)
@@ -255,27 +270,27 @@ local function main()
 	while Running == true do
 		mq.doevents()
 
-		if MyClass.HasSpells or MyClass.IsBard then
-			gembot_co:Resume()
-			spellwrite_co:Resume()
+		actionqueue_co:Resume()
+
+		if not mq.TLO.Me.Dead() and not mq.TLO.Me.Zoning() then
+			if MyClass.HasSpells or MyClass.IsBard then
+				gembot_co:Resume()
+				spellwrite_co:Resume()
+			end
+
+			if Config:Heal():Enabled() then healbot_co:Resume() end
+			if Config:CrowdControl():Enabled() then crowdcontrolbot_co:Resume() end
+			if Config:Debuff():Enabled() then debuffbot_co:Resume() end
+			if Config:Dot():Enabled() then dotbot_co:Resume() end
+			if Config:Dd():Enabled() then ddbot_co:Resume() end
+			if Config:Melee():Enabled() then meleebot_co:Resume() end
+
+			if Config:Buff():Enabled() and not mychar.InCombat() then buffbot_co:Resume() end
+			if Config:Pet():AutoCast() or Config:Pet():AutoAttack() then petbot_co:Resume() end
+			if Config:AutoSit():Enabled() then autositbot_co:Resume() end
+
+			if MyClass.IsBard and Config:Twist():Enabled() then songbot_co:Resume() end
 		end
-
-		if MyClass.HasSpells then
-			CheckBot('castqueue')
-		end
-
-		if Config:Heal():Enabled() then healbot_co:Resume() end
-		if Config:CrowdControl():Enabled() then crowdcontrolbot_co:Resume() end
-		if Config:Debuff():Enabled() then debuffbot_co:Resume() end
-		if Config:Dot():Enabled() then dotbot_co:Resume() end
-		if Config:Dd():Enabled() then ddbot_co:Resume() end
-		if Config:Melee():Enabled() then meleebot_co:Resume() end
-
-		if Config:Buff():Enabled() then buffbot_co:Resume() end
-		if Config:Pet():AutoCast() or Config:Pet():AutoAttack() then petbot_co:Resume() end
-		if Config:AutoSit():Enabled() then autositbot_co:Resume() end
-
-		if MyClass.IsBard and Config:Twist():Enabled() then songbot_co:Resume() end
 
 		state_co:Resume()
 		-- tlo_co:Resume()
@@ -287,8 +302,6 @@ local function main()
 		warnings_co:Resume()
 
 		Config:Reload(10000)
-
-		-- if mq.TLO.Me.Zoning() then Shutdown() end
 
 		mq.delay(10)
 	end

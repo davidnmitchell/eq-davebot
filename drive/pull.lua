@@ -4,7 +4,10 @@ local group = require('group')
 local spells = require('spells')
 local teamevents = require('teamevents')
 require('eqclass')
+require('actions.s_cast')
 
+
+local actionqueue = {}
 
 local MyClass = EQClass:new()
 local State = {}
@@ -17,10 +20,30 @@ local function shd_pull()
     State:MarkEarlyCombatActive()
     co.delay(100)
 
-    mq.cmd('/dbt target last mob')
-    mq.delay(5000, function()
-        return mq.TLO.Spawn(mq.TLO.Target.ID()).Type() == 'NPC'
-    end)
+    local last_npc = State:LastTargetOf(
+        function(id)
+            return mq.TLO.Spawn(id).Type() == 'NPC'
+        end
+    )
+
+    if last_npc <= 0 then
+        print('Could not find npc in target history to pull')
+        State:MarkEarlyCombatInactive()
+        return
+    end
+
+    print('Pulling ' .. mq.TLO.Spawn(last_npc).CleanName())
+
+    local locked, lock = State:WaitOnAndAcquireLock('target', 'pull', 2000, 2000)
+    if not locked then
+        print('Could not target')
+        State:MarkEarlyCombatInactive()
+        return
+    end
+
+    mq.cmd('/target id ' .. last_npc)
+    co.delay(5000, function() return mq.TLO.Target.ID() == last_npc end)
+
     local target_id = mq.TLO.Target.ID()
 
     local range = mq.TLO.Spell(snare).Range()
@@ -37,10 +60,15 @@ local function shd_pull()
         return
     end
 
-    spells.WipeQueue()
+    State:ReleaseLock('target', 'pull')
 
-    mq.delay(5000, function() return mq.TLO.Cast.Ready() end)
+    actionqueue.Wipe()
+
+    ---@diagnostic disable-next-line: undefined-field
+    co.delay(5000, function() return mq.TLO.Cast.Ready() end)
+    ---@diagnostic disable-next-line: undefined-field
     if not mq.TLO.Cast.Ready() then
+        print('Not ready to cast spell')
         State:MarkEarlyCombatInactive()
         return
     end
@@ -51,31 +79,56 @@ local function shd_pull()
         return
     end
 
-    local mob = mq.TLO.Spawn(target_id).Name()
-    teamevents.PullStart(mob)
-    spells.QueueSpell(State, snare, 'gem4', target_id, 'Pulling ' .. mob .. ' with ' .. snare, 0, 0, 1, 40)
-    -- TODO Implement TLO where the castqueue tells us the current spell being cast
-    co.delay(1000, function() return mq.TLO.Cast.Status() == 'C' end)
-    if not mq.TLO.Cast.Status() == 'C' then
+    teamevents.PullStart(mq.TLO.Spawn(target_id).Name())
+    local done_casting = false
+    actionqueue.Add(
+        ScpCast(
+            snare,
+            'gem' .. Config:SpellBar():GemBySpellName(snare),
+            0,
+            1,
+            target_id,
+            0,
+            nil,
+            41,
+            function() done_casting = true end
+        )
+    )
+    ---@diagnostic disable-next-line: undefined-field
+    co.delay(5000, function() return mq.TLO.Cast.Status() == 'C' end)
+    ---@diagnostic disable-next-line: undefined-field
+    if mq.TLO.Cast.Status() ~= 'C' then
         print('Not casting spell for some reason, aborting...')
         State:MarkEarlyCombatInactive()
-        spells.WipeQueue()
+        actionqueue.Wipe()
         return
     end
-    co.delay(mq.TLO.Spell(snare).CastTime())
+    co.delay(mq.TLO.Spell(snare).CastTime() + 5000, function() return done_casting end)
+    ---@diagnostic disable-next-line: undefined-field
     co.delay(5000, function() return mq.TLO.Cast.Status() == 'I' end)
 
+    ---@diagnostic disable-next-line: undefined-field
     local result = mq.TLO.Cast.Result()
     if result == 'CAST_SUCCESS' or result == 'CAST_RESIST' or result == 'CAST_IMMUNE' then
-        mq.cmd('/dbtether return')
+        local done_returning = false
+        actionqueue.Add(
+            ScpNavToCamp(
+                42,
+                false,
+                function() done_returning = true end
+            )
+        )
         co.delay(1000)
         if mq.TLO.Pet() ~= 'NO PET' then
             mq.cmd('/pet back')
         end
-        while mq.TLO.MoveTo.Moving() do
-            co.delay(50)
+        co.delay(60000, function() return done_returning end)
+        if mq.TLO.MoveTo.Moving() then
+            print('Nav took longer than expected')
+            State:MarkEarlyCombatInactive()
+            return
         end
--- TODO make this exit-able
+        -- TODO make this exit-able
         teamevents.PullEnd()
         mq.cmd('/drive attack')
     else
@@ -89,8 +142,9 @@ return {
             shd_pull()
         end
     end,
-    Init = function(state, cfg)
+    Init = function(state, cfg, aq)
         State = state
         Config = cfg
+        actionqueue = aq
     end
 }

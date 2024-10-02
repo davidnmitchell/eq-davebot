@@ -2,6 +2,7 @@ local mq = require('mq')
 local co = require('co')
 local str= require('str')
 local mychar = require('mychar')
+require('actions.s_navtocamp')
 
 
 local tetherbot = {}
@@ -9,6 +10,8 @@ local tetherbot = {}
 --
 -- Globals
 --
+
+local actionqueue = {}
 
 local State = {}
 local Config = {}
@@ -22,14 +25,21 @@ local function log(msg)
 	print('(tetherbot) ' .. msg)
 end
 
-local function in_camp()
+local function have_camp()
 	return State.TetherStatus == 'C'
 end
 
 local function nav_to_camp()
-	mq.cmd('/nav loc ' .. State.TetherDetail .. ' log=off')
+	actionqueue.AddUnique(
+		ScpNavToCamp(
+			30,
+			false
+		)
+	)
+	-- mq.cmd('/nav loc ' .. State.TetherDetail .. ' log=off')
 end
 
+-- TODO: Action this
 local function nav_to_id()
 	local id = tonumber(State.TetherDetail)
 	mq.cmd('/target id ' .. id)
@@ -49,7 +59,7 @@ local function callback_dbtether(...)
 	local args = { ... }
 	if #args > 0 then
 		if args[1]:lower() == 'return' then
-			if in_camp() then
+			if have_camp() then
 				nav_to_camp()
 			end
 		elseif args[1]:lower() == 'none' or args[1]:lower() == 'off' then
@@ -79,7 +89,7 @@ end
 
 local function do_tether()
 	if State.TetherStatus ~= 'N' then
-		if in_camp() then
+		if have_camp() then
 			if Config:Tether():ModeIsActive() and not mq.TLO.Navigation.Active() and not mychar.InCombat() and State:MyCharHasNotMovedFor() > Config:Tether():ReturnTimer() then
 				local distance = mq.TLO.Math.Distance(State.TetherDetail)()
 				if distance > Config:Tether():CampMaxDistance() then
@@ -103,9 +113,10 @@ end
 -- Init
 --
 
-function tetherbot.Init(state, cfg)
+function tetherbot.Init(state, cfg, aq)
 	State = state
 	Config = cfg
+	actionqueue = aq
 
 	mq.bind('/dbtether', callback_dbtether)
 end

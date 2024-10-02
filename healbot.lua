@@ -1,8 +1,8 @@
 local mq = require('mq')
 local co = require('co')
-local spells = require('spells')
 require('eqclass')
-require('config')
+require('actions.a_cast')
+
 
 local healbot = {}
 
@@ -10,6 +10,8 @@ local healbot = {}
 --
 -- Globals
 --
+
+local actionqueue = {}
 
 local State = {}
 local Config = {}
@@ -66,7 +68,18 @@ local function CheckTank()
 				if gem < 1 then
 					log(err)
 				else
-					spells.QueueSpellIfNotQueued(State, spell.Name, 'gem' .. gem, mq.TLO.Group.MainTank.ID(), 'Healing ' .. mq.TLO.Group.MainTank.Name() .. ' with ' .. spell.Name, 0, 0, 1, 30)
+					actionqueue.AddUnique(
+						ScpCast(
+							spell.Name,
+							'gem' .. gem,
+							Config:Heal():MinMana(),
+							3,
+							mq.TLO.Group.MainTank.ID(),
+							0,
+							nil,
+							30
+						)
+					)
 				end
 			end
 		end
@@ -81,7 +94,18 @@ local function CheckGroupMembers()
 		if gem < 1 then
 			log(err)
 		else
-			spells.QueueSpellIfNotQueued(State, spell.Name, 'gem' .. gem, to_heal.id, 'Healing ' .. to_heal.name .. ' with ' .. spell.Name, 0, 0, 1, 30)
+			actionqueue.AddUnique(
+				ScpCast(
+					spell.Name,
+					'gem' .. gem,
+					Config:Heal():MinMana(),
+					3,
+					to_heal.id,
+					0,
+					nil,
+					30
+				)
+			)
 		end
 	end
 end
@@ -93,7 +117,18 @@ local function GroupHeal(pct, spell_key)
 		log(err)
 	else
 		if mq.TLO.Me.CurrentMana() > mq.TLO.Spell(spell.Name).Mana() then
-			spells.QueueSpellIfNotQueued(State, spell.Name, 'gem' .. gem, mq.TLO.Me.ID(), 'Healing group with ' .. spell.Name, 0, 0, 1, 20)
+			actionqueue.AddUnique(
+				ScpCast(
+					spell.Name,
+					'gem' .. gem,
+					Config:Heal():MinMana(),
+					3,
+					mq.TLO.Me.ID(),
+					0,
+					nil,
+					20
+				)
+			)
 		end
 	end
 end
@@ -110,7 +145,18 @@ local function CheckPets()
 					if gem < 1 then
 						log(err)
 					else
-						spells.QueueSpellIfNotQueued(State, spell.Name, 'gem' .. gem, mq.TLO.Group.Member(i).Pet.ID(), 'Healing ' .. mq.TLO.Group.Member(i).Name() .. '\'s pet with ' .. spell.Name, 0, 0, 1, 60)
+						actionqueue.AddUnique(
+							ScpCast(
+								spell.Name,
+								'gem' .. gem,
+								Config:Heal():MinMana(),
+								1,
+								mq.TLO.Group.Member(i).Pet.ID(),
+								0,
+								nil,
+								60
+							)
+						)
 					end
 				end
 			end
@@ -124,17 +170,39 @@ local function CheckSelf()
 		local pct_hps = mq.TLO.Me.PctHPs()
 		if pct_hps ~= nil and pct_hps <= pct then
 			local spell = Config:Spells():Spell(spell_key)
-			local gem, err = Config:SpellBar():GemBySpell(spell_key)
+			local gem, err = Config:SpellBar():GemBySpellKey(spell_key)
 			if gem < 1 then
 				log(err)
 			else
 				local spell_target = mq.TLO.Spell(spell.Name).TargetType()
 				if spell_target == 'LifeTap' then
 					if mq.TLO.Target() then
-						spells.QueueSpellIfNotQueued(State, spell.Name, 'gem' .. gem, mq.TLO.Target.ID(), 'Tapping ' .. mq.TLO.Target.Name() .. ' with ' .. spell.Name, 0, 0, 1, 30)
+						actionqueue.AddUnique(
+							ScpCast(
+								spell.Name,
+								'gem' .. gem,
+								Config:Heal():MinMana(),
+								3,
+								mq.TLO.Target.ID(),
+								0,
+								nil,
+								30
+							)
+						)
 					end
 				else
-					spells.QueueSpellIfNotQueued(State, spell.Name, 'gem' .. gem, mq.TLO.Me.ID(), 'Healing ' .. mq.TLO.Me.Name() .. ' with ' .. spell.Name, 0, 0, 1, 30)
+					actionqueue.AddUnique(
+						ScpCast(
+							spell.Name,
+							'gem' .. gem,
+							Config:Heal():MinMana(),
+							3,
+							mq.TLO.Me.ID(),
+							0,
+							nil,
+							30
+						)
+					)
 				end
 			end
 		end
@@ -151,7 +219,18 @@ local function CheckMyPet()
 			if gem < 1 then
 				log(err)
 			else
-				spells.QueueSpellIfNotQueued(State, spell.Name, 'gem' .. gem, mq.TLO.Pet.ID(), 'Healing ' .. mq.TLO.Pet.Name() .. ' with ' .. spell.Name, 0, 0, 1, 60)
+				actionqueue.AddUnique(
+					ScpCast(
+						spell.Name,
+						'gem' .. gem,
+						Config:Heal():MinMana(),
+						1,
+						mq.TLO.Pet.ID(),
+						0,
+						nil,
+						60
+					)
+				)
 			end
 		end
 	end
@@ -183,9 +262,10 @@ end
 -- Init
 --
 
-function healbot.Init(state, cfg)
+function healbot.Init(state, cfg, aq)
 	State = state
 	Config = cfg
+	actionqueue = aq
 end
 
 

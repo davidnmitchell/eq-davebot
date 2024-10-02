@@ -1,6 +1,7 @@
 local mq = require('mq')
-local mychar = require('mychar')
 local co = require('co')
+require('actions.s_target')
+
 
 local targetbot = {}
 
@@ -9,9 +10,10 @@ local targetbot = {}
 -- Globals
 --
 
+local actionqueue = {}
+
 local State = {}
 local Config = {}
-local History = {}
 
 
 --
@@ -32,15 +34,33 @@ local function callback_dbt(...)
 			end
 			if args[2] == 'last' then
 				if args[3] == 'mob' then
-					for i, h_id in ipairs(History) do
-						if mq.TLO.Spawn(h_id).Type() == 'NPC' then
-							mq.cmd('/target id ' .. h_id)
+					local last_npc = State:LastTargetOf(
+						function(id)
+							return mq.TLO.Spawn(id).Type() == 'NPC'
 						end
+					)
+					if last_npc > 0 then
+						actionqueue.Add(
+							ScpTarget(
+								last_npc,
+								40
+							)
+						)
 					end
+					-- for i, h_id in ipairs(State.TargetHistory) do
+					-- 	if mq.TLO.Spawn(h_id).Type() == 'NPC' then
+					-- 		actionqueue.Add(
+					-- 			ScpTarget(
+					-- 				h_id,
+					-- 				40
+					-- 			)
+					-- 		)
+					-- 	end
+					-- end
 				end
 			end
 		elseif args[1] == 'history' then
-			for i, h_id in ipairs(History) do
+			for i, h_id in ipairs(State.TargetHistory) do
 				log(mq.TLO.Spawn(h_id).Name())
 			end
 		end
@@ -50,11 +70,11 @@ local function callback_dbt(...)
 end
 
 local function do_history()
-	if #History < 1 or History[1] ~= mq.TLO.Target.ID() then
-		table.insert(History, 1, mq.TLO.Target.ID())
+	if #State.TargetHistory < 1 or State.TargetHistory[1] ~= mq.TLO.Target.ID() then
+		table.insert(State.TargetHistory, 1, mq.TLO.Target.ID())
 	end
-	while #History > 10 do
-		table.remove(History, #History)
+	while #State.TargetHistory > 10 do
+		table.remove(State.TargetHistory, #State.TargetHistory)
 	end
 end
 
@@ -103,11 +123,12 @@ end
 -- Init
 --
 
-function targetbot.Init(state, cfg)
+function targetbot.Init(state, cfg, aq)
 	State = state
 	Config = cfg
+	actionqueue = aq
 
-	mq.bind('/dbt', callback_dbt)
+	mq.bind('/dbtarget', callback_dbt)
 end
 
 

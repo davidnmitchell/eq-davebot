@@ -1,24 +1,43 @@
 local mq = require('mq')
 local co = require('co')
 local mychar = require('mychar')
-local spells = require('spells')
 local inventory = require('inventory')
 require('eqclass')
+require('actions.s_summon')
 
+
+local actionqueue = {}
 
 local MyClass = EQClass:new()
 local State = {}
 local Config = {}
 
+local Summoning = false
 
-local function summon(spell, timer, item)
+
+local function summon_callback()
+    Summoning = false
+end
+
+local function summon(spell, item)
     if not mychar.InCombat() then
-        mq.cmd.echo(string.format('\awSummoning \ag%s', item))
-        spells.QueueSpellIfNotQueued(State, spell)
-        co.delay(timer + 10000, function() return mq.TLO.Cursor.ID() ~= nil end)
-        co.delay(500)
-        mq.cmd('/autoinventory')
-        co.delay(10000, function() return mq.TLO.Cursor.ID() == nil end)
+        Summoning = true
+        actionqueue.AddUnique(
+            ScpSummon(
+                spell,
+                item,
+                5,
+                40,
+                summon_callback
+            )
+        )
+        co.delay(30000, function() return not Summoning end)
+        -- mq.cmd.echo(string.format('\awSummoning \ag%s', item))
+        -- spells.QueueSpellIfNotQueued(State, spell)
+        -- co.delay(timer + 10000, function() return mq.TLO.Cursor.ID() ~= nil end)
+        -- co.delay(500)
+        -- mq.cmd('/autoinventory')
+        -- co.delay(10000, function() return mq.TLO.Cursor.ID() == nil end)
     end
 end
 
@@ -41,7 +60,7 @@ return {
                     spell = 'Summon Food'
                 end
                 while summoned_count(item) < min_count do
-                    summon(spell, mq.TLO.Spell(spell).CastTime(), item)
+                    summon(spell, item)
                 end
                 print(target)
                 if target:len() > 0 then
@@ -71,8 +90,9 @@ return {
             end
         end
     end,
-    Init = function(state, cfg)
+    Init = function(state, cfg, aq)
         State = state
         Config = cfg
+        actionqueue = aq
     end
 }

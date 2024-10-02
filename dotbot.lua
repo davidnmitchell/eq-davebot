@@ -1,8 +1,8 @@
 local mq = require('mq')
 local co = require('co')
-local spells = require('spells')
 local target = require('target')
 local mychar = require('mychar')
+require('actions.a_cast')
 
 
 local dotbot = {}
@@ -11,6 +11,8 @@ local dotbot = {}
 --
 -- Globals
 --
+
+local actionqueue = {}
 
 local State = {}
 local Config = {}
@@ -30,22 +32,25 @@ end
 
 local function CastDotOn(spell_name, gem, id, order)
 	local priority = 50 + order
-	local name = mq.TLO.Spell(spell_name).Name()
-	if name then
-		if not mq.TLO.Spawn(id).Buff(name).Name() then
-			spells.QueueSpellIfNotQueued(
-				State,
-				name,
+	if mq.TLO.Spell(spell_name).Name() then
+		actionqueue.AddUnique(
+			ScpCast(
+				spell_name,
 				'gem' .. gem,
-				id,
-				'Dotting ' .. mq.TLO.Spawn(id).Name() .. ' with ' .. spell_name,
 				Config:Dot():MinMana(),
-				Config:Dot():MinTargetHpPct(),
 				2,
+				id,
+				Config:Dot():MinTargetHpPct(),
+				nil,
 				priority
 			)
-		end
+		)
 	end
+end
+
+local function hps_are_in_range(id, pct)
+	local hps = mq.TLO.Spawn(id).PctHPs()
+	return hps and hps < pct and hps >= Config:Dot():MinTargetHpPct()
 end
 
 local function do_dots()
@@ -60,7 +65,7 @@ local function do_dots()
 			local group_target_id = mq.TLO.Me.GroupAssistTarget.ID()
 			local group_target_pct_hps = mq.TLO.Spawn(group_target_id).PctHPs()
 
-			if group_target_id and not target.IsInGroup(group_target_id) and group_target_pct_hps and group_target_pct_hps < pct and group_target_pct_hps >= Config:Dot():MinTargetHpPct() and not HasDot(spell, group_target_id) then
+			if group_target_id and not target.IsInGroup(group_target_id) and hps_are_in_range(group_target_id, pct) and not HasDot(spell, group_target_id) then
 				CastDotOn(spell.Name, gem, group_target_id, i)
 			end
 		end
@@ -73,9 +78,10 @@ end
 -- Init
 --
 
-function dotbot.Init(state, cfg)
+function dotbot.Init(state, cfg, aq)
 	State = state
 	Config = cfg
+	actionqueue = aq
 end
 
 

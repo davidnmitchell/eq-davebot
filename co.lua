@@ -43,8 +43,8 @@ function co.delay(ms, end_early_predicate)
 	local timeout = mq.gettime() + ms
 	while true do
 		co.yield()
-		if mq.gettime() >= timeout then break end
-		if end_early_predicate() then break end
+		if mq.gettime() >= timeout then return false end
+		if end_early_predicate() then return true end
 	end
 end
 

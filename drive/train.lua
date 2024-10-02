@@ -1,6 +1,7 @@
 local mq = require('mq')
 local co = require('co')
 require('eqclass')
+require('actions.action')
 
 local MyClass = EQClass:new()
 

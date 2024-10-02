@@ -4,9 +4,16 @@ local group = require('group')
 local teamevents = require('teamevents')
 require('eqclass')
 
+
+local actionqueue = {}
+
 local MyClass = EQClass:new()
+local State = {}
+local Config = {}
+
 local EngageDistance = 80
 local Timeout = 35
+
 
 local function in_xtargets(target_id)
     local i = 1
@@ -21,33 +28,52 @@ local function in_xtargets(target_id)
     return false
 end
 
-local function tank_attack()
-    local target = tonumber(mq.TLO.Me.GroupAssistTarget.ID())
+local function target(target_id)
+    local locked, lock = State:WaitOnAndAcquireLock('target', 'attack', 2000, 2000)
+    if not locked then
+        print('Could not target')
+        return
+    end
 
-    if target == nil or target == 0 then
-        target = tonumber(mq.TLO.Me.XTarget(1).ID())
-        if target == nil then return end
-        mq.cmd('/target id ' .. target)
+    mq.cmd('/target id ' .. target_id)
+
+    State:ReleaseLock('target', 'attack')
+end
+
+local function tank_attack()
+    local target_id = tonumber(mq.TLO.Me.GroupAssistTarget.ID())
+
+    State:MarkEarlyCombatActive()
+
+    if target_id == nil or target_id == 0 then
+        target_id = tonumber(mq.TLO.Me.XTarget(1).ID())
+        if target_id == nil then return end
+
+        target(target_id)
+
         co.delay(100)
     end
 
-    if target == mq.TLO.Me.ID() then
+    if target_id == mq.TLO.Me.ID() then
         print('Can\'t attack yourself')
+        State:MarkEarlyCombatInactive()
         return
     end
-    if group.IsGroupMember(target) then
+    if group.IsGroupMember(target_id) then
         print('Can\'t attack a group member')
+        State:MarkEarlyCombatInactive()
         return
     end
 
-    if not in_xtargets(target) then
+    if not in_xtargets(target_id) then
         local first = mq.TLO.Me.XTarget(1).ID()
         if first ~= nil and first ~= 0 then
-            target = first
+            target_id = first
+            target(target_id)
         end
     end
 
-	local mob = mq.TLO.Spawn(target).Name()
+	local mob = mq.TLO.Spawn(target_id).Name()
 	teamevents.PreEngage(mob)
 	mq.cmd('/face')
 
@@ -77,5 +103,10 @@ return {
         elseif MyClass.Name == 'Paladin' then
             tank_attack()
         end
+    end,
+    Init = function(state, cfg, aq)
+        State = state
+        Config = cfg
+        actionqueue = aq
     end
 }

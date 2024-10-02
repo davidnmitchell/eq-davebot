@@ -1,7 +1,8 @@
 local mq = require('mq')
 local co = require('co')
-local spells = require('spells')
 local mychar = require('mychar')
+require('actions.s_cast')
+
 
 local nukebot = {}
 
@@ -9,6 +10,8 @@ local nukebot = {}
 --
 -- Globals
 --
+
+local actionqueue = {}
 
 local State = {}
 local Config = {}
@@ -24,7 +27,18 @@ local function log(msg)
 end
 
 local function CastNukeOn(spell_name, gem, id)
-	spells.QueueSpell(State, spell_name, 'gem' .. gem, id, 'Nuking ' .. mq.TLO.Spawn(id).Name() .. ' with ' .. spell_name, Config:Dd():MinMana(), Config:Dd():MinTargetHpPct(), 2, 70)
+	actionqueue.Add(
+		ScpCast(
+			spell_name,
+			'gem' .. gem,
+			Config:Dd():MinMana(),
+			2,
+			id,
+			Config:Dd():MinTargetHpPct(),
+			nil,
+			70
+		)
+	)
 end
 
 local function do_nukes()
@@ -57,9 +71,10 @@ end
 -- Init
 --
 
-function nukebot.Init(state, cfg)
+function nukebot.Init(state, cfg, aq)
 	State = state
 	Config = cfg
+	actionqueue = aq
 end
 
 

@@ -1,8 +1,9 @@
 local mq = require('mq')
 local co = require('co')
-local spells = require('spells')
 local target = require('target')
 local mychar = require('mychar')
+require('actions.s_cast')
+
 
 local debuffbot = {}
 
@@ -10,6 +11,8 @@ local debuffbot = {}
 --
 -- Globals
 --
+
+local actionqueue = {}
 
 local State = {}
 local Config = {}
@@ -28,21 +31,33 @@ local function HasDebuff(spell, id)
 end
 
 local function CastDebuffOn(spell_name, gem, id, order)
+	assert(tonumber(gem))
 	local priority = 40 + order
-	local name = mq.TLO.Spell(spell_name).Name()
-	if name then
-		if not mq.TLO.Spawn(id).Buff(name).Name() then
-			spells.QueueSpellIfNotQueued(
-				State,
-				name,
-				'gem' .. gem,
-				id,
-				'Debuffing ' .. mq.TLO.Spawn(id).Name() .. ' with ' .. spell_name,
-				Config:Debuff():MinMana(),
-				Config:Debuff():MinTargetHpPct(),
-				2,
-				priority
+	if mq.TLO.Spell(spell_name).Name() then
+		if not mq.TLO.Spawn(id).Buff(spell_name).Name() then
+			actionqueue.AddUnique(
+				ScpCast(
+					spell_name,
+					'gem' .. gem,
+					Config:Debuff():MinMana(),
+					2,
+					id,
+					Config:Debuff():MinTargetHpPct(),
+					nil,
+					priority
+				)
 			)
+			-- spells.QueueSpellIfNotQueued(
+			-- 	State,
+			-- 	spell_name,
+			-- 	'gem' .. gem,
+			-- 	id,
+			-- 	'Debuffing ' .. mq.TLO.Spawn(id).Name() .. ' with ' .. spell_name,
+			-- 	Config:Debuff():MinMana(),
+			-- 	Config:Debuff():MinTargetHpPct(),
+			-- 	2,
+			-- 	priority
+			-- )
 		end
 	end
 end
@@ -72,9 +87,10 @@ end
 -- Init
 --
 
-function debuffbot.Init(state, cfg)
+function debuffbot.Init(state, cfg, aq)
 	State = state
 	Config = cfg
+	actionqueue = aq
 end
 
 

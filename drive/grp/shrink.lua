@@ -47,8 +47,8 @@ end
 local function shrink_bigs()
     local caster = name_of_caster()
     for i=0, mq.TLO.Group.GroupSize()-1 do
-        -- print(mq.TLO.Group.Member(i).Name() .. ':' .. mq.TLO.Group.Member(i).Height())
-        if mq.TLO.Group.Member(i).Height() >= 3.4 then
+        print(mq.TLO.Group.Member(i).Name() .. ':' .. mq.TLO.Group.Member(i).Height())
+        if mq.TLO.Group.Member(i).Height() >= 4.0 then
             send_spell(caster, mq.TLO.Group.Member(i).ID())
         end
     end

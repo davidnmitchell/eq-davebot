@@ -86,36 +86,30 @@ function spells.WipeQueue()
 	mq.cmd('/dbcq removeall')
 end
 
-function spells.KnownSpellCount()
+function spells.KnownSpells()
+	local spell_book = {}
     local i = 1
-    while mq.TLO.Me.Book(i)() do
+	local spell = mq.TLO.Me.Book(i)()
+    while spell ~= nil do
+		table.insert(spell_book, spell)
         i = i + 1
+		spell = mq.TLO.Me.Book(i)()
     end
-    return i-1
+    return spell_book
 end
 
-function spells.DumpSpellBook(ini, section_name)
-	local i = 1
-	local done = false
-	local spell_book = {}
+function spells.DumpSpellBook(ini, section_name, spell_book)
+	for i, spell in ipairs(spell_book) do
+		local name = spell
+		local category = mq.TLO.Spell(spell).Category()
+		local subcategory = mq.TLO.Spell(spell).Subcategory()
+		local type = mq.TLO.Spell(spell).TargetType()
+		local level = mq.TLO.Spell(spell).Level()
 
-	while not done do
-		local spell = mq.TLO.Me.Book(i)()
-		if spell == nil then
-			done = true
-		else
-			local name = spell
-			local category = mq.TLO.Spell(spell).Category()
-			local subcategory = mq.TLO.Spell(spell).Subcategory()
-			local type = mq.TLO.Spell(spell).TargetType()
-			local level = mq.TLO.Spell(spell).Level()
+		local parts = str.Split(name, ' ')
+		local key = string.lower(parts[#parts]):gsub('`', '') .. level
 
-			local parts = str.Split(name, ' ')
-			local key = string.lower(parts[#parts]):gsub('`', '') .. level
-
-			table.insert(spell_book, 1, {key=key, name=name, level=level, category=category, subcategory=subcategory, type=type})
-			i = i + 1
-		end
+		spell_book[i] = {key=key, name=name, level=level, category=category, subcategory=subcategory, type=type}
 	end
 
 	table.sort(
@@ -129,20 +123,22 @@ function spells.DumpSpellBook(ini, section_name)
 	)
 
 	local section = ini:Section(section_name)
-	for idx,spell in ipairs(spell_book) do
-		local name_pad = 18 - string.len(spell.key)
-		local comment_pad = 35 - string.len(spell.name)
+	for i, spell in ipairs(spell_book) do
+		if section:IsMissing(spell.key) then
+			local name_pad = 18 - string.len(spell.key)
+			local comment_pad = 35 - string.len(spell.name)
 
-		local name = spell.name
-		local comment = ';' .. spell.category .. ',' .. spell.subcategory .. ',' .. spell.type
+			local name = spell.name
+			local comment = ';' .. spell.category .. ',' .. spell.subcategory .. ',' .. spell.type
 
-		for j=1,name_pad do name = str.Insert(name, ' ', 0) end
-		for j=1,comment_pad do comment = str.Insert(comment, ' ', 0) end
+			for j=1,name_pad do name = str.Insert(name, ' ', 0) end
+			for j=1,comment_pad do comment = str.Insert(comment, ' ', 0) end
 
-		section:WriteString(spell.key, name .. comment)
+			section:WriteString(spell.key, name .. comment)
+		end
 	end
 
-	print('Wrote ' .. (i-1) .. ' spells to ini')
+	print('Wrote ' .. (#spell_book) .. ' spells to ini')
 end
 
 function spells.FindSpell(category, subcategory, target, depth)
@@ -209,17 +205,13 @@ function spells.CastAndBlock(spell, gem, targetid, maxtries)
 	end
 end
 
-function spells.MemorizeAndBlock(spell, gem_number)
-	local cmd = '/memorize "' .. spell .. '" gem' .. gem_number
-	mq.cmd(cmd)
+function spells.MemorizeAndBlock(spell_name, gem_number)
+	mq.cmd('/memorize "' .. spell_name .. '" gem' .. gem_number)
+	co.delay(250)
 	---@diagnostic disable-next-line: undefined-field
-	while not mq.TLO.Cast.Ready(gem_number)() do
-		mq.delay(100)
-	end
+	co.delay(5000, function() return mq.TLO.Cast.Ready(gem_number)() end)
 	---@diagnostic disable-next-line: undefined-field
-	while mq.TLO.Cast.Status() ~= 'I' do
-		mq.delay(10)
-	end
+	co.delay(mq.TLO.Spell(spell_name).RecastTime() + 2000, function() return mq.TLO.Cast.Status() == 'I' end)
 end
 
 function spells.BardCast(state, spell, gem_number, target_id)
@@ -235,6 +227,15 @@ function spells.BardCast(state, spell, gem_number, target_id)
 	mq.cmd('/cast ' .. gem_number)
 	mq.delay((mq.TLO.Spell(spell).CastTime.Seconds() + 2) * 1000)
 	state:MarkBardCastInactive()
+end
+
+function spells.HumanString1(spell_name, target_id)
+	if target_id > 0 then
+		local target_name = mq.TLO.Spawn(target_id).Name() or "NIL"
+		return string.format('\ay%s \axon \aw%s', spell_name, target_name)
+	else
+		return string.format('\ay%s', spell_name)
+	end
 end
 
 return spells

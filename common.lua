@@ -84,15 +84,27 @@ function common.TableValueToBooleanOrDefault(t, key, default)
 		t[key] = default
 	else
 		t[key] = t[key] == 'TRUE'
-	end	
+	end
 end
+
+function common.CopyAndOverlay(...)
+    local res = {}
+	local args = { ... }
+	for i, table in ipairs(args) do
+		for k, v in pairs(table) do
+			res[k] = v
+		end
+    end
+    return res
+end
+
 
 function common.PrintTableKeys(T)
 	for k,v in pairs(T) do print(k) end
 end
 
 function common.PrintTable(T)
-	for i,v in pairs(T) do print(i .. '=' .. v) end
+	for i,v in pairs(T) do print(tostring(i) .. '=' .. tostring(v)) end
 end
 
 function common.PrintArray(A)

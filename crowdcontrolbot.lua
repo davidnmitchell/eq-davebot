@@ -1,15 +1,18 @@
 local mq = require('mq')
 local co = require('co')
-local spells = require('spells')
 local mychar = require('mychar')
+local group  = require('group')
 require('eqclass')
+local common = require('common')
+
 
 local crowdcontrolbot = {}
-
 
 --
 -- Globals
 --
+
+local actionqueue = {}
 
 local State = {}
 local Config = {}
@@ -26,37 +29,83 @@ local function log(msg)
 	print('(crowdcontrolbot) ' .. msg)
 end
 
+local function do_target(target_id, func)
+	local locked, lock = State:WaitOnAndAcquireLock(
+		'target',
+		'crowdcontrolbot'
+	)
+	assert(locked, 'Could not lock target')
+
+	-- mq.TLO.Spawn(target_id).DoTarget()()
+	mq.cmd('/target id ' .. target_id)
+	co.delay(750, function() return mq.TLO.Target.ID() == target_id end)
+	assert(mq.TLO.Target.ID() == target_id, 'Did not target')
+
+	co.delay(250)
+	local value = func()
+
+	State:ReleaseLock(
+		'target',
+		'crowdcontrolbot'
+	)
+
+	return value
+end
+
 local function IsControlled(spawn_id)
-	co.delay(
-		3500,
+	return do_target(
+		spawn_id,
 		function()
-			mq.cmd('/target id ' .. spawn_id)
-			return mq.TLO.Target.ID() == spawn_id
+			return mq.TLO.Target.Mezzed()
 		end
 	)
-	return mq.TLO.Target.Mezzed()
 end
 
-local function WantToControl(idx, target_id)
----@diagnostic disable-next-line: undefined-field
-	local group_assist_target_id = mq.TLO.Me.GroupAssistTarget.ID()
-	local have_group_assist = group_assist_target_id ~= nil and group_assist_target_id ~= 0
-	local this_is_group_assist = target_id == group_assist_target_id
-	local want_to_control = false
-	if have_group_assist then
-		if not this_is_group_assist then
-			want_to_control = true
+local function party_targets()
+	local targets = {}
+	for i=1, mq.TLO.Group.Members() do
+		local member_id = mq.TLO.Group.Member(i).ID()
+		local member_target_id = do_target(member_id, function() return mq.TLO.Me.TargetOfTarget.ID() end)
+		if mq.TLO.Group.Member(i).CleanName() == 'Xamox' then
+			print('Xamox: ' .. (member_target_id or 'nil'))
 		end
-	else
-		if idx ~= 1 then
-			want_to_control = true
+		if member_target_id ~= nil and member_target_id ~= 0 then
+			table.insert(targets, member_target_id)
+		end
+
+		local member_pet_id = group.PetIdById(member_id)
+		if member_pet_id ~= 0 then
+			local member_pet_target_id = do_target(member_pet_id, function() return mq.TLO.Me.TargetOfTarget.ID() end)
+			if member_pet_target_id ~= nil and member_pet_target_id ~= 0 then
+				table.insert(targets, member_pet_target_id)
+			end
 		end
 	end
-	return want_to_control
+	local main_assist_id = mq.TLO.Me.GroupAssistTarget.ID()
+	if main_assist_id ~= nil and main_assist_id ~= 0 then
+		table.insert(targets, main_assist_id)
+	end
+	return targets
 end
 
-local function CCTargetByID(idx, target_id, cast_function)
-	if WantToControl(idx, target_id) and not IsControlled(target_id) then
+local function WantToControl(idx, target_id, current_targets)
+	for i, member_target_id in ipairs(current_targets) do
+		if member_target_id == target_id then
+			return false
+		end
+	end
+	-- local log_string = ''
+	-- for i, t_id in ipairs(current_targets) do
+	-- 	if t_id ~= 0 then
+	-- 		log_string = log_string .. ', ' .. (mq.TLO.Spawn(t_id).Name() or 'nil') .. '(' .. t_id .. ')'
+	-- 	end
+	-- end
+	-- print('No match (' .. target_id .. ') :' .. log_string)
+	return true
+end
+
+local function CCTargetByID(idx, target_id, current_targets, cast_function)
+	if WantToControl(idx, target_id, current_targets) and not IsControlled(target_id) then
 		local spell_key = Config:CrowdControl():Spell()
 		local spell = Config:Spells():Spell(spell_key)
 		local gem, err = Config:SpellBar():GemBySpell(spell)
@@ -76,16 +125,27 @@ local function EnchanterCCMode()
 	log('Crowd control active')
 	CCRunning = true
 	State:MarkCrowdControlActive()
-	spells.WipeQueue()
-	mq.cmd('/interrupt')
+	actionqueue.Wipe()
 end
 
-local function EnchanterCCTargetByID(idx, target_id)
+local function EnchanterCCTargetByID(idx, target_id, current_targets)
 	CCTargetByID(
 		idx,
 		target_id,
+		current_targets,
 		function(spell, gem, name)
-			spells.QueueSpellIfNotQueued(State, spell, 'gem' .. gem, target_id, 'Controlling ' .. name, Config:CrowdControl():MinMana(), 1, 3, 10)
+			actionqueue.AddUnique(
+				ScpCast(
+					spell,
+					'gem' .. gem,
+					Config:CrowdControl():MinMana(),
+					3,
+					target_id,
+					1,
+					mq.TLO.Spell(spell).CastTime.Raw() + 2000,
+					10
+				)
+			)
 		end
 	)
 end
@@ -94,26 +154,41 @@ local function BardCCMode()
 	log('Crowd control active')
 	CCRunning = true
 	State:MarkCrowdControlActive()
-	co.delay(100)
+	actionqueue.Wipe()
 	mq.cmd('/attack off')
 	mq.cmd('/twist clear')
+	co.delay(250)
 end
 
-local function BardCCTargetByID(idx, target_id)
+local function BardCCTargetByID(idx, target_id, current_targets)
 	CCTargetByID(
 		idx,
 		target_id,
+		current_targets,
 		function(spell, gem, name)
-			log('Controlling ' .. name)
-			mq.cmd('/target id ' .. target_id)
-			co.delay(50)
-			mq.cmd('/twist hold ' .. gem)
-			while WantToControl(idx, target_id) and not IsControlled(target_id) and mq.TLO.Spawn(target_id).State() ~= "DEAD" and mq.TLO.Spawn(target_id).State() ~= "STUN" do
-				co.delay(250)
-			end
-			if IsControlled(target_id) then
-				log('Controlled ' .. name)
-			end
+			actionqueue.AddUnique(
+				ScpCast(
+					spell,
+					'gem' .. gem,
+					Config:CrowdControl():MinMana(),
+					20,
+					target_id,
+					1,
+					mq.TLO.Spell(spell).CastTime.Raw() + 2000,
+					10
+				)
+			)
+
+			-- log('Controlling ' .. name)
+			-- mq.cmd('/target id ' .. target_id)
+			-- co.delay(50)
+			-- mq.cmd('/twist hold ' .. gem)
+			-- while WantToControl(idx, target_id) and not IsControlled(target_id) and mq.TLO.Spawn(target_id).State() ~= "DEAD" and mq.TLO.Spawn(target_id).State() ~= "STUN" do
+			-- 	co.delay(250)
+			-- end
+			-- if IsControlled(target_id) then
+			-- 	log('Controlled ' .. name)
+			-- end
 		end
 	)
 end
@@ -131,9 +206,10 @@ local function do_crowdcontrol(my_class)
 			if not CCRunning then
 				EnchanterCCMode()
 			end
+			local current_targets = party_targets()
 			if i_am_primary then
 				for i=1,mq.TLO.Me.XTarget() do
-					EnchanterCCTargetByID(i, mq.TLO.Me.XTarget(i).ID())
+					EnchanterCCTargetByID(i, mq.TLO.Me.XTarget(i).ID(), current_targets)
 					if mq.TLO.Me.XTarget() <= threshold then
 						goto afterloop1
 					end
@@ -141,7 +217,7 @@ local function do_crowdcontrol(my_class)
 				::afterloop1::
 			else
 				for i=mq.TLO.Me.XTarget(),1,-1 do
-					EnchanterCCTargetByID(i, mq.TLO.Me.XTarget(i).ID())
+					EnchanterCCTargetByID(i, mq.TLO.Me.XTarget(i).ID(), current_targets)
 					if mq.TLO.Me.XTarget() <= threshold then
 						goto afterloop2
 					end
@@ -159,9 +235,10 @@ local function do_crowdcontrol(my_class)
 			if not CCRunning then
 				BardCCMode()
 			end
+			local current_targets = party_targets()
 			if i_am_primary then
 				for i=1,mq.TLO.Me.XTarget() do
-					BardCCTargetByID(i, mq.TLO.Me.XTarget(i).ID())
+					BardCCTargetByID(i, mq.TLO.Me.XTarget(i).ID(), current_targets)
 					if mq.TLO.Me.XTarget() <= threshold then
 						goto afterloop3
 					end
@@ -169,7 +246,7 @@ local function do_crowdcontrol(my_class)
 				::afterloop3::
 			else
 				for i=mq.TLO.Me.XTarget(),1,-1 do
-					BardCCTargetByID(i, mq.TLO.Me.XTarget(i).ID())
+					BardCCTargetByID(i, mq.TLO.Me.XTarget(i).ID(), current_targets)
 					if mq.TLO.Me.XTarget() <= threshold then
 						goto afterloop4
 					end
@@ -190,9 +267,10 @@ end
 -- Init
 --
 
-function crowdcontrolbot.Init(state, cfg)
+function crowdcontrolbot.Init(state, cfg, aq)
 	State = state
 	Config = cfg
+	actionqueue = aq
 end
 
 

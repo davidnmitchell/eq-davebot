@@ -1,4 +1,6 @@
 local mq = require('mq')
+local common = require('common')
+local netbots= require('netbots')
 
 local group = {}
 
@@ -54,6 +56,33 @@ function group.IDs()
         end
     end
 	return ids
+end
+
+function group.IndexOf(target_id)
+	local group_size = mq.TLO.Group.Members()
+	for i=1,group_size do
+		if target_id == mq.TLO.Group.Member(i).ID() then
+			return i
+		end
+	end
+	return 0
+end
+
+function group.PetIdById(target_id)
+	if common.ArrayHasValue(netbots.PeerIds(), target_id) then
+		return mq.TLO.NetBots(netbots.PeerById(target_id)).PetID()
+	elseif target_id == mq.TLO.Me.ID() then
+		return mq.TLO.Pet.ID() or 0
+	else
+		return mq.TLO.Group.Member(group.IndexOf(target_id)).Pet.ID() or 0
+	end
+end
+
+function group.MemberId(idx)
+	if idx == 0 then
+		return mq.TLO.Me.ID()
+	end
+	return mq.TLO.Group.Member(idx).ID()
 end
 
 return group

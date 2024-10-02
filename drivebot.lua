@@ -1,6 +1,6 @@
 local mq = require('mq')
-local mychar = require('mychar')
 local co = require('co')
+
 
 local drivebot = {}
 
@@ -8,6 +8,8 @@ local drivebot = {}
 --
 -- Globals
 --
+
+local actionqueue = {}
 
 local State = {}
 local Config = {}
@@ -53,7 +55,7 @@ local function callback_drive(...)
 			else
 				local package = f()
 				if package.Init ~= nil then
-					package.Init(State, Config)
+					package.Init(State, Config, actionqueue)
 				end
 				---@diagnostic disable-next-line: deprecated
 				package.Run(unpack(ps))
@@ -72,9 +74,10 @@ end
 -- Init
 --
 
-function drivebot.Init(state, cfg)
+function drivebot.Init(state, cfg, aq)
 	State = state
 	Config = cfg
+	actionqueue = aq
 
 	mq.bind('/drive', callback_drive)
 end

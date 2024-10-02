@@ -2,6 +2,7 @@ local mq = require('mq')
 local str = require('str')
 local mychar = require('mychar')
 local co = require('co')
+require('actions.s_bardtwist')
 
 
 local songbot = {}
@@ -10,6 +11,8 @@ local songbot = {}
 --
 -- Globals
 --
+
+local actionqueue = {}
 
 local State = {}
 local Config = {}
@@ -38,30 +41,43 @@ local function check_twist(order)
 			gem_order[i] = Config:SpellBar():GemBySpellKey(spell_key)
 		end
 
+		local not_what_we_want = false
 		if mq.TLO.Twist.Twisting() then
 			local current_songs = str.Split(str.Trim(mq.TLO.Twist.List()), ' ')
 			if #order ~= #current_songs then
-				interrupt()
+				not_what_we_want = true
 			else
 				for i,v in ipairs(current_songs) do
 					local gem = tonumber(v)
 					local expected_gem = gem_order[i]
 					if gem ~= expected_gem then
-						interrupt()
+						not_what_we_want = true
 						break
 					end
 				end
 			end
+		else
+			not_what_we_want = true
 		end
 
-		if not mq.TLO.Twist.Twisting() and LastTwistAt + 2000 < mq.gettime() then
-			local cmd = '/twist'
-			for i,gem in ipairs(gem_order) do
-				cmd = cmd .. ' ' .. gem
-			end
-			mq.cmd(cmd)
-			LastTwistAt = mq.gettime()
+		if not_what_we_want then
+			--interrupt()
+			actionqueue.AddUnique(
+				ScpBardTwist(
+					gem_order,
+					40
+				)
+			)
 		end
+
+		-- if not mq.TLO.Twist.Twisting() and LastTwistAt + 2000 < mq.gettime() then
+		-- 	local cmd = '/twist'
+		-- 	for i,gem in ipairs(gem_order) do
+		-- 		cmd = cmd .. ' ' .. gem
+		-- 	end
+		-- 	mq.cmd(cmd)
+		-- 	LastTwistAt = mq.gettime()
+		-- end
 	end
 end
 
@@ -77,9 +93,10 @@ end
 -- Init
 --
 
-function songbot.Init(state, cfg)
+function songbot.Init(state, cfg, aq)
 	State = state
 	Config = cfg
+	actionqueue = aq
 
 	mq.bind(
 		'/dbcq',
