@@ -41,7 +41,8 @@ local function shd_pull()
         return
     end
 
-    mq.cmd('/target id ' .. last_npc)
+    mq.TLO.Spawn(last_npc).DoTarget()
+    --mq.cmd('/target id ' .. last_npc)
     co.delay(5000, function() return mq.TLO.Target.ID() == last_npc end)
 
     local target_id = mq.TLO.Target.ID()

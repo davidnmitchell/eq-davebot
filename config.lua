@@ -4,6 +4,7 @@ local co = require('co')
 require('ini')
 require('eqclass')
 require('spell')
+local common = require('common')
 
 MyClass = EQClass:new()
 
@@ -318,7 +319,7 @@ local function mode_flag_overlays_from_ini(ini, type, mode)
 		if str.StartsWith(section_name, 'Flag:' .. mode .. ':') and str.EndsWith(section_name, ':' .. type) then
 			local parts = str.Split(section_name, ':')
 			if #parts == 4 then
-				overlays[parts[3]] = ini:Section(section_name)
+				overlays[parts[3]] = ini:Section(section_name):ToTable() or {}
 			end
 		end
 	end
@@ -331,7 +332,7 @@ local function flag_overlays_from_ini(ini, type)
 		if str.StartsWith(section_name, 'Flag:') and str.EndsWith(section_name, ':' .. type) then
 			local parts = str.Split(section_name, ':')
 			if #parts == 3 and not tonumber(parts[2]) then
-				overlays[parts[3]] = ini:Section(section_name)
+				overlays[parts[2]] = ini:Section(section_name):ToTable() or {}
 			end
 		end
 	end
@@ -348,19 +349,19 @@ end
 
 local function mode_value(state, defaults, mode_overlays, flag_overlays, mode_flag_overlays, key, default)
 	local value = defaults[key]
-	if mode_overlays[state.Mode] then
-		if mode_overlays[state.Mode][key] then
+	if mode_overlays[state.Mode] ~= nil then
+		if mode_overlays[state.Mode][key] ~= nil then
 			value = mode_overlays[state.Mode][key]
 		end
 	end
 	for i, flag in ipairs(state.Flags) do
-		if flag_overlays[flag] and flag_overlays[flag][key] then
+		if flag_overlays[flag] ~= nil and flag_overlays[flag][key] ~= nil then
 			value = flag_overlays[flag][key]
 		end
 	end
-	if mode_flag_overlays[state.Mode] then
+	if mode_flag_overlays[state.Mode] ~= nil then
 		for i, flag in ipairs(state.Flags) do
-			if mode_flag_overlays[state.Mode][flag] and mode_flag_overlays[state.Mode][flag][key] then
+			if mode_flag_overlays[state.Mode][flag] ~= nil and mode_flag_overlays[state.Mode][flag][key] ~= nil then
 				value = mode_flag_overlays[state.Mode][flag][key]
 			end
 		end
@@ -409,7 +410,7 @@ function CastQueueConfig:_mode_value(key, default)
 end
 
 function CastQueueConfig:Print()
-	return self:_mode_value('Print', 'FALSE')
+	return self:_mode_value('Print', false)
 end
 
 function CastQueueConfig:PrintTimer()

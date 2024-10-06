@@ -11,7 +11,7 @@ function ActWaitOnAndAcquireLock(
     release_timeout = release_timeout or 2000
     acquire_timeout = acquire_timeout or 1500
 
-    local self = Action()
+    local self = Action('WaitOnAndAcquireLock')
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)

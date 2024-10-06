@@ -60,10 +60,13 @@ end
 --
 -- Main
 --
--- TODO: Pystoffe Order on Flag Underwater is broken
--- TODO: SpellBar under a Flag has some sort of first OPEN option
+-- TODO: Move /dbcq under /drive
+-- TODO: /drive grp shm heal maintank
+-- TODO: Bard sometimes doesn't retwist song of travel after zoning
+-- TODO: Items and Alt to other bots besides buffbot
+-- TODO: Feature: SpellBar under a Flag has some sort of first OPEN option
+-- TODO: Feature: configs with key Pcts needs a way to overlay with different flags
 -- TODO: Individual class spell lists/abilities (scan Book and write to ini?)
--- TODO: Warn when MainTank/MainAssist not set (idles most offense routines and does not say anyting about it)
 -- TODO: Check for a more powerful buff before buffing (see autotoon)
 -- TODO: Immunity/resist memory by mob name/type (save to ini?)
 -- TODO: Summon food/drink (MQ2FeedMe?)
@@ -80,17 +83,14 @@ end
 -- TODO: /setwintitle, /foreground /setprio
 -- TODO: Loot
 -- TODO: Auto social build
--- TODO: Match category names across all bots
--- TODO: Items and Alt to other bots besides buffbot
+-- TODO: Match category key-names across all bots
 -- TODO: Magician summon weapons
--- TODO: When enchanter is cycling for mez, pet isn't attacking or is attacking wrong target
 -- TODO: Secondary mez takes over when primary is OOM
 -- TODO: GUI? (see autotoon)
 -- TODO: Meleebot needs to be able to switch to secondary targets if necessary
 -- TODO: Meleebot needs to be able to engage an add when tank is away on a pull
 -- TODO: CCbot needs a way to ignore an add
 -- TODO: Timmaayy is casting clarity on Pystoffe
--- TODO: /drive grp shm heal maintank
 
 local function main()
 	mq.cmd('/setwintitle ' .. mq.TLO.Me.Name())
@@ -117,13 +117,15 @@ local function main()
 	local state_co = ManagedCoroutine:new(
 		function()
 			State:Run()
-		end
+		end,
+		"state_co"
 	)
 	actionqueue.Init(State, Config)
 	local actionqueue_co = ManagedCoroutine:new(
 		function()
 			actionqueue.Run()
-		end
+		end,
+		"actionqueue_co"
 	)
 	-- tlo.Init(Config)
 	-- local tlo_co = ManagedCoroutine:new(
@@ -135,85 +137,99 @@ local function main()
 	local teameventbot_co = ManagedCoroutine:new(
 		function()
 			teameventbot.Run()
-		end
+		end,
+		"teameventbot_co"
 	)
 	drivebot.Init(State, Config, actionqueue)
 	local drivebot_co = ManagedCoroutine:new(
 		function()
 			drivebot.Run()
-		end
+		end,
+		"drivebot_co"
 	)
 	autositbot.Init(State, Config, actionqueue)
 	local autositbot_co = ManagedCoroutine:new(
 		function()
 			autositbot.Run()
-		end
+		end,
+		"autositbot_co"
 	)
 	gembot.Init(State, Config, actionqueue)
 	local gembot_co = ManagedCoroutine:new(
 		function()
 			gembot.Run()
-		end
+		end,
+		"gembot_co"
 	)
 	targetbot.Init(State, Config, actionqueue)
 	local targetbot_co = ManagedCoroutine:new(
 		function()
 			targetbot.Run()
-		end
+		end,
+		"targetbot_co"
 	)
 	healbot.Init(State, Config, actionqueue)
 	local healbot_co = ManagedCoroutine:new(
 		function()
 			healbot.Run()
-		end
+		end,
+		"healbot_co"
 	)
 	crowdcontrolbot.Init(State, Config, actionqueue)
 	local crowdcontrolbot_co = ManagedCoroutine:new(
 		function()
 			crowdcontrolbot.Run()
-		end
+		end,
+		"crowdcontrolbot_co"
 	)
 	dotbot.Init(State, Config, actionqueue)
 	local dotbot_co = ManagedCoroutine:new(
 		function()
 			dotbot.Run()
-		end
+		end,
+		"dotbot_co"
 	)
 	debuffbot.Init(State, Config, actionqueue)
 	local debuffbot_co = ManagedCoroutine:new(
 		function()
 			debuffbot.Run()
-		end
+		end,
+		"debuffbot_co"
 	)
 	nukebot.Init(State, Config, actionqueue)
 	local ddbot_co = ManagedCoroutine:new(
 		function()
 			nukebot.Run()
-		end
+		end,
+		"ddbot_co"
 	)
 	buffbot.Init(State, Config, actionqueue)
 	local buffbot_co = ManagedCoroutine:new(
 		function()
 			buffbot.Run()
-		end
+		end,
+		"buffbot_co"
 	)
 	petbot.Init(State, Config, actionqueue)
 	local petbot_co = ManagedCoroutine:new(
 		function()
 			petbot.Run()
-		end
+		end,
+		"petbot_co"
 	)
 	meleebot.Init(State, Config, actionqueue)
 	local meleebot_co = ManagedCoroutine:new(
 		function()
 			meleebot.Run()
-		end
+		end,
+		"meleebot_co"
 	)
 	tetherbot.Init(State, Config, actionqueue)
 	local tetherbot_co = ManagedCoroutine:new(
 		function()
 			tetherbot.Run()
-		end
+		end,
+		"tetherbot_co"
 	)
 	if MyClass.IsBard then
 		songbot.Init(State, Config, actionqueue)
@@ -221,7 +237,8 @@ local function main()
 	local songbot_co = ManagedCoroutine:new(
 		function()
 			songbot.Run()
-		end
+		end,
+		"songbot_co"
 	)
 	local ecstate_co = ManagedCoroutine:new(
 		function()
@@ -231,7 +248,8 @@ local function main()
 				end
 				co.yield()
 			end
-		end
+		end,
+		"ecstate_co"
 	)
 	local warnings_co = ManagedCoroutine:new(
 		function()
@@ -250,7 +268,8 @@ local function main()
 				end
 				co.yield()
 			end
-		end
+		end,
+		"warnings_co"
 	)
 	local spellwrite_co = ManagedCoroutine:new(
 		function()
@@ -263,7 +282,8 @@ local function main()
 				end
 				co.delay(1000)
 			end
-		end
+		end,
+		"spellwrite_co"
 	)
 
 	print('DaveBot running')

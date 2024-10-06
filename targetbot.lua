@@ -29,8 +29,9 @@ local function callback_dbt(...)
 	if #args > 0 then
 		if args[1] == 'target' then
 			if args[2] == 'id' then
-				local id = tonumber(args[3])
-				mq.cmd('/target id ' .. id)
+				local id = tonumber(args[3]) or 0
+				mq.TLO.Spawn(id).DoTarget()
+				--mq.cmd('/target id ' .. id)
 			end
 			if args[2] == 'last' then
 				if args[3] == 'mob' then

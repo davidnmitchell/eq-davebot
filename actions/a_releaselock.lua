@@ -4,7 +4,7 @@ function ActReleaseLock(lock_name, process_name)
     assert(lock_name)
     assert(process_name)
 
-    local self = Action(false)
+    local self = Action('ReleaseLock', false)
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)

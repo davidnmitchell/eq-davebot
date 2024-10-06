@@ -41,8 +41,8 @@ end
 
 -- TODO: Action this
 local function nav_to_id()
-	local id = tonumber(State.TetherDetail)
-	mq.cmd('/target id ' .. id)
+	local id = tonumber(State.TetherDetail) or 0
+	mq.TLO.Spawn(id).DoTarget()
 	co.delay(2000, function() return mq.TLO.Target.ID() == id end)
 	mq.cmd('/nav target log=off')
 end

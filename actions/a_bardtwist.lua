@@ -8,7 +8,7 @@ require('actions.action')
 function ActBardTwist(gem_order)
     assert(gem_order ~= nil and #gem_order > 0)
 
-    local self = Action()
+    local self = Action('BardTwist')
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.IsReady = function(state, cfg, ctx)

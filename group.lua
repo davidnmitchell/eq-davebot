@@ -70,7 +70,7 @@ end
 
 function group.PetIdById(target_id)
 	if common.ArrayHasValue(netbots.PeerIds(), target_id) then
-		return mq.TLO.NetBots(netbots.PeerById(target_id)).PetID()
+		return mq.TLO.NetBots(netbots.PeerById(target_id)).PetID() or 0
 	elseif target_id == mq.TLO.Me.ID() then
 		return mq.TLO.Pet.ID() or 0
 	else

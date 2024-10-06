@@ -6,7 +6,7 @@ function ActCastMessage(spell_name, target_id)
     assert(spell_name and spell_name:len() > 0)
     target_id = target_id or 0
 
-    local self = Action()
+    local self = Action('CastMessage')
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)

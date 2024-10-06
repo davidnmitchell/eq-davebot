@@ -14,7 +14,7 @@ local function name_of_caster()
 end
 
 local function send_spell(caster, type, target_id)
-    mq.cmd('/squelch /bct ' .. caster .. ' //dbcq queue -spell|Direct Damage,' .. type .. ',Single -target_id|' .. target_id)
+    mq.cmd('/squelch /bct ' .. caster .. ' //dbcq queue -spell|Direct Damage,' .. type .. ',Single -target_id|' .. target_id .. ' -max_tries|10')
 end
 
 local function dd_target_id(type, id)
@@ -25,6 +25,7 @@ local function dd_target_id(type, id)
 end
 
 local function dd_main_assist_target(type)
+    ---@diagnostic disable-next-line: undefined-field
     dd_target_id(type, mq.TLO.Me.GroupAssistTarget.ID())
 end
 

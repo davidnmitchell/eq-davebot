@@ -8,7 +8,7 @@ function ScpSit(priority, blocking)
     priority = tonumber(priority) or 99
     blocking = blocking or false
 
-    local sit_action = Action()
+    local sit_action = Action('Sit')
     ---@diagnostic disable-next-line: duplicate-set-field
     sit_action.ShouldSkip = function(state, cfg, ctx)
         if not mychar.ReadyToCast() then

@@ -1,9 +1,13 @@
 local mq = require('mq')
 
-function Action(blocking, ready_timeout, finish_timeout)
+function Action(name, blocking, ready_timeout, finish_timeout)
 	local self = {}
 
-	self.Blocking = blocking or true
+	self.Name = name or ''
+	self.Blocking = blocking
+	if self.Blocking == nil then
+		self.Blocking = true
+	end
 	self.ReadyTimeout = ready_timeout or 10000
 	self.FinishTimeout = ready_timeout or 10000
 

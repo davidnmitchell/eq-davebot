@@ -8,7 +8,7 @@ function ScpNavToCamp(priority, blocking, callback)
     priority = tonumber(priority) or 99
     blocking = blocking or false
 
-    local nav_action = Action()
+    local nav_action = Action('NavToCamp')
     ---@diagnostic disable-next-line: duplicate-set-field
     nav_action.ShouldSkip = function (state, cfg, ctx)
         return state.TetherStatus ~= 'C', 'not camped'

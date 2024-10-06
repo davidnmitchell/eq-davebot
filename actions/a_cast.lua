@@ -15,7 +15,7 @@ function ActCast(
     max_tries = max_tries or 1
     target_id = target_id or 0
 
-    local self = Action()
+    local self = Action('Cast')
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.IsReady = function(state, cfg, ctx)

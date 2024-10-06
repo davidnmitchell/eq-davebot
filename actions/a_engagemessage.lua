@@ -5,7 +5,7 @@ require('actions.action')
 function ActEngageMessage(target_id)
     assert(target_id ~= nil and target_id ~= 0)
 
-    local self = Action()
+    local self = Action('EngageMessage')
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)

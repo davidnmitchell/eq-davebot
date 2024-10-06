@@ -19,11 +19,11 @@ function ActMemorize(
     if wait_for_ready then
         finish_timeout = mq.TLO.Spell(spell_name).RecastTime() + 10000
     end
-    local self = Action(true, ready_timeout, finish_timeout)
+    local self = Action('Memorize', true, ready_timeout, finish_timeout)
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.ShouldSkip = function(state, cfg, ctx)
-        return mq.TLO.Me.Gem(gem_number).Name() == spell_name, ''
+        return mq.TLO.Me.Gem(gem_number).Name() == spell_name, 'already memorized'
 	end
 
     ---@diagnostic disable-next-line: duplicate-set-field

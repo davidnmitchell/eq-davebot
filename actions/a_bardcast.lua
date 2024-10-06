@@ -12,7 +12,7 @@ function ActBardCast(
     assert(spell_name and spell_name:len() > 0)
     assert(gem and gem:len() > 0)
 
-    local self = Action()
+    local self = Action('BardCast')
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)

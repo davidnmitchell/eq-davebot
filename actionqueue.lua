@@ -319,6 +319,7 @@ local runs_co = ManagedCoroutine:new(
 	function()
 		while true do
 			do_runs()
+			prune_skippable()
 
 			co.yield()
 		end
@@ -328,7 +329,6 @@ local runs_co = ManagedCoroutine:new(
 local prune_co = ManagedCoroutine:new(
 	function()
 		while true do
-			prune_skippable()
 
 			co.delay(1000)
 		end
@@ -351,14 +351,13 @@ local function do_scripts()
 		print_co:Resume()
 		runs_co:Resume()
 	else
+		prune_co:Resume()
 		if mq.gettime() >= PauseUntil then
 			Paused = false
 			PauseUntil = 0
 			log('Resuming')
 		end
 	end
-
-	prune_co:Resume()
 end
 
 

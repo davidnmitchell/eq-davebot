@@ -1,12 +1,12 @@
-local mq = require('mq')
-local co = require('co')
-local mychar = require('mychar')
-local group  = require('group')
+local mq      = require('mq')
+local co      = require('co')
+local mychar  = require('mychar')
+local netbots = require('netbots')
+local dannet  = require('dannet')
 require('eqclass')
-local common = require('common')
-
 
 local crowdcontrolbot = {}
+
 
 --
 -- Globals
@@ -36,9 +36,9 @@ local function do_target(target_id, func)
 	)
 	assert(locked, 'Could not lock target')
 
-	-- mq.TLO.Spawn(target_id).DoTarget()()
-	mq.cmd('/target id ' .. target_id)
-	co.delay(750, function() return mq.TLO.Target.ID() == target_id end)
+	mq.TLO.Spawn(target_id).DoTarget()
+	--mq.cmd('/target id ' .. target_id)
+	co.delay(1000, function() return mq.TLO.Target.ID() == target_id end)
 	assert(mq.TLO.Target.ID() == target_id, 'Did not target')
 
 	co.delay(250)
@@ -61,26 +61,42 @@ local function IsControlled(spawn_id)
 	)
 end
 
+local function group_member_target_id(idx)
+	local name = mq.TLO.Group.Member(idx).Name()
+	local netbots_peer = netbots.PeerByName(name)
+	if netbots_peer:len() > 0 then
+		return mq.TLO.NetBots(netbots_peer).TargetID() or 0
+	else
+		return do_target(mq.TLO.Group.Member(idx).ID(), function() return mq.TLO.Me.TargetOfTarget.ID() end) or 0
+	end
+end
+
+local function group_pet_target_id(idx)
+	local name = mq.TLO.Group.Member(idx).Name()
+	local dannet_peer = dannet.PeerByName(name)
+	if dannet_peer:len() > 0 then
+		return dannet.Observe(dannet_peer, 'Pet.Target.ID') or 0
+	else
+		return do_target(mq.TLO.Group.Member(idx).Pet.ID(), function() return mq.TLO.Me.TargetOfTarget.ID() end) or 0
+	end
+end
+
 local function party_targets()
 	local targets = {}
 	for i=1, mq.TLO.Group.Members() do
-		local member_id = mq.TLO.Group.Member(i).ID()
-		local member_target_id = do_target(member_id, function() return mq.TLO.Me.TargetOfTarget.ID() end)
-		if mq.TLO.Group.Member(i).CleanName() == 'Xamox' then
-			print('Xamox: ' .. (member_target_id or 'nil'))
-		end
-		if member_target_id ~= nil and member_target_id ~= 0 then
+		local member_target_id = group_member_target_id(i)
+		if member_target_id ~= 0 then
 			table.insert(targets, member_target_id)
 		end
 
-		local member_pet_id = group.PetIdById(member_id)
-		if member_pet_id ~= 0 then
-			local member_pet_target_id = do_target(member_pet_id, function() return mq.TLO.Me.TargetOfTarget.ID() end)
+		if mq.TLO.Group.Member(i).Pet() ~= 'NO PET' then
+			local member_pet_target_id = group_pet_target_id(i)
 			if member_pet_target_id ~= nil and member_pet_target_id ~= 0 then
 				table.insert(targets, member_pet_target_id)
 			end
 		end
 	end
+	---@diagnostic disable-next-line: undefined-field
 	local main_assist_id = mq.TLO.Me.GroupAssistTarget.ID()
 	if main_assist_id ~= nil and main_assist_id ~= 0 then
 		table.insert(targets, main_assist_id)
@@ -193,6 +209,17 @@ local function BardCCTargetByID(idx, target_id, current_targets)
 	)
 end
 
+local function dannet_observe_pet_targets()
+	for i=1, mq.TLO.Group.Members() do
+		if mq.TLO.Group.Member(i).Pet() ~= 'NO PET' then
+			local dannet_peer = dannet.PeerByName(mq.TLO.Group.Member(i).Name())
+			if dannet_peer:len() > 0 then
+				local member_pet_target_id = dannet.Observe(dannet_peer, 'Pet.Target.ID')
+			end
+		end
+	end
+end
+
 local function do_crowdcontrol(my_class)
 	local i_am_primary = Config:CrowdControl():IAmPrimary()
 
@@ -203,10 +230,14 @@ local function do_crowdcontrol(my_class)
 
 	if my_class == 'Enchanter' then
 		if mq.TLO.Me.XTarget() > threshold and mq.TLO.Me.PctMana() >= Config:CrowdControl():MinMana() then
+			local current_targets = { }
 			if not CCRunning then
 				EnchanterCCMode()
+				---@diagnostic disable-next-line: undefined-field
+				table.insert(current_targets, mq.TLO.Me.GroupAssistTarget.ID())
+			else
+				current_targets = party_targets()
 			end
-			local current_targets = party_targets()
 			if i_am_primary then
 				for i=1,mq.TLO.Me.XTarget() do
 					EnchanterCCTargetByID(i, mq.TLO.Me.XTarget(i).ID(), current_targets)
@@ -232,10 +263,14 @@ local function do_crowdcontrol(my_class)
 		end
 	elseif my_class == 'Bard' then
 		if mq.TLO.Me.XTarget() > threshold then
+			local current_targets = { }
 			if not CCRunning then
 				BardCCMode()
+				---@diagnostic disable-next-line: undefined-field
+				table.insert(current_targets, mq.TLO.Me.GroupAssistTarget.ID())
+			else
+				current_targets = party_targets()
 			end
-			local current_targets = party_targets()
 			if i_am_primary then
 				for i=1,mq.TLO.Me.XTarget() do
 					BardCCTargetByID(i, mq.TLO.Me.XTarget(i).ID(), current_targets)
@@ -279,11 +314,20 @@ end
 ---
 
 function crowdcontrolbot.Run()
+	local observe_co = ManagedCoroutine:new(
+		function()
+			while true do
+				dannet_observe_pet_targets()
+				co.delay(10000)
+			end
+		end
+	)
 	log('Up and running')
 	while true do
 		if mychar.InCombat() then
 			do_crowdcontrol(MyClass.Name)
 		end
+		observe_co:Resume()
 		co.yield()
 	end
 end

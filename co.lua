@@ -4,16 +4,17 @@ local mq = require('mq')
 ManagedCoroutine = {}
 ManagedCoroutine.__index = ManagedCoroutine
 
-function ManagedCoroutine:new(factory)
+function ManagedCoroutine:new(factory, name)
 	local obj = {}
 	setmetatable(obj, ManagedCoroutine)
 
 	obj._factory = factory
-	obj._co = coroutine.create(
-		function()
-		end
-	)
-	coroutine.resume(obj._co)
+	obj._name = name or 'Unnamed'
+	obj._co = coroutine.create(factory)
+	-- 	function()
+	-- 	end
+	-- )
+	-- coroutine.resume(obj._co)
 
 	return obj
 end
@@ -24,8 +25,13 @@ function ManagedCoroutine:Resume()
 	end
 	local status, res = coroutine.resume(self._co)
 	if not status then
-		print(res)
+		print(self._name .. ': ' .. res)
 		self._co = coroutine.create(self._factory)
+		status, res = coroutine.resume(self._co)
+		if not status then
+			print('L2: ' .. tostring(res))
+			self._co = coroutine.create(self._factory)
+		end
 	end
 end
 
@@ -41,11 +47,11 @@ end
 function co.delay(ms, end_early_predicate)
 	end_early_predicate = end_early_predicate or function() return false end
 	local timeout = mq.gettime() + ms
-	while true do
+	while not end_early_predicate() do
 		co.yield()
 		if mq.gettime() >= timeout then return false end
-		if end_early_predicate() then return true end
 	end
+	return true
 end
 
 function co.noop()

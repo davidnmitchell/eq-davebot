@@ -35,12 +35,14 @@ local function target(target_id)
         return
     end
 
-    mq.cmd('/target id ' .. target_id)
+    mq.TLO.Spawn(target_id).DoTarget()
+    --mq.cmd('/target id ' .. target_id)
 
     State:ReleaseLock('target', 'attack')
 end
 
 local function tank_attack()
+    ---@diagnostic disable-next-line: undefined-field
     local target_id = tonumber(mq.TLO.Me.GroupAssistTarget.ID())
 
     State:MarkEarlyCombatActive()

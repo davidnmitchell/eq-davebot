@@ -40,6 +40,15 @@ function netbots.PeerById(id)
 	return ''
 end
 
+function netbots.PeerByName(name)
+	for i, peer in ipairs(netbots.Peers()) do
+		if peer:lower() == name:lower() then
+			return peer
+		end
+	end
+	return ''
+end
+
 function netbots.PeerByPetId(id)
 	for i, name in ipairs(netbots.Peers()) do
 		if id == mq.TLO.NetBots(name).PetID() then
@@ -49,9 +58,20 @@ function netbots.PeerByPetId(id)
 	return ''
 end
 
--- common.PrintTable(netbots.PeerIds())
+function netbots.TargetIdByPeerId(id)
+	local peer = netbots.PeerById(id)
+	if peer:len() > 0 then
+		return mq.TLO.NetBots(peer).TargetID()
+	end
+	return 0
+end
 
--- print(mq.TLO.NetBots('Vubelar').Buff())
--- print(mq.TLO.Spell(261)())
--- print(mq.TLO.Spell(2570)())
+-- function netbots.PetTargetIdByPeerId(id)
+-- 	local peer = netbots.PeerById(id)
+-- 	if peer:len() > 0 then
+-- 		return mq.TLO.NetBots(peer).TargetID
+-- 	end
+-- 	return 0
+-- end
+
 return netbots

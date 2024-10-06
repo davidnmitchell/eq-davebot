@@ -1,3 +1,4 @@
+local mq = require('mq')
 local co = require('co')
 local common = require('common')
 require('actions.action')
@@ -11,17 +12,16 @@ function Script(script_type, name, queue, timeout, priority, blocking, callback)
 
     local context = {}
 
-    local self = Action(blocking)
+    local self = Action(name, blocking)
 
-    self.Name = name
     self.Type = script_type
     self.Timeout = timeout
     self.Priority = priority
     self.Callback = callback
 
-    if type(priority) == 'boolean' then
-        print('------------- ' .. name)
-    end
+    -- if type(priority) == 'boolean' then
+    --     print('------------- ' .. name)
+    -- end
 
     self.IsSame = function(script)
         return script_type == script.Type and name == script.Name
@@ -38,6 +38,7 @@ function Script(script_type, name, queue, timeout, priority, blocking, callback)
             action.Ready = false
             action.Coroutine = coroutine.create(
                 function()
+                    -- local start = mq.gettime()
                     local skip, reason = action.ShouldSkip(state, cfg, context)
                     if not skip then
                         local ready = co.delay(action.ReadyTimeout, function() return action.IsReady(state, cfg, context) end)
@@ -50,7 +51,10 @@ function Script(script_type, name, queue, timeout, priority, blocking, callback)
                                 action.PostAction(state, cfg, context)
                             end
                         end
+                    -- else
+                    --     self.log('Not executing ' .. action.Name .. ' because ' .. reason)
                     end
+                    -- self.log('Time for ' .. action.Name .. ': ' .. (mq.gettime() - start))
                 end
             )
         end
@@ -63,7 +67,7 @@ function Script(script_type, name, queue, timeout, priority, blocking, callback)
             for i = head, e do
                 local s, err = coroutine.resume(queue[i].Coroutine)
                 if not s then
-                    print(err)
+                    print(self.Name .. ': ' .. err .. ': ' .. i .. ': ' .. head)
                 end
                 if i == head and coroutine.status(queue[i].Coroutine) == 'dead' then
                     head = head + 1
@@ -72,6 +76,7 @@ function Script(script_type, name, queue, timeout, priority, blocking, callback)
                     end
                 end
                 if i == tail and not queue[i].Blocking and queue[i].Ready then
+                    -- print('Adding next because ' .. queue[i].Name .. ' is non-blocking')
                     tail = tail + 1
                 end
                 co.yield()
