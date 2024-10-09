@@ -17,7 +17,7 @@ function ActMemorize(
     local ready_timeout = 10000
     local finish_timeout = 10000
     if wait_for_ready then
-        finish_timeout = mq.TLO.Spell(spell_name).RecastTime() + 10000
+        finish_timeout = (mq.TLO.Spell(spell_name).RecastTime() or 5000) + 10000
     end
     local self = Action('Memorize', true, ready_timeout, finish_timeout)
 

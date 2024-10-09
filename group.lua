@@ -26,9 +26,26 @@ function group.IsMainAssist(name)
 	return mq.TLO.Group.MainAssist() ~= nil and mq.TLO.Group.MainAssist.Name() == name
 end
 
+function group.TellAll(cmd, predicate)
+	if mq.TLO.Me.Grouped() then
+		predicate = predicate or function() return true end
+		for i=1, mq.TLO.Group.Members() do
+			if predicate(i) then
+				local name = mq.TLO.Group.Member(i).CleanName()
+				if name ~= nil then
+					mq.cmd('/squelch /bct ' .. name .. ' /' .. cmd)
+				end
+			end
+		end
+		if predicate(0) then
+			mq.cmd(cmd)
+		end
+	end
+end
+
 function group.FirstOfClass(class_name)
 	if mq.TLO.Me.Grouped() then
-        for i=0, mq.TLO.Group.GroupSize()-1 do
+        for i=0, mq.TLO.Group.Members() do
             if class_name == mq.TLO.Group.Member(i).Class.ShortName() or class_name == mq.TLO.Group.Member(i).Class.Name() then
 				return i
             end
@@ -39,7 +56,7 @@ end
 
 function group.IsGroupMember(id)
 	if mq.TLO.Me.Grouped() then
-        for i=1, mq.TLO.Group.GroupSize()-1 do
+        for i=1, mq.TLO.Group.Members() do
             if id == mq.TLO.Group.Member(i).ID() then
 				return true
             end
@@ -51,7 +68,7 @@ end
 function group.IDs()
 	local ids = {}
 	if mq.TLO.Me.Grouped() then
-        for i=0, mq.TLO.Group.GroupSize()-1 do
+        for i=0, mq.TLO.Group.Members() do
 			table.insert(ids, mq.TLO.Group.Member(i).ID())
         end
     end
@@ -59,8 +76,7 @@ function group.IDs()
 end
 
 function group.IndexOf(target_id)
-	local group_size = mq.TLO.Group.Members()
-	for i=1,group_size do
+	for i = 1, mq.TLO.Group.Members() do
 		if target_id == mq.TLO.Group.Member(i).ID() then
 			return i
 		end

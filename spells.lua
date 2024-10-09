@@ -98,6 +98,87 @@ function spells.KnownSpells()
     return spell_book
 end
 
+local function shm_references()
+	local references = {}
+
+	table.insert(references, {key='h_single', reference='Heals,Heals,Single'})
+
+	table.insert(references, {key='db_slow', reference='Utility Detrimental,Slow,Single'})
+	table.insert(references, {key='db_res', reference='Utility Detrimental,Resist Debuffs,Single'})
+
+	table.insert(references, {key='dot_dis', reference='Damage Over Time,Disease,Single'})
+	table.insert(references, {key='dot_mag', reference='Damage Over Time,Magic,Single'})
+	table.insert(references, {key='dot_poi', reference='Damage Over Time,Poison,Single'})
+
+	table.insert(references, {key='dd_cold', reference='Direct Damage,Cold,Single'})
+	table.insert(references, {key='dd_fire', reference='Direct Damage,Fire,Single'})
+	table.insert(references, {key='dd_poi', reference='Direct Damage,Poison,Single'})
+
+	table.insert(references, {key='b_shield', reference='HP Buffs,Shielding,Single'})
+	table.insert(references, {key='b_healthregen', reference='Regen,Health,Single'})
+	table.insert(references, {key='b_ac', reference='Statistic Buffs,Armor Class,Single'})
+	table.insert(references, {key='b_agi', reference='Statistic Buffs,Agility,Single'})
+	table.insert(references, {key='b_sta', reference='Statistic Buffs,Stamina,Single'})
+	table.insert(references, {key='b_dex', reference='Statistic Buffs,Dexterity,Single'})
+	table.insert(references, {key='b_selfbear', reference='Utility Beneficial,Illusion: Other,Self'})
+	table.insert(references, {key='b_groupsta', reference='Statistic Buffs,Stamina,Group v2'})
+	table.insert(references, {key='b_groupdex', reference='Statistic Buffs,Dexterity,Group v2'})
+	table.insert(references, {key='b_groupagi', reference='Statistic Buffs,Agility,Group v2'})
+	table.insert(references, {key='b_groupstr', reference='Statistic Buffs,Strength,Group v2'})
+	table.insert(references, {key='b_groupvis', reference='Utility Beneficial,Vision,Group v2'})
+
+	return references
+end
+
+local function enc_references()
+	local references = {}
+
+	table.insert(references, {key='db_slow', reference='Utility Detrimental,Slow,Single'})
+	table.insert(references, {key='db_res', reference='Utility Detrimental,Resist Debuffs,Single'})
+	table.insert(references, {key='db_disem', reference='Utility Detrimental,Disempowering,Single'})
+	table.insert(references, {key='db_manadrain', reference='Utility Detrimental,Mana Drain,Single'})
+
+	table.insert(references, {key='dd_mag', reference='Direct Damage,Magic,Single'})
+
+
+	table.insert(references, {key='dot_mag', reference='Damage Over Time,Magic,Single'})
+
+	table.insert(references, {key='b_selfshield', reference='HP Buffs,Shielding,Self'})
+	table.insert(references, {key='b_ac', reference='Statistic Buffs,Armor Class,Single'})
+	table.insert(references, {key='b_mana', reference='Statistic Buffs,Mana,Single'})
+	table.insert(references, {key='b_groupmanaregen', reference='Regen,Mana,Group v2'})
+	table.insert(references, {key='b_grouphaste', reference='Utility Beneficial,Haste,Group v2'})
+	table.insert(references, {key='b_haste', reference='Utility Beneficial,Haste,Single'})
+	table.insert(references, {key='b_dsh', reference='Utility Beneficial,Damage Shield,Single'})
+
+	table.insert(references, {key='s_wipe', reference='Utility Detrimental,Memory Blur,Single'})
+
+	return references
+end
+
+function spells.WriteReferences(ini, section_name)
+	local references = {}
+	if MyClass == 'Shaman' then
+		references = shm_references()
+	elseif MyClass == 'Enchanter' then
+		references = enc_references()
+	end
+
+	local section = ini:Section(section_name)
+	for i, spell in ipairs(references) do
+		if section:IsMissing(spell.key) then
+			local name_pad = 18 - string.len(spell.key)
+
+			local reference = spell.reference
+			for j=1,name_pad do reference = str.Insert(reference, ' ', 0) end
+
+			section:WriteString(spell.key, reference)
+		end
+	end
+
+	print('Wrote ' .. (#references) .. ' spell references to ini')
+end
+
 function spells.DumpSpellBook(ini, section_name, spell_book)
 	for i, spell in ipairs(spell_book) do
 		local name = spell

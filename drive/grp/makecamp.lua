@@ -8,13 +8,13 @@ require('eqclass')
 local MyClass = EQClass:new()
 
 local function make_camp()
-    mq.cmd('/bcaa //makecamp off')
-	mq.cmd('/bcaa //easyfind stop')
-	mq.cmd('/bcaa //travelto stop')
-	mq.cmd('/bcaa //nav stop')
-	mq.cmd('/bcaa //afollow off')
+    group.TellAll('/makecamp off')
+	group.TellAll('/easyfind stop')
+	group.TellAll('/travelto stop')
+	group.TellAll('/nav stop')
+	group.TellAll('/afollow off')
 
-    mq.cmd('/bcaa //dbtether camp')
+    group.TellAll('/dbtether camp')
 end
 
 return {

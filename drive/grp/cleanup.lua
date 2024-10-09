@@ -1,12 +1,13 @@
 local mq = require('mq')
 require('eqclass')
+local group = require('group')
 
 
 local MyClass = EQClass:new()
 
 
 local function do_thing()
-    mq.cmd('/bcaa //cleanup')
+    group.TellAll('/cleanup')
 end
 
 return {

@@ -1,11 +1,13 @@
 local mq = require('mq')
-local co = require('co')
+local group = require('group')
 require('eqclass')
+
 
 local MyClass = EQClass:new()
 
+
 local function stop()
-    mq.cmd('/bcaa //drive stop')
+    group.TellAll('/drive stop')
 end
 
 return {

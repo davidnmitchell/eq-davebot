@@ -65,9 +65,11 @@ function Script(script_type, name, queue, timeout, priority, blocking, callback)
             local e = tail
             if e > #queue then e = #queue end
             for i = head, e do
-                local s, err = coroutine.resume(queue[i].Coroutine)
-                if not s then
-                    print(self.Name .. ': ' .. err .. ': ' .. i .. ': ' .. head)
+                if coroutine.status(queue[i].Coroutine) ~= 'dead' then
+                    local s, err = coroutine.resume(queue[i].Coroutine)
+                    if not s then
+                        print(self.Name .. ': ' .. err .. ': ' .. i .. ': ' .. head)
+                    end
                 end
                 if i == head and coroutine.status(queue[i].Coroutine) == 'dead' then
                     head = head + 1

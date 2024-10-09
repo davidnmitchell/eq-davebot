@@ -23,13 +23,20 @@ end
 
 -- TODO: find a way to have the healer select the spell
 local function send_spell(caster, target_id)
-    mq.cmd('/squelch /bct ' .. caster .. ' //dbcq queue -spell|Heals,Heals,Single,2 -priority|0 -target_id|' .. target_id)
+    mq.cmd('/squelch /bct ' .. caster .. ' //drive cast -spell|Heals,Heals,Single,2 -priority|0 -target|' .. target_id)
 end
 
 local function heal_me()
     local caster = name_of_caster()
     if caster:len() > 0 then
         send_spell(caster,  mq.TLO.Me.ID())
+    end
+end
+
+local function heal_tank()
+    local caster = name_of_caster()
+    if caster:len() > 0 then
+        send_spell(caster,  mq.TLO.Group.MainTank.ID())
     end
 end
 
@@ -46,6 +53,8 @@ return {
         local args = { ... }
         if args[1] == 'me' then
             heal_me()
+        elseif args[1] == 'maintank' then
+            heal_tank()
         else
             heal_name(args[1])
         end

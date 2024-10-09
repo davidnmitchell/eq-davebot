@@ -28,7 +28,7 @@ function ScpCast(
     min_mana_required = min_mana_required or 0
     target_id = target_id or 0
     skip_if_target_hp_below = skip_if_target_hp_below or 0
-    timeout = timeout or (mq.TLO.Spell(spell_name).CastTime.Raw() + (1000 * max_tries) + 1000)
+    timeout = timeout or ((mq.TLO.Spell(spell_name).CastTime.Raw() or 5000) + (1000 * max_tries) + 1000)
 
     local queue = {}
     if mq.TLO.Me.Class.Name() == 'Bard' then

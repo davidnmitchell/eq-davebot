@@ -5,17 +5,19 @@ local spells = require('spells')
 local teamevents = require('teamevents')
 require('eqclass')
 
+
 local MyClass = EQClass:new()
 
+
 local function follow_me()
-    mq.cmd('/bcaa //makecamp off')
-	mq.cmd('/bcaa //easyfind stop')
-	mq.cmd('/bcaa //travelto stop')
-	mq.cmd('/bcaa //nav stop')
-	mq.cmd('/bcaa //afollow off')
+    group.TellAll('/makecamp off')
+	group.TellAll('/easyfind stop')
+	group.TellAll('/travelto stop')
+	group.TellAll('/nav stop')
+	group.TellAll('/afollow off')
 
     mq.cmd('/dbtether none')
-    mq.cmd('/bca //dbtether ' .. mq.TLO.Me.Name())
+    group.TellAll('/dbtether ' .. mq.TLO.Me.Name(), function(i) return i ~= 0 end)
 end
 
 return {

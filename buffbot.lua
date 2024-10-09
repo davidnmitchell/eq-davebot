@@ -259,7 +259,7 @@ local function do_buffs()
 	local active_keys = ActiveSpellKeys()
 
 	for i=0, mq.TLO.Group.Members() do
-		--print(mq.TLO.Group.Member(i).Name())
+		local member_name = group_member_name(i)
 		local package = {}
 		local id = group.MemberId(i)
 		if id == mq.TLO.Me.ID() then
@@ -297,9 +297,9 @@ local function do_buffs()
 			copy_unique_into(package, Config:Buff():PackageByName('Hybrid'))
 		end
 		copy_unique_into(package, Config:Buff():PackageByName(class.Name))
-		copy_unique_into(package, Config:Buff():PackageByName(group_member_name(i)))
+		copy_unique_into(package, Config:Buff():PackageByName(member_name))
 
-		CheckOnBuffsForId(package, id, group_member_name(i), active_keys)
+		CheckOnBuffsForId(package, id, member_name, active_keys)
 
 		if class.HasPet then
 			if id == mq.TLO.Me.ID() and mq.TLO.Pet() ~= 'NO PET' then
@@ -307,7 +307,7 @@ local function do_buffs()
 			else
 				local pet_id = group.PetIdById(id)
 				if pet_id ~= 0 then
-					CheckOnBuffsForId(Config:Buff():PackageByName('Pet'), pet_id, group_member_name(i) .. '\'s pet', active_keys)
+					CheckOnBuffsForId(Config:Buff():PackageByName('Pet'), pet_id, member_name .. '\'s pet', active_keys)
 				end
 			end
 		end

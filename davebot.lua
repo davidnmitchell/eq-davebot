@@ -60,12 +60,16 @@ end
 --
 -- Main
 --
+-- TODO: Automatically generated or standardized type based spell keys so /drive grp heal can use
 -- TODO: Move /dbcq under /drive
+-- TODO: Mode 1 doesn't turn off crowdcontrolbot
 -- TODO: /drive grp shm heal maintank
 -- TODO: Bard sometimes doesn't retwist song of travel after zoning
 -- TODO: Items and Alt to other bots besides buffbot
 -- TODO: Feature: SpellBar under a Flag has some sort of first OPEN option
 -- TODO: Feature: configs with key Pcts needs a way to overlay with different flags
+-- TODO: Feature: buffs need a way to additively overlay with different flags
+-- TODO: Feature: automatic pet summon items for mag
 -- TODO: Individual class spell lists/abilities (scan Book and write to ini?)
 -- TODO: Check for a more powerful buff before buffing (see autotoon)
 -- TODO: Immunity/resist memory by mob name/type (save to ini?)

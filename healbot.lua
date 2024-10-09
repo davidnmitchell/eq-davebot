@@ -2,6 +2,7 @@ local mq = require('mq')
 local co = require('co')
 require('eqclass')
 require('actions.a_cast')
+local mychar = require('mychar')
 
 
 local healbot = {}
@@ -176,14 +177,15 @@ local function CheckSelf()
 			else
 				local spell_target = mq.TLO.Spell(spell.Name).TargetType()
 				if spell_target == 'LifeTap' then
-					if mq.TLO.Target() then
+					local target_id = mq.TLO.Target.ID() or 0
+					if mychar.InCombat() and target_id ~= 0 and mq.TLO.Spawn(target_id).Type() == 'NPC' then
 						actionqueue.AddUnique(
 							ScpCast(
 								spell.Name,
 								'gem' .. gem,
 								Config:Heal():MinMana(),
 								3,
-								mq.TLO.Target.ID(),
+								target_id,
 								0,
 								nil,
 								30
