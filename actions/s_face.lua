@@ -18,7 +18,9 @@ function ScpFace(target_id, priority, blocking)
         {
             ActWaitOnAndAcquireLock(
                 'target',
-                'ScpFace'
+                'ScpFace',
+                2000,
+                2000
             ),
             ActTarget(
                 target_id

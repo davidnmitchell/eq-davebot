@@ -60,40 +60,41 @@ end
 --
 -- Main
 --
+-- -- TODO: Feature: SpellBar under a Flag has some sort of first OPEN option
+-- TODO: Short lived combat buffs
 -- TODO: Automatically generated or standardized type based spell keys so /drive grp heal can use
--- TODO: Move /dbcq under /drive
+-- TODO: Individual class spell lists/abilities (scan Book and write to ini?)
+-- -- TODO: Move /dbcq under /drive
 -- TODO: Mode 1 doesn't turn off crowdcontrolbot
 -- TODO: /drive grp shm heal maintank
 -- TODO: Bard sometimes doesn't retwist song of travel after zoning
 -- TODO: Items and Alt to other bots besides buffbot
--- TODO: Feature: SpellBar under a Flag has some sort of first OPEN option
--- TODO: Feature: configs with key Pcts needs a way to overlay with different flags
--- TODO: Feature: buffs need a way to additively overlay with different flags
+-- -- TODO: Feature: configs with key Pcts needs a way to overlay with different flags
+-- -- TODO: Feature: buffs need a way to additively overlay with different flags
 -- TODO: Feature: automatic pet summon items for mag
--- TODO: Individual class spell lists/abilities (scan Book and write to ini?)
+-- TODO: Handle death situations: summon corpse, rez, stop healing, untether, kick + healer merc + reinvite
 -- TODO: Check for a more powerful buff before buffing (see autotoon)
 -- TODO: Immunity/resist memory by mob name/type (save to ini?)
--- TODO: Summon food/drink (MQ2FeedMe?)
+-- -- TODO: Summon food/drink (MQ2FeedMe?)
 -- TODO: Stuns
 -- TODO: AoE
 -- TODO: Charms
 -- TODO: Handle zoning better (see autotoon)
 -- TODO: Autoload any missing plugins
--- TODO: Short lived combat buffs
 -- TODO: Cure detrimental effects (target datatype)
 -- TODO: Finding and pulling (see autotoon)
 -- TODO: Lose aggro logic
 -- TODO: Have all CC members communicate
--- TODO: /setwintitle, /foreground /setprio
+-- TODO: CCbot needs a way to ignore an add
+-- TODO: Secondary mez takes over when primary is OOM
+-- -- TODO: /setwintitle, /foreground /setprio
 -- TODO: Loot
 -- TODO: Auto social build
 -- TODO: Match category key-names across all bots
--- TODO: Magician summon weapons
--- TODO: Secondary mez takes over when primary is OOM
+-- -- TODO: Magician summon weapons
 -- TODO: GUI? (see autotoon)
 -- TODO: Meleebot needs to be able to switch to secondary targets if necessary
 -- TODO: Meleebot needs to be able to engage an add when tank is away on a pull
--- TODO: CCbot needs a way to ignore an add
 -- TODO: Timmaayy is casting clarity on Pystoffe
 
 local function main()

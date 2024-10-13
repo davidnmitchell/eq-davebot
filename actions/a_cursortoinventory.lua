@@ -1,3 +1,4 @@
+local mq = require('mq')
 local spells = require('spells')
 local co = require('co')
 require('actions.action')

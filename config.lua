@@ -172,7 +172,9 @@ function SpellBarConfig:new(state, ini, spells_config)
 	mt._defaults = {}
 	mt._mode_overlays = {}
 	mt._flag_overlays = {}
+	mt._flag_overlays_open_fills = {}
 	mt._mode_flag_overlays = {}
+	mt._mode_flag_overlays_open_fills = {}
 	mt._state = state
 	mt._ini = ini
 	mt._spells_config = spells_config
@@ -183,16 +185,23 @@ end
 
 function SpellBarConfig:_split_gems(spell_bar)
 	local value = {}
+	local to_fill = {}
 	local gems = str.Split(spell_bar, ',')
 	for i, gem in ipairs(gems) do
 		local idx = gem:find(':')
-		value[tonumber(gem:sub(1, idx - 1))] = gem:sub(idx + 1, -1)
+		local slot = gem:sub(1, idx - 1)
+		local ref = gem:sub(idx + 1, -1)
+		if slot == 'O' or slot == '0' then
+			table.insert(to_fill, ref)
+		else
+			value[tonumber(slot)] = ref
+		end
 	end
-	return value
+	return value, to_fill
 end
 
 function SpellBarConfig:_defaults_from_ini()
-	local defaults = self:_split_gems(self._ini:String('Default', 'SpellBar', ''))
+	local defaults, to_fill = self:_split_gems(self._ini:String('Default', 'SpellBar', ''))
 	for i=1,mq.TLO.Me.NumGems() do
 		if not defaults[i] then defaults[i] = 'OPEN' end
 	end
@@ -201,41 +210,46 @@ end
 
 function SpellBarConfig:_flag_overlays_from_ini()
 	local overlays = {}
+	local open_fills = {}
 	for i, name in ipairs(self._ini:SectionNames()) do
 		if str.StartsWith(name, 'Flag:') then
 			local parts = str.Split(name, ':')
 			if #parts == 2 and not tonumber(parts[2]) then
-				overlays[parts[2]] = self:_split_gems(self._ini:String(name, 'SpellBar', ''))
+				local to_fill = {}
+				overlays[parts[2]], open_fills[parts[2]] = self:_split_gems(self._ini:String(name, 'SpellBar', ''))
 			end
 		end
 	end
-	return overlays
+	return overlays, open_fills
 end
 
 function SpellBarConfig:_mode_flag_overlays_from_ini(mode)
 	local overlays = {}
+	local open_fills = {}
 	for i, section_name in ipairs(self._ini:SectionNames()) do
 		if str.StartsWith(section_name, 'Flag:' .. mode .. ':') then
 			local parts = str.Split(section_name, ':')
 			if #parts == 3 then
-				overlays[parts[3]] = self:_split_gems(self._ini:String(section_name, 'SpellBar', ''))
+				local to_fill = {}
+				overlays[parts[3]], open_fills[parts[3]] = self:_split_gems(self._ini:String(section_name, 'SpellBar', ''))
 			end
 		end
 	end
-	return overlays
+	return overlays, open_fills
 end
 
 function SpellBarConfig:_mode_overlays_from_ini(mode)
-	return self:_split_gems(self._ini:String('Mode:' .. mode, 'SpellBar', ''))
+	local overlays, to_fill = self:_split_gems(self._ini:String('Mode:' .. mode, 'SpellBar', ''))
+	return overlays
 end
 
 function SpellBarConfig:Calculate()
 	local start = mq.gettime()
 	self._defaults = self:_defaults_from_ini()
-	self._flag_overlays = self:_flag_overlays_from_ini()
+	self._flag_overlays, self._flag_overlays_open_fills = self:_flag_overlays_from_ini()
 	for i=1,4 do
 		self._mode_overlays[i] = self:_mode_overlays_from_ini(i)
-		self._mode_flag_overlays[i] = self:_mode_flag_overlays_from_ini(i)
+		self._mode_flag_overlays[i], self._mode_flag_overlays_open_fills[i] = self:_mode_flag_overlays_from_ini(i)
 	end
 	self._last_load_time = mq.gettime()
 end
@@ -244,20 +258,41 @@ function SpellBarConfig:Gems()
 	local mode = self._state.Mode
 
 	local overlaid = {}
+	local open_overlaid = {}
 	for k,v in pairs(self._defaults) do
-		overlaid[k] = v
+		if k ~= 0 then
+			overlaid[k] = v
+		end
 	end
 	for k,v in pairs(self._mode_overlays[mode] or {}) do
-		overlaid[k] = v
+		if k ~= 0 then
+			overlaid[k] = v
+		end
 	end
 	for i, flag in ipairs(self._state.Flags) do
 		local flag_overlay = self._flag_overlays[flag] or {}
-		for k,v in pairs(flag_overlay) do
+		local flag_overlay_open_fills = self._flag_overlays_open_fills[flag] or {}
+		for k, v in pairs(flag_overlay) do
 			overlaid[k] = v
 		end
+		for k, ref in ipairs(flag_overlay_open_fills) do
+			table.insert(open_overlaid, ref)
+		end
 		local mode_flag_overlay = self._mode_flag_overlays[mode][flag] or {}
-		for k,v in pairs(mode_flag_overlay) do
+		local mode_flag_overlay_open_fills = self._mode_flag_overlays_open_fills[mode][flag] or {}
+		for k, v in pairs(mode_flag_overlay) do
 			overlaid[k] = v
+		end
+		for k, ref in ipairs(mode_flag_overlay_open_fills) do
+			table.insert(open_overlaid, ref)
+		end
+	end
+	for i, open_ref in ipairs(open_overlaid) do
+		for j, ref in ipairs(overlaid) do
+			if ref:upper() == 'OPEN' then
+				overlaid[j] = open_ref
+				break
+			end
 		end
 	end
 	return overlaid
@@ -368,6 +403,55 @@ local function mode_value(state, defaults, mode_overlays, flag_overlays, mode_fl
 	end
 
 	return value or default
+end
+
+local function overlay_csv(values_arr, overlay_str)
+	if overlay_str:sub(1, 1) == '+' then
+		local overlay_arr = str.Split(overlay_str:sub(2), ',')
+		for i, o in ipairs(overlay_arr) do
+			if o:sub(1, 1) == '-' then
+				local to_remove = o:sub(2)
+				local idx = 0
+				for j, v in ipairs(values_arr) do
+					if v == to_remove then
+						idx = j
+						break
+					end
+				end
+				if idx ~= 0 then
+					table.remove(values_arr, idx)
+				end
+			else
+				table.insert(values_arr, o)
+			end
+		end
+		return values_arr
+	else
+		return str.Split(overlay_str, ',')
+	end
+end
+
+local function csv_mode_value(state, defaults, mode_overlays, flag_overlays, mode_flag_overlays, key, default)
+	local values = str.Split(defaults[key] or '', ',')
+	if mode_overlays[state.Mode] ~= nil then
+		if mode_overlays[state.Mode][key] ~= nil then
+			values = overlay_csv(values, mode_overlays[state.Mode][key])
+		end
+	end
+	for i, flag in ipairs(state.Flags) do
+		if flag_overlays[flag] ~= nil and flag_overlays[flag][key] ~= nil then
+			values = overlay_csv(values, flag_overlays[flag][key])
+		end
+	end
+	if mode_flag_overlays[state.Mode] ~= nil then
+		for i, flag in ipairs(state.Flags) do
+			if mode_flag_overlays[state.Mode][flag] ~= nil and mode_flag_overlays[state.Mode][flag][key] ~= nil then
+				values = overlay_csv(values, mode_flag_overlays[state.Mode][flag][key])
+			end
+		end
+	end
+
+	return values or default
 end
 
 
@@ -532,7 +616,8 @@ function BuffConfig:BackoffTimer()
 end
 
 function BuffConfig:PackageByName(name)
-	return str.Split(self:_mode_value(name, ''), ',')
+	return csv_mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, name, {})
+	-- return str.Split(self:_mode_value(name, ''), ',')
 end
 
 
@@ -634,7 +719,7 @@ function DebuffConfig:MinTargetHpPct()
 end
 
 function DebuffConfig:AtTargetHpPcts()
-	local csv = str.Split(self:_mode_value('Pcts', ''), ',')
+	local csv = csv_mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, 'Pcts', {})
 	local pcts = {}
 	for i,s in ipairs(csv) do
 		local parts = str.Split(s, ':')
@@ -691,7 +776,7 @@ function DotConfig:MinTargetHpPct()
 end
 
 function DotConfig:AtTargetHpPcts()
-	local csv = str.Split(self:_mode_value('Pcts', ''), ',')
+	local csv = csv_mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, 'Pcts', {})
 	local pcts = {}
 	for i,s in ipairs(csv) do
 		local parts = str.Split(s, ':')
@@ -883,7 +968,7 @@ function DdConfig:MinTargetHpPct()
 end
 
 function DdConfig:AtTargetHpPcts()
-	local csv = str.Split(self:_mode_value('Pcts', ''), ',')
+	local csv = csv_mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, 'Pcts', {})
 	local pcts = {}
 	for i,s in ipairs(csv) do
 		local parts = str.Split(s, ':')

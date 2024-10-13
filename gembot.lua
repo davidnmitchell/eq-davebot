@@ -29,6 +29,7 @@ end
 local function do_memorize()
 	local gems = Config:SpellBar():Gems()
 	for gem, spell_key in pairs(gems) do
+		--print(gem)
 		if spell_key ~= 'OPEN' then
 			local spell = Config:Spells():Spell(spell_key)
 			if spell.Error == nil then

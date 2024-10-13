@@ -13,16 +13,19 @@ function ScpSummon(
     item,
     preferred_gem,
     priority,
+    put_in_inventory,
     callback
 )
     assert(spell_name and spell_name:len() > 0, 'Blank spell_name')
     preferred_gem = preferred_gem or 'gem5'
+    if tonumber(preferred_gem) ~= nil then preferred_gem = 'gem' .. preferred_gem end
+    if put_in_inventory == nil then put_in_inventory = true end
 
     local queue = {}
     table.insert(queue, ActLog(string.format('\awSummoning \ag%s', item)))
     table.insert(queue, ActMemorize(spell_name, preferred_gem, true))
     table.insert(queue, ActCast(spell_name, preferred_gem, 20))
-    table.insert(queue, ActCursorToInventory())
+    if put_in_inventory then table.insert(queue, ActCursorToInventory()) end
 
     local self = Script(
         'summon',
@@ -46,8 +49,13 @@ function ScpSummon(
     end
 
     ---@diagnostic disable-next-line: duplicate-set-field
+    self.ShouldSkip = function(state, cfg, ctx)
+        return mq.TLO.Cursor.ID() ~= nil
+    end
+
+    ---@diagnostic disable-next-line: duplicate-set-field
     self.IsReady = function(state, cfg, ctx)
-        return mychar.ReadyToCast and i_have_enough_mana() and not mychar.IAmInvisible()
+        return mychar.ReadyToCast() and i_have_enough_mana() and not mychar.IAmInvisible()
     end
 
     ---@diagnostic disable-next-line: duplicate-set-field
