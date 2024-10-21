@@ -324,7 +324,7 @@ function crowdcontrolbot.Run()
 	)
 	log('Up and running')
 	while true do
-		if mychar.InCombat() then
+		if State.Mode ~= 1 and mychar.InCombat() then
 			do_crowdcontrol(MyClass.Name)
 		end
 		observe_co:Resume()

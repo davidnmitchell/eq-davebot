@@ -149,6 +149,12 @@ function BotState:TetherFollow(id)
 	self.TetherDetail = tostring(id)
 	self._ini:WriteString('State', 'Tether', self.TetherDetail)
 end
+function BotState:TetherPause()
+	self.TetherStatus = 'P'
+end
+function BotState:TetherResume()
+	self.TetherStatus = 'F'
+end
 function BotState:TetherCamp()
 	self.TetherStatus = 'C'
 	self.TetherDetail = mq.TLO.Me.MQLoc()

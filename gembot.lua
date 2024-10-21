@@ -69,7 +69,7 @@ end
 function gembot.Run()
 	log('Up and running')
 	while true do
-		if not mychar.InCombat() then
+		if State.Mode ~= 1 and not mychar.InCombat() then
 			do_memorize()
 		end
 

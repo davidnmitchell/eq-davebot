@@ -375,8 +375,7 @@ end
 function buffbot.Run()
 	log('Up and running')
 	while true do
-		---@diagnostic disable-next-line: undefined-field
-		if not mychar.InCombat() and not State.IsEarlyCombatActive then
+		if State.Mode ~= 1 and not mychar.InCombat() and not State.IsEarlyCombatActive then
 			do_buffs()
 		end
 		co.delay(1000)

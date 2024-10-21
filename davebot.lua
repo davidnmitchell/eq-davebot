@@ -60,19 +60,23 @@ end
 --
 -- Main
 --
+-- TODO: Auto social build
+-- TODO: Handle death situations: summon corpse, rez, stop healing, untether, kick + healer merc + reinvite
 -- -- TODO: Feature: SpellBar under a Flag has some sort of first OPEN option
+-- TODO: Abort queued buff spells in combat
+-- TODO: Bard pulls
+-- -- TODO: Meleebot disables/re-enables tether
 -- TODO: Short lived combat buffs
 -- TODO: Automatically generated or standardized type based spell keys so /drive grp heal can use
 -- TODO: Individual class spell lists/abilities (scan Book and write to ini?)
 -- -- TODO: Move /dbcq under /drive
--- TODO: Mode 1 doesn't turn off crowdcontrolbot
+-- -- TODO: Mode 1 doesn't turn off crowdcontrolbot
 -- TODO: /drive grp shm heal maintank
 -- TODO: Bard sometimes doesn't retwist song of travel after zoning
 -- TODO: Items and Alt to other bots besides buffbot
 -- -- TODO: Feature: configs with key Pcts needs a way to overlay with different flags
 -- -- TODO: Feature: buffs need a way to additively overlay with different flags
 -- TODO: Feature: automatic pet summon items for mag
--- TODO: Handle death situations: summon corpse, rez, stop healing, untether, kick + healer merc + reinvite
 -- TODO: Check for a more powerful buff before buffing (see autotoon)
 -- TODO: Immunity/resist memory by mob name/type (save to ini?)
 -- -- TODO: Summon food/drink (MQ2FeedMe?)
@@ -89,7 +93,6 @@ end
 -- TODO: Secondary mez takes over when primary is OOM
 -- -- TODO: /setwintitle, /foreground /setprio
 -- TODO: Loot
--- TODO: Auto social build
 -- TODO: Match category key-names across all bots
 -- -- TODO: Magician summon weapons
 -- TODO: GUI? (see autotoon)

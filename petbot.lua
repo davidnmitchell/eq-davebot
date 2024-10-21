@@ -108,7 +108,9 @@ end
 function petbot.Run()
 	log('Up and running')
 	while true do
-		do_pet()
+		if State.Mode ~= 1 then
+			do_pet()
+		end
 		co.yield()
 	end
 end

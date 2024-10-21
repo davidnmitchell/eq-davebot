@@ -1,14 +1,20 @@
 local mq = require('mq')
-require('eqclass')
 local co = require('co')
 local group = require('group')
+require('eqclass')
+
+
+local actionqueue = {}
 
 local MyClass = EQClass:new()
+local State = {}
+local Config = {}
 
-local function do_thing()
-    group.TellAll('/dbcq pause 40')
+
+local function do_origin()
+    group.TellAll('/drive mode 1')
     co.delay(1000)
-    group.TellAll('/dbcq pause 35')
+    group.TellAll('/drive queue wipe')
     co.delay(1000)
     group.TellAll('/twist clear', function(i) return mq.TLO.Group.Member(i).Class.Name() == 'Bard' end)
     co.delay(1000)
@@ -18,6 +24,11 @@ end
 return {
     Run = function(...)
         local args = { ... }
-        do_thing()
+        do_origin()
+    end,
+    Init = function(state, cfg, aq)
+        State = state
+        Config = cfg
+        actionqueue = aq
     end
 }

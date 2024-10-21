@@ -278,7 +278,9 @@ end
 function healbot.Run()
 	log('Up and running')
 	while true do
-		CheckHitPoints()
+		if State.Mode ~= 1 then
+			CheckHitPoints()
+		end
 		co.yield()
 	end
 end

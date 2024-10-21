@@ -67,7 +67,9 @@ end
 function autositbot.Run()
 	log('Up and running')
 	while true do
-		do_check()
+		if State.Mode ~= 1 then
+			do_check()
+		end
 		co.yield()
 	end
 end

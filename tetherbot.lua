@@ -29,6 +29,10 @@ local function have_camp()
 	return State.TetherStatus == 'C'
 end
 
+local function paused()
+	return State.TetherStatus == 'P'
+end
+
 local function nav_to_camp()
 	actionqueue.AddUnique(
 		ScpNavToCamp(
@@ -96,7 +100,7 @@ local function do_tether()
 					nav_to_camp()
 				end
 			end
-		else
+		elseif not paused() then
 			local id = tonumber(State.TetherDetail)
 			if id ~= nil and Config:Tether():ModeIsActive() and not mq.TLO.Navigation.Active() then
 				local distance = mq.TLO.Spawn(id).Distance3D()

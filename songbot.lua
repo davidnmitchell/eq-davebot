@@ -128,7 +128,7 @@ function songbot.Run()
 			log('Pausing for ' .. seconds .. ' seconds')
 		end
 
-		if not Paused then
+		if State.Mode ~= 1 and not Paused then
 			do_twisting()
 		else
 			if mq.gettime() >= PauseUntil then

@@ -44,13 +44,16 @@ local function do_melee()
 
 	if not mychar.InCombat() and State.InCombat then
 		State.InCombat = false
-		actionqueue.AddUnique(
-			ScpNavToCamp(
-				40,
-				false
+		if State.TetherStatus == 'C' then
+			actionqueue.AddUnique(
+				ScpNavToCamp(
+					40,
+					false
+				)
 			)
-		)
-		-- mq.cmd('/dbtether return') -- TODO: this should probably be part of tetherbot
+		elseif State.TetherStatus == 'P' then
+			State:TetherResume()
+		end
 	end
 
 	if mychar.InCombat() and not Engaged() then
@@ -58,6 +61,9 @@ local function do_melee()
 		if group_assist_target then
 			---@diagnostic disable-next-line: undefined-field
 			if mq.TLO.Me.GroupAssistTarget.PctHPs() < Config:Melee():EngageTargetHPs() and mq.TLO.Me.GroupAssistTarget.Distance() < Config:Melee():EngageTargetDistance() then
+				if State.TetherStatus == 'F' then
+					State:TetherPause()
+				end
 				actionqueue.AddUnique(
 					ScpEngage(
 						---@diagnostic disable-next-line: undefined-field
@@ -102,7 +108,9 @@ end
 function meleebot.Run()
 	log('Up and running')
 	while true do
-		do_melee()
+		if State.Mode ~= 1 then
+			do_melee()
+		end
 		co.yield()
 	end
 end

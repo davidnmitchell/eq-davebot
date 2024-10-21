@@ -85,7 +85,7 @@ end
 function nukebot.Run()
 	log('Up and running')
 	while true do
-		if mychar.InCombat() and not State.IsCrowdControlActive then
+		if State.Mode ~= 1 and mychar.InCombat() and not State.IsCrowdControlActive then
 			do_nukes()
 		end
 		co.yield()
