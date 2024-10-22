@@ -15,6 +15,12 @@ local function flee()
 	group.TellAll('/afollow off')
 
     group.TellAll('/drive tether flee ' .. mq.TLO.Me.ID(), function(i) return i ~= 0 end)
+    co.delay(500)
+    group.TellAll('/drive tether flee ' .. mq.TLO.Me.ID(), function(i) return i ~= 0 end)
+    co.delay(500)
+    group.TellAll('/drive tether flee ' .. mq.TLO.Me.ID(), function(i) return i ~= 0 end)
+    co.delay(500)
+    group.TellAll('/drive tether flee ' .. mq.TLO.Me.ID(), function(i) return i ~= 0 end)
 end
 
 return {

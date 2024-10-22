@@ -362,9 +362,9 @@ function buffbot.Init(state, cfg, aq)
 	Config = cfg
 	actionqueue = aq
 
-	mq.event('exception1', 'Your #1# spell did not take hold.#*#', exception1)
-	mq.event('exception2', 'Your #1# spell did not take hold on #2#.#*#', exception2)
-	mq.event('exception3', 'You do not have sufficient focus to maintain that ability.', exception3)
+	mq.event('buffbot_exception1', 'Your #1# spell did not take hold.#*#', exception1)
+	mq.event('buffbot_exception2', 'Your #1# spell did not take hold on #2#.#*#', exception2)
+	mq.event('buffbot_exception3', 'You do not have sufficient focus to maintain that ability.', exception3)
 end
 
 

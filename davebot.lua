@@ -60,6 +60,7 @@ end
 --
 -- Main
 --
+-- TODO: Healbot can cause char to bounce between targets due to lag from queueing if we have Xamox switch targets in a fight
 -- TODO: Auto social build
 -- TODO: Handle death situations: summon corpse, rez, stop healing, untether, kick + healer merc + reinvite
 -- -- TODO: Feature: SpellBar under a Flag has some sort of first OPEN option

@@ -17,6 +17,8 @@ local actionqueue = {}
 local State = {}
 local Config = {}
 
+local Exceptions = {}
+
 
 --
 -- Functions
@@ -24,6 +26,10 @@ local Config = {}
 
 local function log(msg)
 	print('(dotbot) ' .. msg)
+end
+
+local function excepted(spell_name, mob_name)
+	return (Exceptions[mob_name] and Exceptions[mob_name][spell_name]) or false
 end
 
 local function HasDot(spell, id)
@@ -75,6 +81,20 @@ end
 
 
 --
+-- Event Handlers
+--
+
+local function exception1(line, spell_name, target_name)
+	log('Exception: ' .. spell_name .. ' on ' .. target_name)
+	local mob_name = mq.TLO.Spawn(target_name).CleanName()
+	if not Exceptions[mob_name] then
+		Exceptions[mob_name] = {}
+	end
+	Exceptions[mob_name][spell_name] = mq.gettime()
+end
+
+
+--
 -- Init
 --
 
@@ -82,6 +102,8 @@ function dotbot.Init(state, cfg, aq)
 	State = state
 	Config = cfg
 	actionqueue = aq
+
+	mq.event('dotbot_exception1', 'Your #1# spell did not take hold on #2#.#*#', exception1)
 end
 
 

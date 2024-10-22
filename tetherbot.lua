@@ -98,6 +98,9 @@ end
 local function do_tether()
 	if State.TetherStatus ~= 'N' then
 		if have_camp() then
+			if mq.TLO.AdvPath.State() == 1 then
+				mq.cmd('/afollow off')
+			end
 			if Config:Tether():ModeIsActive() and not mq.TLO.Navigation.Active() and not mychar.InCombat() and State:MyCharHasNotMovedFor() > Config:Tether():ReturnTimer() then
 				local distance = mq.TLO.Math.Distance(State.TetherDetail)()
 				if distance > Config:Tether():CampMaxDistance() then
@@ -112,14 +115,14 @@ local function do_tether()
 					if distance ~= nil and distance > Config:Tether():FollowMaxDistance() then
 						nav_to_id()
 					end
-				end
-				if mq.TLO.AdvPath.State() ~= 1 then
-					--print('afollow:' .. mq.TLO.AdvPath.State())
-					--print('/afollow spawn ' .. id)
-					mq.cmd('/afollow spawn ' .. id)
+					if mq.TLO.AdvPath.State() ~= 1 then
+						mq.cmd('/afollow spawn ' .. id)
+					end
 				end
 			end
 		end
+	elseif mq.TLO.AdvPath.State() == 1 then
+		mq.cmd('/afollow off')
 	end
 end
 

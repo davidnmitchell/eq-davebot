@@ -11,7 +11,7 @@ local MyClass = EQClass:new()
 local State = {}
 local Config = {}
 
-local EngageDistance = 80
+local EngageDistance = 75
 local Timeout = 35
 
 
