@@ -14,7 +14,7 @@ local function make_camp()
 	group.TellAll('/nav stop')
 	group.TellAll('/afollow off')
 
-    group.TellAll('/dbtether camp')
+    group.TellAll('/drive tether camp')
 end
 
 return {

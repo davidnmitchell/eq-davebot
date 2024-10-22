@@ -318,6 +318,8 @@ local function main()
 			if Config:AutoSit():Enabled() then autositbot_co:Resume() end
 
 			if MyClass.IsBard and Config:Twist():Enabled() then songbot_co:Resume() end
+		else
+			State:TetherClear()
 		end
 
 		state_co:Resume()

@@ -33,6 +33,10 @@ local function paused()
 	return State.TetherStatus == 'P'
 end
 
+local function fleeing()
+	return State.TetherStatus == 'R'
+end
+
 local function nav_to_camp()
 	actionqueue.AddUnique(
 		ScpNavToCamp(
@@ -102,10 +106,17 @@ local function do_tether()
 			end
 		elseif not paused() then
 			local id = tonumber(State.TetherDetail)
-			if id ~= nil and Config:Tether():ModeIsActive() and not mq.TLO.Navigation.Active() then
-				local distance = mq.TLO.Spawn(id).Distance3D()
-				if distance ~= nil and distance > Config:Tether():FollowMaxDistance() then
-					nav_to_id()
+			if id ~= nil and Config:Tether():ModeIsActive() then
+				if not mq.TLO.Navigation.Active() then
+					local distance = mq.TLO.Spawn(id).Distance3D()
+					if distance ~= nil and distance > Config:Tether():FollowMaxDistance() then
+						nav_to_id()
+					end
+				end
+				if mq.TLO.AdvPath.State() ~= 1 then
+					--print('afollow:' .. mq.TLO.AdvPath.State())
+					--print('/afollow spawn ' .. id)
+					mq.cmd('/afollow spawn ' .. id)
 				end
 			end
 		end

@@ -91,32 +91,33 @@ return {
     Run = function(...)
         local args = { ... }
 
-        if mq.TLO.Cursor.ID() == nil then
-            if args[1] == 'pet' then
-                if args[2] == 'weapon' then
-                    for i = 0, mq.TLO.Group.Members() do
-                        if mq.TLO.Group.Member(i).Pet() ~= 'NO PET' then
-                            local count = 0
-                            if mq.TLO.Group.Member(i).Pet.Equipment('primary') == nil then count = count + 1 end
-                            if mq.TLO.Group.Member(i).Pet.Equipment('offhand') == nil then count = count + 1 end
-                            for j = 1, count do
-                                local target = mq.TLO.Group.Member(i).Pet.ID()
-                                do_cmd('/drive summon weapon ' .. target)
-                            end
-                        end
-                    end
-                elseif args[2] == 'waist' then
-                    for i = 0, mq.TLO.Group.Members() do
-                        if mq.TLO.Group.Member(i).Pet() ~= 'NO PET' then
+        if args[1] == 'pet' then
+            if args[2] == 'weapon' then
+                print('grp mag summon pet weapon')
+                for i = 0, mq.TLO.Group.Members() do
+                    if mq.TLO.Group.Member(i).Pet() ~= 'NO PET' then
+                        local count = 0
+                        if mq.TLO.Group.Member(i).Pet.Equipment('primary')() == 0 then count = count + 1 end
+                        if mq.TLO.Group.Member(i).Pet.Equipment('offhand')() == 0 then count = count + 1 end
+                        for j = 1, count do
                             local target = mq.TLO.Group.Member(i).Pet.ID()
-                            do_cmd('/drive summon waist ' .. target)
+                            do_cmd('/drive summon weapon ' .. target)
+                            co.delay(500)
                         end
                     end
-                    co.delay(1000)
-                    actionqueue.AddUnique(
-                        ScpDestroyOnCursor()
-                    )
                 end
+            elseif args[2] == 'waist' then
+                print('grp mag summon pet waist')
+                for i = 0, mq.TLO.Group.Members() do
+                    if mq.TLO.Group.Member(i).Pet() ~= 'NO PET' then
+                        local target = mq.TLO.Group.Member(i).Pet.ID()
+                        do_cmd('/drive summon waist ' .. target)
+                    end
+                end
+                co.delay(1000)
+                actionqueue.AddUnique(
+                    ScpDestroyOnCursor()
+                )
             end
         end
     end,

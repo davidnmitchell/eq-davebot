@@ -56,35 +56,34 @@ local function do_melee()
 		end
 	end
 
-	if mychar.InCombat() and not Engaged() then
-		local group_assist_target = mq.TLO.Me.GroupAssistTarget()
-		if group_assist_target then
-			---@diagnostic disable-next-line: undefined-field
-			if mq.TLO.Me.GroupAssistTarget.PctHPs() < Config:Melee():EngageTargetHPs() and mq.TLO.Me.GroupAssistTarget.Distance() < Config:Melee():EngageTargetDistance() then
-				if State.TetherStatus == 'F' then
-					State:TetherPause()
-				end
-				actionqueue.AddUnique(
-					ScpEngage(
-						---@diagnostic disable-next-line: undefined-field
-						mq.TLO.Me.GroupAssistTarget.ID(),
-						30
+	if State.TetherStatus ~= 'R' then
+		if mychar.InCombat() and not Engaged() then
+			local group_assist_target = mq.TLO.Me.GroupAssistTarget()
+			if group_assist_target then
+				---@diagnostic disable-next-line: undefined-field
+				if mq.TLO.Me.GroupAssistTarget.PctHPs() < Config:Melee():EngageTargetHPs() and mq.TLO.Me.GroupAssistTarget.Distance() < Config:Melee():EngageTargetDistance() then
+					if State.TetherStatus == 'F' then
+						State:TetherPause()
+					end
+					actionqueue.AddUnique(
+						ScpEngage(
+							---@diagnostic disable-next-line: undefined-field
+							mq.TLO.Me.GroupAssistTarget.ID(),
+							30
+						)
 					)
-				)
-				-- mq.cmd('/g Engaging ' .. group_assist_target)
-				-- mq.cmd('/target ' .. group_assist_target)
-				-- mq.delay(250)
-				-- mq.cmd('/stand')
-				-- mq.cmd('/attack on')
+				end
+			end
+
+			if group.MainAssistCheck(60000) then
+				log('Group main assist is not set')
 			end
 		end
 
-		if group.MainAssistCheck(60000) then
-			log('Group main assist is not set')
+		if mychar.InCombat() and Engaged() and (not mq.TLO.Target() or mq.TLO.Target() ~= mq.TLO.Me.GroupAssistTarget()) then
+			mq.cmd('/attack off')
 		end
-	end
-
-	if mychar.InCombat() and Engaged() and (not mq.TLO.Target() or mq.TLO.Target() ~= mq.TLO.Me.GroupAssistTarget()) then
+	elseif Engaged() then
 		mq.cmd('/attack off')
 	end
 end

@@ -31,7 +31,7 @@ function group.TellAll(cmd, predicate)
 		predicate = predicate or function() return true end
 		for i=1, mq.TLO.Group.Members() do
 			if predicate(i) then
-				local name = mq.TLO.Group.Member(i).CleanName()
+				local name = mq.TLO.Group.Member(i).Name()
 				if name ~= nil then
 					mq.cmd('/squelch /bct ' .. name .. ' /' .. cmd)
 				end

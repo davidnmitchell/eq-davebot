@@ -14,6 +14,7 @@ local actionqueue = {}
 local State = {}
 local Config = {}
 
+local Queue = {}
 
 --
 -- Functions
@@ -49,16 +50,13 @@ local function callback_drive(...)
 	if #args > 0 then
 		local to_execute, ps = path_from_array(args)
 		if to_execute ~= '' then
+			-- log('Executing from ' .. to_execute)
 			local f, err = loadfile (to_execute)
 			if f == nil then
 				print(err)
 			else
 				local package = f()
-				if package.Init ~= nil then
-					package.Init(State, Config, actionqueue)
-				end
-				---@diagnostic disable-next-line: deprecated
-				package.Run(unpack(ps))
+				table.insert(Queue, { package=package, ps=ps })
 			end
 		end
 	else
@@ -67,6 +65,14 @@ local function callback_drive(...)
 end
 
 local function do_drive()
+	if #Queue > 0 then
+		local drive = table.remove(Queue)
+		if drive.package.Init ~= nil then
+			drive.package.Init(State, Config, actionqueue)
+		end
+		---@diagnostic disable-next-line: deprecated
+		drive.package.Run(unpack(drive.ps))
+	end
 end
 
 

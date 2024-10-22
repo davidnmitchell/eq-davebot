@@ -16,8 +16,7 @@ local function follow_me()
 	group.TellAll('/nav stop')
 	group.TellAll('/afollow off')
 
-    mq.cmd('/dbtether none')
-    group.TellAll('/dbtether ' .. mq.TLO.Me.Name(), function(i) return i ~= 0 end)
+    group.TellAll('/drive tether follow ' .. mq.TLO.Me.ID(), function(i) return i ~= 0 end)
 end
 
 return {

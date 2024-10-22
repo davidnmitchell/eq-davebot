@@ -7,19 +7,19 @@ require('eqclass')
 
 local MyClass = EQClass:new()
 
-local function stop()
-    mq.cmd('/makecamp off')
-	mq.cmd('/easyfind stop')
-	mq.cmd('/travelto stop')
-	mq.cmd('/nav stop')
-	mq.cmd('/afollow off')
+local function flee()
+    group.TellAll('/makecamp off')
+	group.TellAll('/easyfind stop')
+	group.TellAll('/travelto stop')
+	group.TellAll('/nav stop')
+	group.TellAll('/afollow off')
 
-    mq.cmd('/drive tether clear')
+    group.TellAll('/drive tether flee ' .. mq.TLO.Me.ID(), function(i) return i ~= 0 end)
 end
 
 return {
     Run = function(...)
         local args = { ... }
-        stop()
+        flee()
     end
 }

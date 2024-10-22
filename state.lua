@@ -149,6 +149,10 @@ function BotState:TetherFollow(id)
 	self.TetherDetail = tostring(id)
 	self._ini:WriteString('State', 'Tether', self.TetherDetail)
 end
+function BotState:TetherFlee(id)
+	self:TetherFollow(id)
+	self.TetherStatus = 'R'
+end
 function BotState:TetherPause()
 	self.TetherStatus = 'P'
 end
