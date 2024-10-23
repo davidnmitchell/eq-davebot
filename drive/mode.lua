@@ -10,7 +10,7 @@ local Config = {}
 
 
 local function set_mode(mode)
-    State:ChangeMode(mode)
+    State.ChangeMode(mode)
 end
 
 return {

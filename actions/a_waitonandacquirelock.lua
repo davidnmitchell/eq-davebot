@@ -15,14 +15,14 @@ function ActWaitOnAndAcquireLock(
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)
-        local locked, lock = state:WaitOnAndAcquireLock(lock_name, process_name, release_timeout, acquire_timeout)
+        local locked, lock = state.WaitOnAndAcquireLock(lock_name, process_name, release_timeout, acquire_timeout)
         assert(locked, 'Could not lock target')
         ctx.Lock = lock
     end
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.OnInterrupt = function(state, cfg, ctx)
-        state:ReleaseLock(lock_name, process_name)
+        state.ReleaseLock(lock_name, process_name)
     end
 
     return self

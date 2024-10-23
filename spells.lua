@@ -296,7 +296,7 @@ function spells.MemorizeAndBlock(spell_name, gem_number)
 end
 
 function spells.BardCast(state, spell, gem_number, target_id)
-	state:MarkBardCastActive()
+	state.MarkBardCastActive()
 	mq.delay(250)
 	mq.cmd('/twist clear')
 	mq.delay(500)
@@ -307,7 +307,7 @@ function spells.BardCast(state, spell, gem_number, target_id)
 	end
 	mq.cmd('/cast ' .. gem_number)
 	mq.delay((mq.TLO.Spell(spell).CastTime.Seconds() + 2) * 1000)
-	state:MarkBardCastInactive()
+	state.MarkBardCastInactive()
 end
 
 function spells.HumanString1(spell_name, target_id)

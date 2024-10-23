@@ -71,18 +71,18 @@ local function callback_dbtether(...)
 				nav_to_camp()
 			end
 		elseif args[1]:lower() == 'none' or args[1]:lower() == 'off' then
-			State:TetherClear()
+			State.TetherClear()
 			log('Clearing tether')
 		elseif args[1]:lower() == 'camp' then
-			State:TetherCamp()
+			State.TetherCamp()
 			log('Camp set')
 		else
 			local id = mq.TLO.Spawn(args[1]).ID()
 			if id == nil or id == 0 then
-				State:TetherClear()
+				State.TetherClear()
 				log('Could not find spawn: ' .. args[1])
 			else
-				State:TetherFollow(id)
+				State.TetherFollow(id)
 				log('Following id ' .. id)
 			end
 		end
@@ -101,7 +101,7 @@ local function do_tether()
 			if mq.TLO.AdvPath.State() == 1 then
 				mq.cmd('/afollow off')
 			end
-			if Config:Tether():ModeIsActive() and not mq.TLO.Navigation.Active() and not mychar.InCombat() and State:MyCharHasNotMovedFor() > Config:Tether():ReturnTimer() then
+			if Config:Tether():ModeIsActive() and not mq.TLO.Navigation.Active() and not mychar.InCombat() and State.MyCharHasNotMovedFor() > Config:Tether():ReturnTimer() then
 				local distance = mq.TLO.Math.Distance(State.TetherDetail)()
 				if distance > Config:Tether():CampMaxDistance() then
 					nav_to_camp()

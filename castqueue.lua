@@ -32,8 +32,8 @@ require('state')
 local ProcessName = 'castqueue'
 local Ini = Ini:new()
 local MyClass = EQClass:new()
-local State = BotState:new(Ini)
-local Config = Config:new(ProcessName, State, Ini)
+local State = BotState(Ini)
+local Config = Config:new(State, Ini)
 
 Running = true
 PauseUntil = 0

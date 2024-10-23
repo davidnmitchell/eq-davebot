@@ -6,7 +6,7 @@ local netbots = require('netbots')
 local mychar  = require('mychar')
 local group   = require('group')
 require('eqclass')
-require('actions.s_cast')
+require('actions.s_buff')
 require('actions.s_bardcastaura')
 
 
@@ -100,28 +100,22 @@ local function CastBuffOn(buff_name, gem, id, char_name, order)
 				)
 			else
 				actionqueue.AddUnique(
-					ScpCast(
+					ScpBuff(
 						buff_name,
 						'gem' .. gem,
 						Config:Buff():MinMana(),
-						1,
 						target_id,
-						0,
-						nil,
 						priority
 					)
 				)
 			end
 		else
 			actionqueue.AddUnique(
-				ScpCast(
+				ScpBuff(
 					buff_name,
 					'gem' .. gem,
 					Config:Buff():MinMana(),
-					1,
 					target_id,
-					0,
-					nil,
 					priority
 				)
 			)
@@ -136,14 +130,11 @@ local function CheckOnBuffsForId(package, target_id, char_name, key_order)
 			local ready = mq.TLO.Me.ItemReady(spell.Name)()
 			if ready and not HasBuff(spell.Effect, target_id) then
 				actionqueue.AddUnique(
-					ScpCast(
+					ScpBuff(
 						spell.Name,
 						spell.Type,
 						0,
-						1,
 						target_id,
-						0,
-						nil,
 						89
 					)
 				)
@@ -152,14 +143,11 @@ local function CheckOnBuffsForId(package, target_id, char_name, key_order)
 			local ready = mq.TLO.Me.AltAbilityReady(spell.Name)()
 			if ready and not HasBuff(spell.Effect, target_id) then
 				actionqueue.AddUnique(
-					ScpCast(
+					ScpBuff(
 						spell.Name,
 						spell.Type,
 						0,
-						1,
 						target_id,
-						0,
-						nil,
 						89
 					)
 				)

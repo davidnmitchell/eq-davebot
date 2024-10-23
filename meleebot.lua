@@ -52,7 +52,7 @@ local function do_melee()
 				)
 			)
 		elseif State.TetherStatus == 'P' then
-			State:TetherResume()
+			State.TetherResume()
 		end
 	end
 
@@ -63,7 +63,7 @@ local function do_melee()
 				---@diagnostic disable-next-line: undefined-field
 				if mq.TLO.Me.GroupAssistTarget.PctHPs() < Config:Melee():EngageTargetHPs() and mq.TLO.Me.GroupAssistTarget.Distance() < Config:Melee():EngageTargetDistance() then
 					if State.TetherStatus == 'F' then
-						State:TetherPause()
+						State.TetherPause()
 					end
 					actionqueue.AddUnique(
 						ScpEngage(

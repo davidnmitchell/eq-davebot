@@ -35,7 +35,7 @@ local function callback_dbt(...)
 			end
 			if args[2] == 'last' then
 				if args[3] == 'mob' then
-					local last_npc = State:LastTargetOf(
+					local last_npc = State.LastTargetOf(
 						function(id)
 							return mq.TLO.Spawn(id).Type() == 'NPC'
 						end

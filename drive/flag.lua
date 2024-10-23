@@ -14,9 +14,9 @@ return {
         local args = { ... }
         local on_or_off = args[2] or 'on'
         if on_or_off == 'on' then
-            State:SetFlag(args[1])
+            State.SetFlag(args[1])
         elseif on_or_off == 'off' then
-            State:UnsetFlag(args[1])
+            State.UnsetFlag(args[1])
         end
     end,
     Init = function(state, cfg, aq)

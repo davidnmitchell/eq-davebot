@@ -2,9 +2,8 @@ local mq              = require('mq')
 local co              = require('co')
 local spells          = require('spells')
 local lua             = require('lua')
-local heartbeat       = require('heartbeat')
-local tlo             = require('tlo')
 local mychar          = require('mychar')
+local actionqueue     = require('actionqueue')
 local drivebot        = require('drivebot')
 local songbot         = require('songbot')
 local targetbot       = require('targetbot')
@@ -23,7 +22,6 @@ local buffbot         = require('buffbot')
 require('eqclass')
 require('config')
 require('state')
-local actionqueue     = require('actionqueue')
 
 
 --
@@ -32,7 +30,7 @@ local actionqueue     = require('actionqueue')
 
 local MyClass = EQClass:new()
 local Ini = Ini:new()
-local State = BotState:new(Ini)
+local State = BotState(Ini)
 local Config = Config:new(State, Ini)
 
 local Running = true
@@ -125,7 +123,7 @@ local function main()
 
 	local state_co = ManagedCoroutine:new(
 		function()
-			State:Run()
+			State.Run()
 		end,
 		"state_co"
 	)
@@ -253,7 +251,7 @@ local function main()
 		function()
 			while true do
 				if State.IsEarlyCombatActive and not mychar.InCombat() and State.EarlyCombatActiveSince + 10000 < mq.gettime() then
-					State:MarkEarlyCombatInactive()
+					State.MarkEarlyCombatInactive()
 				end
 				co.yield()
 			end
@@ -320,7 +318,7 @@ local function main()
 
 			if MyClass.IsBard and Config:Twist():Enabled() then songbot_co:Resume() end
 		else
-			State:TetherClear()
+			State.TetherClear()
 		end
 
 		state_co:Resume()

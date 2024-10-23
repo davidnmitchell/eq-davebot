@@ -30,7 +30,7 @@ local function log(msg)
 end
 
 local function do_target(target_id, func)
-	local locked, lock = State:WaitOnAndAcquireLock(
+	local locked, lock = State.WaitOnAndAcquireLock(
 		'target',
 		'crowdcontrolbot'
 	)
@@ -44,7 +44,7 @@ local function do_target(target_id, func)
 	co.delay(250)
 	local value = func()
 
-	State:ReleaseLock(
+	State.ReleaseLock(
 		'target',
 		'crowdcontrolbot'
 	)
@@ -140,7 +140,7 @@ end
 local function EnchanterCCMode()
 	log('Crowd control active')
 	CCRunning = true
-	State:MarkCrowdControlActive()
+	State.MarkCrowdControlActive()
 	actionqueue.Wipe()
 end
 
@@ -169,7 +169,7 @@ end
 local function BardCCMode()
 	log('Crowd control active')
 	CCRunning = true
-	State:MarkCrowdControlActive()
+	State.MarkCrowdControlActive()
 	actionqueue.Wipe()
 	mq.cmd('/attack off')
 	mq.cmd('/twist clear')
@@ -258,7 +258,7 @@ local function do_crowdcontrol(my_class)
 		else
 			if CCRunning then
 				CCRunning = false
-				State:MarkCrowdControlInactive()
+				State.MarkCrowdControlInactive()
 			end
 		end
 	elseif my_class == 'Bard' then
@@ -291,7 +291,7 @@ local function do_crowdcontrol(my_class)
 		else
 			if CCRunning then
 				CCRunning = false
-				State:MarkCrowdControlInactive()
+				State.MarkCrowdControlInactive()
 			end
 		end
 	end

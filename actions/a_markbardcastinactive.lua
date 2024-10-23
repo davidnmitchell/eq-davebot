@@ -5,7 +5,7 @@ function ActMarkBardCastInactive()
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)
-        state:MarkBardCastInactive()
+        state.MarkBardCastInactive()
     end
 
     return self

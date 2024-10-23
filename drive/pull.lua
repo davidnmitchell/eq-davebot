@@ -17,10 +17,10 @@ local Config = {}
 local function shd_pull()
     local snare = spells.FindSpell('Damage Over Time', 'Snare', 'Single')
 
-    State:MarkEarlyCombatActive()
+    State.MarkEarlyCombatActive()
     co.delay(100)
 
-    local last_npc = State:LastTargetOf(
+    local last_npc = State.LastTargetOf(
         function(id)
             return mq.TLO.Spawn(id).Type() == 'NPC'
         end
@@ -28,16 +28,16 @@ local function shd_pull()
 
     if last_npc <= 0 then
         print('Could not find npc in target history to pull')
-        State:MarkEarlyCombatInactive()
+        State.MarkEarlyCombatInactive()
         return
     end
 
     print('Pulling ' .. mq.TLO.Spawn(last_npc).CleanName())
 
-    local locked, lock = State:WaitOnAndAcquireLock('target', 'pull', 2000, 2000)
+    local locked, lock = State.WaitOnAndAcquireLock('target', 'pull', 2000, 2000)
     if not locked then
         print('Could not target')
-        State:MarkEarlyCombatInactive()
+        State.MarkEarlyCombatInactive()
         return
     end
 
@@ -51,17 +51,17 @@ local function shd_pull()
     local distance = mq.TLO.Spawn(target_id).Distance()
     if distance > range then
         print('Out of range')
-        State:MarkEarlyCombatInactive()
+        State.MarkEarlyCombatInactive()
         return
     end
 
     if not target_id or group.IsGroupMember(target_id) then
         print('Invalid target')
-        State:MarkEarlyCombatInactive()
+        State.MarkEarlyCombatInactive()
         return
     end
 
-    State:ReleaseLock('target', 'pull')
+    State.ReleaseLock('target', 'pull')
 
     actionqueue.Wipe()
 
@@ -70,13 +70,13 @@ local function shd_pull()
     ---@diagnostic disable-next-line: undefined-field
     if not mq.TLO.Cast.Ready() then
         print('Not ready to cast spell')
-        State:MarkEarlyCombatInactive()
+        State.MarkEarlyCombatInactive()
         return
     end
 
     if State.TetherStatus ~= 'C' then
         print('Camp is not made')
-        State:MarkEarlyCombatInactive()
+        State.MarkEarlyCombatInactive()
         return
     end
 
@@ -100,7 +100,7 @@ local function shd_pull()
     ---@diagnostic disable-next-line: undefined-field
     if mq.TLO.Cast.Status() ~= 'C' then
         print('Not casting spell for some reason, aborting...')
-        State:MarkEarlyCombatInactive()
+        State.MarkEarlyCombatInactive()
         actionqueue.Wipe()
         return
     end
@@ -126,7 +126,7 @@ local function shd_pull()
         co.delay(60000, function() return done_returning end)
         if mq.TLO.MoveTo.Moving() then
             print('Nav took longer than expected')
-            State:MarkEarlyCombatInactive()
+            State.MarkEarlyCombatInactive()
             return
         end
         -- TODO make this exit-able

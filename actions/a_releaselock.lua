@@ -8,7 +8,7 @@ function ActReleaseLock(lock_name, process_name)
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)
-        state:ReleaseLock(lock_name, process_name)
+        state.ReleaseLock(lock_name, process_name)
     end
 
     return self

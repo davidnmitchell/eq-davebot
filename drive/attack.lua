@@ -29,7 +29,7 @@ local function in_xtargets(target_id)
 end
 
 local function target(target_id)
-    local locked, lock = State:WaitOnAndAcquireLock('target', 'attack', 2000, 2000)
+    local locked, lock = State.WaitOnAndAcquireLock('target', 'attack', 2000, 2000)
     if not locked then
         print('Could not target')
         return
@@ -38,14 +38,14 @@ local function target(target_id)
     mq.TLO.Spawn(target_id).DoTarget()
     --mq.cmd('/target id ' .. target_id)
 
-    State:ReleaseLock('target', 'attack')
+    State.ReleaseLock('target', 'attack')
 end
 
 local function tank_attack()
     ---@diagnostic disable-next-line: undefined-field
     local target_id = tonumber(mq.TLO.Me.GroupAssistTarget.ID())
 
-    State:MarkEarlyCombatActive()
+    State.MarkEarlyCombatActive()
 
     if target_id == nil or target_id == 0 then
         target_id = tonumber(mq.TLO.Me.XTarget(1).ID())
@@ -58,12 +58,12 @@ local function tank_attack()
 
     if target_id == mq.TLO.Me.ID() then
         print('Can\'t attack yourself')
-        State:MarkEarlyCombatInactive()
+        State.MarkEarlyCombatInactive()
         return
     end
     if group.IsGroupMember(target_id) then
         print('Can\'t attack a group member')
-        State:MarkEarlyCombatInactive()
+        State.MarkEarlyCombatInactive()
         return
     end
 

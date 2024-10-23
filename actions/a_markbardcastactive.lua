@@ -5,12 +5,12 @@ function ActMarkBardCastActive()
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)
-        state:MarkBardCastActive()
+        state.MarkBardCastActive()
     end
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.OnInterrupt = function(state, cfg, ctx)
-        state:MarkBardCastInactive()
+        state.MarkBardCastInactive()
     end
 
     return self

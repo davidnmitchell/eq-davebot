@@ -13,17 +13,17 @@ local function set_tether(args)
     local mode = args[1]
     if mode == 'camp' then
         print('Camp set')
-        State:TetherCamp()
+        State.TetherCamp()
     elseif mode == 'follow' then
         local search = mq.TLO.Group.Member(1).ID()
         if #args > 1 then search = args[2] end
         local id = mq.TLO.Spawn(search).ID()
         if id == nil or id == 0 then
             print('Could not find spawn: ' .. search)
-            State:TetherClear()
+            State.TetherClear()
         else
             print('Following id ' .. id)
-            State:TetherFollow(id)
+            State.TetherFollow(id)
         end
     elseif mode == 'flee' then
         local search = mq.TLO.Group.Member(1).ID()
@@ -31,14 +31,14 @@ local function set_tether(args)
         local id = mq.TLO.Spawn(search).ID()
         if id == nil or id == 0 then
             print('Could not find spawn: ' .. search)
-            State:TetherClear()
+            State.TetherClear()
         else
             print('Fleeing behind id ' .. id .. '!!!!!!!!!!!!!!')
-            State:TetherFlee(id)
+            State.TetherFlee(id)
         end
     elseif mode == 'clear' then
         print('Clearing tether')
-        State:TetherClear()
+        State.TetherClear()
     end
 end
 
