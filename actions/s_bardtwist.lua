@@ -17,19 +17,19 @@ function ScpBardTwist(
     table.insert(queue, ActBardTwist(gem_order))
 
     local self = Script(
-        'bardtwist',
         'bardtwist ' .. table.concat(gem_order, ' '),
         queue,
         nil,
         priority,
         true
     )
+    self.__type__ = 'ScpBardTwist'
 
     self._gem_order = table.concat(gem_order, ' ')
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.IsSame = function(script)
-        return script ~= nil and 'bardtwist' == script.Type and self._gem_order == script._gem_order
+        return script ~= nil and self.__type__ == script.__type__ and self._gem_order == script._gem_order
     end
 
     ---@diagnostic disable-next-line: duplicate-set-field

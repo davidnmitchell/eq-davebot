@@ -31,10 +31,10 @@ local function CastNukeOn(spell_name, gem, id)
 		ScpCast(
 			spell_name,
 			'gem' .. gem,
-			Config:Dd():MinMana(),
+			Config.Dd.MinMana(),
 			2,
 			id,
-			Config:Dd():MinTargetHpPct(),
+			Config.Dd.MinTargetHpPct(),
 			nil,
 			70
 		)
@@ -43,11 +43,11 @@ end
 
 local function do_nukes()
 	if mq.TLO.Me.GroupAssistTarget() then
-		for pct,spell_key in pairs(Config:Dd():AtTargetHpPcts()) do
-			local spell = Config:Spells():Spell(spell_key)
-			local gem, err = Config:SpellBar():GemBySpell(spell)
-			if gem < 1 then
-				log(err)
+		for pct,spell_key in pairs(Config.Dd.AtTargetHpPcts()) do
+			local castable = Config.Spells.Spell(spell_key)
+			local res = Config.SpellBar.GemBySpell(castable)
+			if res.gem < 1 then
+				log(res.msg)
 			else
 				---@diagnostic disable-next-line: undefined-field
 				local group_target_id = mq.TLO.Me.GroupAssistTarget.ID()
@@ -56,9 +56,9 @@ local function do_nukes()
 
 				if group_target_id then
 					local pctHPs = mq.TLO.Spawn(group_target_id).PctHPs()
-					if pctHPs and pctHPs < pct and not History['' .. spell.Name .. group_target_id .. group_target_name] then
-						CastNukeOn(spell.Name, gem, group_target_id)
-						History['' .. spell.Name .. group_target_id .. group_target_name] = true
+					if pctHPs and pctHPs < pct and not History['' .. castable.Name .. group_target_id .. group_target_name] then
+						CastNukeOn(castable.Name, res.gem, group_target_id)
+						History['' .. castable.Name .. group_target_id .. group_target_name] = true
 					end
 				end
 			end

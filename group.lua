@@ -1,6 +1,7 @@
 local mq = require('mq')
 local common = require('common')
 local netbots= require('netbots')
+local array  = require('array')
 
 local group = {}
 
@@ -26,20 +27,31 @@ function group.IsMainAssist(name)
 	return mq.TLO.Group.MainAssist() ~= nil and mq.TLO.Group.MainAssist.Name() == name
 end
 
-function group.TellAll(cmd, predicate)
+function group.WithAllMembers(func)
 	if mq.TLO.Me.Grouped() then
-		predicate = predicate or function() return true end
-		for i=1, mq.TLO.Group.Members() do
-			if predicate(i) then
-				local name = mq.TLO.Group.Member(i).Name()
-				if name ~= nil then
+		local members = mq.TLO.Group.Members()
+		for i=1, members do
+			func(i)
+		end
+	end
+end
+
+function group.TellAll(cmd, predicate)
+	predicate = predicate or function() return true end
+
+	local peers = netbots.Peers()
+	group.WithAllMembers(
+		function(i)
+			local name = mq.TLO.Group.Member(i).Name()
+			if name ~= nil then
+				if array.HasValue(peers, name) and predicate(i) then
 					mq.cmd('/squelch /bct ' .. name .. ' /' .. cmd)
 				end
 			end
 		end
-		if predicate(0) then
-			mq.cmd(cmd)
-		end
+	)
+	if predicate(0) then
+		mq.cmd(cmd)
 	end
 end
 
@@ -85,8 +97,9 @@ function group.IndexOf(target_id)
 end
 
 function group.PetIdById(target_id)
-	if common.ArrayHasValue(netbots.PeerIds(), target_id) then
-		return mq.TLO.NetBots(netbots.PeerById(target_id)).PetID() or 0
+	local peer = netbots.PeerById(target_id)
+	if peer ~= nil then
+		return mq.TLO.NetBots(peer).PetID() or 0
 	elseif target_id == mq.TLO.Me.ID() then
 		return mq.TLO.Pet.ID() or 0
 	else

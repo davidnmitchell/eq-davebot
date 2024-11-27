@@ -3,6 +3,8 @@ local str = require('str')
 local spells = require('spells')
 require('eqclass')
 require('actions.s_cast')
+local array  = require('array')
+local common = require('common')
 
 
 local actionqueue = {}
@@ -29,58 +31,70 @@ local function target_from_arg(arg)
     assert(false, 'Could not find target "' .. arg .. '"')
 end
 
-local function spell_from_arg(arg)
-    local spell = Config:Spells():Spell(arg)
-    if spell.Error == nil then
-        return spell.Name
-    end
-    local name = spells.ReferenceSpell(arg)
-    if name ~= nil then return name end
-    assert(false, 'Could not find spell "' .. arg .. '"')
+local function castable_from_arg(arg)
+    local castable = Config.Spells.Spell(arg)
+    if castable.Error ~= nil then
+		assert(false, castable.Error)
+	end
+	return castable
+end
+
+local function split_key_value(kv)
+	local parts = str.Split(kv, '|')
+	return str.Trim(parts[1]), str.Trim(parts[2])
 end
 
 local function parse_line(args)
+	local parts = array.Filtered(str.Split(table.concat(args, ' '), '-'), function(s) return #s > 0 end)
 	local parsed = {
 		gem=0,
 		unique=false
 	}
-	for i=1,#args do
-        local parts = str.Split(args[i], '|')
-		if parts[1] == '-priority' then
-			parsed.priority = tonumber(parts[2])
-		elseif parts[1] == '-target' then
-			parsed.target_id = target_from_arg(parts[2])
-		elseif parts[1] == '-gem' then
-			parsed.gem = parts[2]
-		elseif parts[1] == '-spell' then
-			parsed.spell = spell_from_arg(parts[2])
-		elseif parts[1] == '-min_mana' then
-			parsed.min_mana = tonumber(parts[2])
-		elseif parts[1] == '-min_target_hps' then
-			parsed.min_target_hps = tonumber(parts[2])
-		elseif parts[1] == '-max_tries' then
-			parsed.max_tries = tonumber(parts[2])
-		elseif parts[1] == '-unique' then
-			parsed.unique = parts[2]:lower() == 'true'
+	for i=1,#parts do
+		local key, value = split_key_value(parts[i])
+		if key == 'priority' then
+			parsed.priority = tonumber(value)
+		elseif key == 'target' then
+			parsed.target_id = target_from_arg(value)
+		elseif key == 'gem' then
+			parsed.gem = value
+		elseif key == 'spell' then
+			parsed.castable = castable_from_arg(value)
+		elseif key == 'min_mana' then
+			parsed.min_mana = tonumber(value)
+		elseif key == 'min_target_hps' then
+			parsed.min_target_hps = tonumber(value)
+		elseif key == 'max_tries' then
+			parsed.max_tries = tonumber(value)
+		elseif key == 'unique' then
+			parsed.unique = value:lower() == 'true'
 		end
 	end
 	if parsed.gem == 0 then
-		parsed.gem = Config:SpellBar():GemBySpellName(parsed.spell)
-		if parsed.gem == 0 then
-			parsed.gem = Config:SpellBar():FirstOpenGem()
+		if parsed.castable.Type == 'item' then
+			parsed.gem = 'item'
+		elseif parsed.castable.Type == 'alt' then
+			parsed.gem = 'alt'
+		elseif parsed.castable.Type == 'spell' then
+			local res = Config.SpellBar.GemBySpell(parsed.castable)
+			if res.gem < 1 then
+				assert(false, res.msg)
+			end
+			parsed.gem = res.gem
 		end
 	end
 	if tonumber(parsed.gem) then
 		parsed.gem = 'gem' .. parsed.gem
 	end
+	print(parsed.castable.Name .. ':' .. parsed.gem)
 	return ScpCast(
-		parsed.spell,
+		parsed.castable,
 		parsed.gem,
 		parsed.min_mana,
 		parsed.max_tries,
 		parsed.target_id,
 		parsed.min_target_hps,
-		mq.TLO.Spell(parsed.spell).CastTime.Raw(),
+		mq.TLO.Spell(parsed.castable).CastTime.Raw(),
 		parsed.priority
 	), parsed.unique
 end

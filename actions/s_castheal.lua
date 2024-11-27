@@ -1,40 +1,39 @@
 local mq = require('mq')
-require('actions.s_cast')
+require('actions.a_cast')
 
 
-function ScpLifetap(
-    spell_name,
+function ScpCastHeal(
+    spell,
     preferred_gem,
     min_mana_required,
-    max_tries,
     target_id,
-    skip_if_target_hp_below,
-    timeout,
+    pct_threshold,
     priority,
     callback
 )
     local self = ScpCast(
-        spell_name,
+        spell,
         preferred_gem,
         min_mana_required,
-        max_tries,
+        3,
         target_id,
-        skip_if_target_hp_below,
-        timeout,
+        0,
+        nil,
         priority,
         callback
     )
-    self.__type__ = 'ScpLifetap'
+    self.__type__ = 'ScpCastHeal'
 
     local super_ShouldSkip = self.ShouldSkip
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.ShouldSkip = function(state, cfg, ctx)
-        if mq.TLO.Target.ID() ~= target_id then
-            return true, 'target has switched'
-        else
-            return super_ShouldSkip(state, cfg, ctx)
+        local super_value, msg = super_ShouldSkip(state, cfg, ctx)
+        if super_value then return super_value, msg end
+        if mq.TLO.Spawn(target_id).PctHPs() > pct_threshold then
+            return true, 'target has enough health already'
         end
+        return false
     end
 
     return self

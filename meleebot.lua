@@ -61,7 +61,7 @@ local function do_melee()
 			local group_assist_target = mq.TLO.Me.GroupAssistTarget()
 			if group_assist_target then
 				---@diagnostic disable-next-line: undefined-field
-				if mq.TLO.Me.GroupAssistTarget.PctHPs() < Config:Melee():EngageTargetHPs() and mq.TLO.Me.GroupAssistTarget.Distance() < Config:Melee():EngageTargetDistance() then
+				if mq.TLO.Me.GroupAssistTarget.PctHPs() < Config.Melee.EngageTargetHPs() and mq.TLO.Me.GroupAssistTarget.Distance() < Config.Melee.EngageTargetDistance() then
 					if State.TetherStatus == 'F' then
 						State.TetherPause()
 					end

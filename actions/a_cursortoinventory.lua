@@ -6,6 +6,7 @@ require('actions.action')
 
 function ActCursorToInventory()
     local self = Action('CursorToInventory')
+    self.__type__ = 'ActCursorToInventory'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)

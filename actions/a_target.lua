@@ -5,6 +5,7 @@ function ActTarget(target_id)
     assert(target_id and target_id > 0)
 
     local self = Action('Target')
+    self.__type__ = 'ActTarget'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)

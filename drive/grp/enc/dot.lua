@@ -14,7 +14,7 @@ local function name_of_caster()
 end
 
 local function send_spell(caster, type, target_id)
-    mq.cmd('/squelch /bct ' .. caster .. ' //dbcq queue -spell|Damage Over Time,' .. type .. ',Single -target_id|' .. target_id)
+    mq.cmd('/squelch /bct ' .. caster .. ' //drive cast -spell|Damage Over Time,' .. type .. ',Single -target|' .. target_id)
 end
 
 local function do_target_id(type, id)

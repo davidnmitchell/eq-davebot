@@ -101,18 +101,18 @@ local function do_tether()
 			if mq.TLO.AdvPath.State() == 1 then
 				mq.cmd('/afollow off')
 			end
-			if Config:Tether():ModeIsActive() and not mq.TLO.Navigation.Active() and not mychar.InCombat() and State.MyCharHasNotMovedFor() > Config:Tether():ReturnTimer() then
+			if Config.Tether.ModeIsActive() and not mq.TLO.Navigation.Active() and not mychar.InCombat() and State.MyCharHasNotMovedFor() > Config.Tether.ReturnTimer() then
 				local distance = mq.TLO.Math.Distance(State.TetherDetail)()
-				if distance > Config:Tether():CampMaxDistance() then
+				if distance > Config.Tether.CampMaxDistance() then
 					nav_to_camp()
 				end
 			end
 		elseif not paused() then
 			local id = tonumber(State.TetherDetail)
-			if id ~= nil and Config:Tether():ModeIsActive() then
+			if id ~= nil and Config.Tether.ModeIsActive() then
 				if not mq.TLO.Navigation.Active() then
 					local distance = mq.TLO.Spawn(id).Distance3D()
-					if distance ~= nil and distance > Config:Tether():FollowMaxDistance() then
+					if distance ~= nil and distance > Config.Tether.FollowMaxDistance() then
 						nav_to_id()
 					end
 					if mq.TLO.AdvPath.State() ~= 1 then
@@ -120,9 +120,17 @@ local function do_tether()
 					end
 				end
 			end
+		else
+			if mq.TLO.AdvPath.State() == 1 then
+				mq.cmd('/afollow off')
+			end
 		end
 	elseif mq.TLO.AdvPath.State() == 1 then
 		mq.cmd('/afollow off')
+	else
+		if mq.TLO.Me.Name() == 'Pystoffe' then
+			-- print(mq.TLO.AdvPath.State())
+		end
 	end
 end
 

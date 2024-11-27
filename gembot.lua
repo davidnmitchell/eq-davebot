@@ -27,16 +27,16 @@ local function log(msg)
 end
 
 local function do_memorize()
-	local gems = Config:SpellBar():Gems()
+	local gems = Config.SpellBar.Gems()
 	for gem, spell_key in pairs(gems) do
 		--print(gem)
 		if spell_key ~= 'OPEN' then
-			local spell = Config:Spells():Spell(spell_key)
-			if spell.Error == nil then
-				if mq.TLO.Me.Gem(gem).Name() ~= spell.Name then
+			local castable = Config.Spells.Spell(spell_key)
+			if castable.Error == nil then
+				if mq.TLO.Me.Gem(gem).Name() ~= castable.Name then
 					actionqueue.AddUnique(
 						ScpMemorize(
-							spell.Name,
+							castable.Name,
 							'gem' .. gem,
 							false,
 							99
@@ -44,7 +44,7 @@ local function do_memorize()
 					)
 				end
 			else
-				log(spell.Error)
+				log(castable.Error)
 			end
 		end
 	end

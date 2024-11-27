@@ -13,7 +13,6 @@ function ScpFace(target_id, priority, blocking)
     blocking = blocking or false
 
     local self = Script(
-        'action',
         'Face ' .. (mq.TLO.Spawn(target_id).CleanName() or 'nil'),
         {
             ActWaitOnAndAcquireLock(
@@ -37,6 +36,7 @@ function ScpFace(target_id, priority, blocking)
         priority,
         blocking
     )
+    self.__type__ = 'ScpFace'
 
     return self
 end

@@ -33,7 +33,7 @@ local ProcessName = 'castqueue'
 local Ini = Ini:new()
 local MyClass = EQClass:new()
 local State = BotState(Ini)
-local Config = Config:new(State, Ini)
+local Config = Config(State, Ini)
 
 Running = true
 PauseUntil = 0
@@ -194,7 +194,7 @@ end
 
 local function parse_line(line)
 	local parsed = {
-		gem=Config:SpellBar():FirstOpenGem(),
+		gem=Config.SpellBar.FirstOpenGem(),
 		unique=false
 	}
 	local parts = str.Split(line, '-')
@@ -261,14 +261,14 @@ end
 -- Coroutines
 --
 
-local print_co = ManagedCoroutine:new(
+local print_co = ManagedCoroutine(
 	function()
-		local nextprint = mq.gettime() + Config:CastQueue():PrintTimer() * 1000
+		local nextprint = mq.gettime() + Config.CastQueue.PrintTimer() * 1000
 		while true do
 			local time = mq.gettime()
-			if Config:CastQueue():Print() and time >= nextprint then
+			if Config.CastQueue.Print() and time >= nextprint then
 				print_queue()
-				nextprint = time + Config:CastQueue():PrintTimer() * 1000
+				nextprint = time + Config.CastQueue.PrintTimer() * 1000
 			end
 
 			co.yield()
@@ -276,7 +276,7 @@ local print_co = ManagedCoroutine:new(
 	end
 )
 
-local cast_co = ManagedCoroutine:new(
+local cast_co = ManagedCoroutine(
 	function()
 		while true do
 			do_casting()
@@ -286,7 +286,7 @@ local cast_co = ManagedCoroutine:new(
 	end
 )
 
-local prune_co = ManagedCoroutine:new(
+local prune_co = ManagedCoroutine(
 	function()
 		while true do
 			prune_dead()
@@ -296,10 +296,10 @@ local prune_co = ManagedCoroutine:new(
 	end
 )
 
-local reload_co = ManagedCoroutine:new(
+local reload_co = ManagedCoroutine(
 	function()
 		while true do
-			Config:Reload(10000)
+			Config.Reload(10000)
 
 			co.yield()
 		end
@@ -333,7 +333,7 @@ local function main()
 				elseif args[1] == 'removeall' then
 					remove_all_from_queue()
 				elseif args[1] == 'queue' then
-					local line = str.Join(args, 2)
+					local line = str.Join(args, ' ', 2)
 					local cast, unique = parse_line(line)
 					if unique then
 						add_unique_to_queue(cast)
@@ -342,7 +342,7 @@ local function main()
 					end
 				end
 			else
-				log('Print is ' .. tostring(Config:CastQueue():Print()) .. ', PrintTimer is ' .. Config:CastQueue():PrintTimer())
+				log('Print is ' .. tostring(Config.CastQueue.Print()) .. ', PrintTimer is ' .. Config.CastQueue.PrintTimer())
 			end
 		end
 	)
@@ -357,8 +357,8 @@ local function main()
 		end
 
 		if not Paused then
-			print_co:Resume()
-			cast_co:Resume()
+			print_co.Resume()
+			cast_co.Resume()
 		else
 			if mq.gettime() >= PauseUntil then
 				Paused = false
@@ -367,8 +367,8 @@ local function main()
 			end
 		end
 
-		prune_co:Resume()
-		reload_co:Resume()
+		prune_co.Resume()
+		reload_co.Resume()
 
 		heartbeat.SendHeartBeat(ProcessName)
 		mq.delay(1)

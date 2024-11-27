@@ -21,9 +21,8 @@ local function name_of_caster()
     return mq.TLO.Group.Member(idx).Name()
 end
 
--- TODO: find a way to have the healer select the spell
 local function send_spell(caster, target_id)
-    mq.cmd('/squelch /bct ' .. caster .. ' //drive cast -spell|Heals,Heals,Single,2 -priority|0 -target|' .. target_id)
+    mq.cmd('/squelch /bct ' .. caster .. ' //drive cast -spell|h_single -priority|0 -target|' .. target_id)
 end
 
 local function heal_me()

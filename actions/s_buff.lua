@@ -8,6 +8,7 @@ function ScpBuff(
     preferred_gem,
     min_mana_required,
     target_id,
+    in_combat,
     priority,
     callback
 )
@@ -22,11 +23,13 @@ function ScpBuff(
         priority,
         callback
     )
+    self.__type__ = 'ScpBuff'
+
     local super_ShouldSkip = self.ShouldSkip
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.ShouldSkip = function(state, cfg, ctx)
-        if mychar.InCombat() then
+        if not in_combat and mychar.InCombat() then
             return true, 'in combat'
         else
             return super_ShouldSkip(state, cfg, ctx)

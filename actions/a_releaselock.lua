@@ -5,6 +5,7 @@ function ActReleaseLock(lock_name, process_name)
     assert(process_name)
 
     local self = Action('ReleaseLock', false)
+    self.__type__ = 'ActReleaseLock'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)

@@ -35,7 +35,7 @@ local function log(msg)
 end
 
 local function excepted(spell_name, target_id)
-	return (Exceptions[target_id] and Exceptions[target_id][spell_name] and Exceptions[target_id][spell_name] + Config:Buff():BackoffTimer() > mq.gettime()) or false
+	return (Exceptions[target_id] and Exceptions[target_id][spell_name] and Exceptions[target_id][spell_name] + Config.Buff.BackoffTimer() > mq.gettime()) or false
 end
 
 local function netbots_peer_has_buff(spell_name, peer)
@@ -46,6 +46,10 @@ local function netbots_peer_has_buff(spell_name, peer)
 	end
 	for i, spell_id in ipairs(str.Split(mq.TLO.NetBots(peer).ShortBuff(), ' ')) do
 		local n = mq.TLO.Spell(spell_id).Name()
+		if n == nil then
+			print(spell_id)
+			print(mq.TLO.NetBots(peer).ShortBuff())
+		end
 		if n == spell_name or str.StartsWith(n, spell_name) then
 			return true
 		end
@@ -76,11 +80,13 @@ local function HasBuff(spell_name, target_id)
 	end
 end
 
-local function CastBuffOn(buff_name, gem, id, char_name, order)
+local function CastBuffOn(buff_name, gem, id, char_name, order, in_combat)
 	assert(id)
 	assert(buff_name)
 	if mq.TLO.Spawn(id)() and mq.TLO.Spawn(id).Distance() <= mq.TLO.Spell(buff_name).Range() then
-		local priority = 90 + order
+		local priority = 90
+		if in_combat then priority = 49 end
+		priority = priority + order
 		if buff_name == 'Invisibility' and id == mq.TLO.Me.ID() then
 			priority = 101
 		end
@@ -103,8 +109,9 @@ local function CastBuffOn(buff_name, gem, id, char_name, order)
 					ScpBuff(
 						buff_name,
 						'gem' .. gem,
-						Config:Buff():MinMana(),
+						Config.Buff.MinMana(),
 						target_id,
+						in_combat,
 						priority
 					)
 				)
@@ -114,8 +121,9 @@ local function CastBuffOn(buff_name, gem, id, char_name, order)
 				ScpBuff(
 					buff_name,
 					'gem' .. gem,
-					Config:Buff():MinMana(),
+					Config.Buff.MinMana(),
 					target_id,
+					in_combat,
 					priority
 				)
 			)
@@ -123,49 +131,51 @@ local function CastBuffOn(buff_name, gem, id, char_name, order)
 	end
 end
 
-local function CheckOnBuffsForId(package, target_id, char_name, key_order)
+local function CheckOnBuffsForId(package, target_id, char_name, key_order, priority, in_combat)
 	for i, spell_key in ipairs(package) do
-		local spell = Config:Spells():Spell(spell_key)
-		if spell.Type == 'item' then
-			local ready = mq.TLO.Me.ItemReady(spell.Name)()
-			if ready and not HasBuff(spell.Effect, target_id) then
+		local castable = Config.Spells.Spell(spell_key)
+		if castable.Type == 'item' then
+			local ready = mq.TLO.Me.ItemReady(castable.Name)()
+			if ready and not HasBuff(castable.Effect, target_id) then
 				actionqueue.AddUnique(
 					ScpBuff(
-						spell.Name,
-						spell.Type,
+						castable.Name,
+						castable.Type,
 						0,
 						target_id,
-						89
+						in_combat,
+						priority
 					)
 				)
 			end
-		elseif spell.Type == 'alt' then
-			local ready = mq.TLO.Me.AltAbilityReady(spell.Name)()
-			if ready and not HasBuff(spell.Effect, target_id) then
+		elseif castable.Type == 'alt' then
+			local ready = mq.TLO.Me.AltAbilityReady(castable.Name)()
+			if ready and not HasBuff(castable.Effect, target_id) then
 				actionqueue.AddUnique(
 					ScpBuff(
-						spell.Name,
-						spell.Type,
+						castable.Name,
+						castable.Type,
 						0,
 						target_id,
-						89
+						in_combat,
+						priority
 					)
 				)
 			end
 		else
-			local gem, err = Config:SpellBar():GemBySpell(spell)
-			if gem < 0 then
-				log(err)
+			local res = Config.SpellBar.GemBySpell(castable)
+			if res.gem < 0 then
+				log(res.msg)
 			else
 				--print(char_name .. ':' .. tostring(sHasBuff(spell_name, target_id)))
-				if not excepted(spell.Name, target_id) and not HasBuff(spell.Name, target_id) then
-					if gem ~= 0 then
-						CastBuffOn(spell.Name, gem, target_id, char_name, common.TableIndexOf(key_order, spell_key))
+				if not excepted(castable.Name, target_id) and not HasBuff(castable.Name, target_id) then
+					if res.gem ~= 0 then
+						CastBuffOn(castable.Name, res.gem, target_id, char_name, common.TableIndexOf(key_order, spell_key), in_combat)
 					else
 						if MyClass.IsBard then
-							CastBuffOn(spell.Name, 1, target_id, char_name, common.TableIndexOf(key_order, spell_key))
+							CastBuffOn(castable.Name, 1, target_id, char_name, common.TableIndexOf(key_order, spell_key), in_combat)
 						else
-							log(err)
+							log(res.err)
 						end
 					end
 				end
@@ -219,7 +229,7 @@ local function ActiveSpellKeys()
 	local keys = {}
 	local names = active_package_names()
 	for i, name in ipairs(names) do
-		local package = Config:Buff():PackageByName(name)
+		local package = Config.Buff.PackageByName(name)
 		for j, key in ipairs(package) do
 			if not common.ArrayHasValue(keys, key) then
 				table.insert(keys, key)
@@ -251,51 +261,110 @@ local function do_buffs()
 		local package = {}
 		local id = group.MemberId(i)
 		if id == mq.TLO.Me.ID() then
-			copy_unique_into(package, Config:Buff():PackageByName('Self'))
+			copy_unique_into(package, Config.Buff.PackageByName('Self'))
 		end
 		if id == mq.TLO.Group.MainTank.ID() then
-			copy_unique_into(package, Config:Buff():PackageByName('MainTank'))
+			copy_unique_into(package, Config.Buff.PackageByName('MainTank'))
 		end
 		if id == mq.TLO.Group.MainAssist.ID() then
-			copy_unique_into(package, Config:Buff():PackageByName('MainAssist'))
+			copy_unique_into(package, Config.Buff.PackageByName('MainAssist'))
 		end
 		if id == mq.TLO.Group.Puller.ID() then
-			copy_unique_into(package, Config:Buff():PackageByName('Puller'))
+			copy_unique_into(package, Config.Buff.PackageByName('Puller'))
 		end
 		if id == mq.TLO.Group.Leader.ID() then
-			copy_unique_into(package, Config:Buff():PackageByName('Leader'))
+			copy_unique_into(package, Config.Buff.PackageByName('Leader'))
 		end
 		if id == mq.TLO.Group.MarkNpc.ID() then
-			copy_unique_into(package, Config:Buff():PackageByName('MarkNpc'))
+			copy_unique_into(package, Config.Buff.PackageByName('MarkNpc'))
 		end
 		if id == mq.TLO.Group.MasterLooter.ID() then
-			copy_unique_into(package, Config:Buff():PackageByName('MasterLooter'))
+			copy_unique_into(package, Config.Buff.PackageByName('MasterLooter'))
 		end
 		local class = group_member_class(i)
 		if class.IsCaster then
-			copy_unique_into(package, Config:Buff():PackageByName('Caster'))
+			copy_unique_into(package, Config.Buff.PackageByName('Caster'))
 		end
 		if class.IsHealer then
-			copy_unique_into(package, Config:Buff():PackageByName('Healer'))
+			copy_unique_into(package, Config.Buff.PackageByName('Healer'))
 		end
 		if class.IsMelee then
-			copy_unique_into(package, Config:Buff():PackageByName('Melee'))
+			copy_unique_into(package, Config.Buff.PackageByName('Melee'))
 		end
 		if class.IsHybrid then
-			copy_unique_into(package, Config:Buff():PackageByName('Hybrid'))
+			copy_unique_into(package, Config.Buff.PackageByName('Hybrid'))
 		end
-		copy_unique_into(package, Config:Buff():PackageByName(class.Name))
-		copy_unique_into(package, Config:Buff():PackageByName(member_name))
+		copy_unique_into(package, Config.Buff.PackageByName(class.Name))
+		copy_unique_into(package, Config.Buff.PackageByName(member_name))
 
-		CheckOnBuffsForId(package, id, member_name, active_keys)
+		CheckOnBuffsForId(package, id, member_name, active_keys, 89, false)
 
 		if class.HasPet then
 			if id == mq.TLO.Me.ID() and mq.TLO.Pet() ~= 'NO PET' then
-				CheckOnBuffsForId(Config:Buff():PackageByName('Selfpet'), mq.TLO.Pet.ID(), 'my pet', active_keys)
+				CheckOnBuffsForId(Config.Buff.PackageByName('Selfpet'), mq.TLO.Pet.ID(), 'my pet', active_keys, 89, false)
 			else
 				local pet_id = group.PetIdById(id)
 				if pet_id ~= 0 then
-					CheckOnBuffsForId(Config:Buff():PackageByName('Pet'), pet_id, member_name .. '\'s pet', active_keys)
+					CheckOnBuffsForId(Config.Buff.PackageByName('Pet'), pet_id, member_name .. '\'s pet', active_keys, 89, false)
+				end
+			end
+		end
+	end
+end
+
+local function do_combat_buffs()
+	local active_keys = ActiveSpellKeys()
+
+	for i=0, mq.TLO.Group.Members() do
+		local member_name = group_member_name(i)
+		local package = {}
+		local id = group.MemberId(i)
+		if id == mq.TLO.Me.ID() then
+			copy_unique_into(package, Config.CombatBuff.PackageByName('Self'))
+		end
+		if id == mq.TLO.Group.MainTank.ID() then
+			copy_unique_into(package, Config.CombatBuff.PackageByName('MainTank'))
+		end
+		if id == mq.TLO.Group.MainAssist.ID() then
+			copy_unique_into(package, Config.CombatBuff.PackageByName('MainAssist'))
+		end
+		if id == mq.TLO.Group.Puller.ID() then
+			copy_unique_into(package, Config.CombatBuff.PackageByName('Puller'))
+		end
+		if id == mq.TLO.Group.Leader.ID() then
+			copy_unique_into(package, Config.CombatBuff.PackageByName('Leader'))
+		end
+		if id == mq.TLO.Group.MarkNpc.ID() then
+			copy_unique_into(package, Config.CombatBuff.PackageByName('MarkNpc'))
+		end
+		if id == mq.TLO.Group.MasterLooter.ID() then
+			copy_unique_into(package, Config.CombatBuff.PackageByName('MasterLooter'))
+		end
+		local class = group_member_class(i)
+		if class.IsCaster then
+			copy_unique_into(package, Config.CombatBuff.PackageByName('Caster'))
+		end
+		if class.IsHealer then
+			copy_unique_into(package, Config.CombatBuff.PackageByName('Healer'))
+		end
+		if class.IsMelee then
+			copy_unique_into(package, Config.CombatBuff.PackageByName('Melee'))
+		end
+		if class.IsHybrid then
+			copy_unique_into(package, Config.CombatBuff.PackageByName('Hybrid'))
+		end
+		copy_unique_into(package, Config.CombatBuff.PackageByName(class.Name))
+		copy_unique_into(package, Config.CombatBuff.PackageByName(member_name))
+
+		CheckOnBuffsForId(package, id, member_name, active_keys, 49, true)
+
+		if class.HasPet then
+			if id == mq.TLO.Me.ID() and mq.TLO.Pet() ~= 'NO PET' then
+				CheckOnBuffsForId(Config.CombatBuff.PackageByName('Selfpet'), mq.TLO.Pet.ID(), 'my pet', active_keys, 49, true)
+			else
+				local pet_id = group.PetIdById(id)
+				if pet_id ~= 0 then
+					CheckOnBuffsForId(Config.CombatBuff.PackageByName('Pet'), pet_id, member_name .. '\'s pet', active_keys, 49, true)
 				end
 			end
 		end
@@ -308,7 +377,7 @@ end
 --
 
 local function exception1(line, spell_name)
-	if Config:Buff():Backoff() then
+	if Config.Buff.Backoff() then
 		log('Exception: ' .. spell_name)
 		local target_id = mq.TLO.Me.ID()
 		if not Exceptions[target_id] then
@@ -319,7 +388,7 @@ local function exception1(line, spell_name)
 end
 
 local function exception2(line, spell_name, target_name)
-	if Config:Buff():Backoff() then
+	if Config.Buff.Backoff() then
 		log('Exception: ' .. spell_name .. ' on ' .. target_name)
 		local target_id = mq.TLO.Spawn(target_name).ID()
 		if not Exceptions[target_id] then
@@ -330,7 +399,7 @@ local function exception2(line, spell_name, target_name)
 end
 
 local function exception3(line)
-	if Config:Buff():Backoff() then
+	if Config.Buff.Backoff() then
 		log('Exception: ' .. LastAura)
 		local id = mq.TLO.Me.ID()
 		if not Exceptions[id] then
@@ -365,8 +434,12 @@ function buffbot.Run()
 	while true do
 		if State.Mode ~= 1 and not mychar.InCombat() and not State.IsEarlyCombatActive then
 			do_buffs()
+			co.delay(1000)
 		end
-		co.delay(1000)
+		if State.Mode ~= 1 and mychar.InCombat() then
+			do_combat_buffs()
+		end
+		co.yield()
 	end
 end
 

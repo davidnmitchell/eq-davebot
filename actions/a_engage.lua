@@ -8,6 +8,7 @@ function ActEngage(
     assert(target_id ~= nil and target_id ~= 0)
 
     local self = Action('Engage')
+    self.__type__ = 'ActEngage'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)

@@ -11,7 +11,6 @@ function ScpTarget(target_id, priority)
     priority = tonumber(priority) or 99
 
     local self = Script(
-        'target',
         'target ' .. mq.TLO.Spawn(target_id).CleanName(),
         {
             ActWaitOnAndAcquireLock(
@@ -28,6 +27,7 @@ function ScpTarget(target_id, priority)
         priority,
         true
     )
+    self.__type__ = 'ScpTarget'
 
     return self
 end

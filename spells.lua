@@ -1,90 +1,88 @@
 local mq = require('mq')
 local co = require('co')
 local str = require('str')
-local common = require('common')
 
 local spells = {}
 
 
 local MyName = mq.TLO.Me.Name()
 local MyClass = mq.TLO.Me.Class.Name()
-local AmBard = MyClass == 'Bard'
+-- local AmBard = MyClass == 'Bard'
 
-local History = {}
+-- local History = {}
 
 
-local function in_history(spell, target_id)
-	-- print('-----History-----')
-	-- for i, sinfo in ipairs(History) do
-		-- local hspell = sinfo.spell
-		-- local htarget_id = sinfo.targetid
-		-- if not htarget_id then htarget_id = 'NIL' end
-		-- local htimestamp = sinfo.timestamp
-		-- print(i .. ':' .. hspell .. ':' .. htarget_id .. ':' .. htimestamp - (os.clock() - 10))
-	-- end
+-- local function in_history(spell, target_id)
+-- 	-- print('-----History-----')
+-- 	-- for i, sinfo in ipairs(History) do
+-- 		-- local hspell = sinfo.spell
+-- 		-- local htarget_id = sinfo.targetid
+-- 		-- if not htarget_id then htarget_id = 'NIL' end
+-- 		-- local htimestamp = sinfo.timestamp
+-- 		-- print(i .. ':' .. hspell .. ':' .. htarget_id .. ':' .. htimestamp - (os.clock() - 10))
+-- 	-- end
 
-	for i, sinfo in ipairs(History) do
-		if sinfo.timestamp < os.clock() - 3 then
-			table.remove(History, i)
-		end
-	end
+-- 	for i, sinfo in ipairs(History) do
+-- 		if sinfo.timestamp < os.clock() - 3 then
+-- 			table.remove(History, i)
+-- 		end
+-- 	end
 
-	for i, sinfo in ipairs(History) do
-		if sinfo.spell == spell and sinfo.targetid == target_id then
-			return true
-		end
-	end
-	return false
-end
+-- 	for i, sinfo in ipairs(History) do
+-- 		if sinfo.spell == spell and sinfo.targetid == target_id then
+-- 			return true
+-- 		end
+-- 	end
+-- 	return false
+-- end
 
-local function dbcq_queue_cmd(unique, spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
-	local cmd = '/dbcq queue -spell|' .. spell
-	if unique then cmd = cmd .. ' -unique|TRUE' end
-	if gem then cmd = cmd .. ' -gem|' .. gem end
-	if target_id then cmd = cmd .. ' -target_id|' .. target_id end
-	if msg then cmd = cmd .. ' -message|' .. msg end
-	if min_mana_pct then cmd = cmd .. ' -min_mana|' .. min_mana_pct end
-	if min_target_hp_pct then cmd = cmd .. ' -min_target_hps|' .. min_target_hp_pct end
-	if max_tries then cmd = cmd .. ' -max_tries|' .. max_tries end
-	if priority then cmd = cmd .. ' -priority|' .. priority end
-	return cmd
-end
+-- local function dbcq_queue_cmd(unique, spell, gem, target_id, min_mana_pct, min_target_hp_pct, max_tries, priority)
+-- 	local cmd = '/drive cast -spell|' .. spell
+-- 	if unique then cmd = cmd .. ' -unique|TRUE' end
+-- 	if gem then cmd = cmd .. ' -gem|' .. gem end
+-- 	if target_id then cmd = cmd .. ' -target|' .. target_id end
+-- 	if min_mana_pct then cmd = cmd .. ' -min_mana|' .. min_mana_pct end
+-- 	if min_target_hp_pct then cmd = cmd .. ' -min_target_hps|' .. min_target_hp_pct end
+-- 	if max_tries then cmd = cmd .. ' -max_tries|' .. max_tries end
+-- 	if priority then cmd = cmd .. ' -priority|' .. priority end
+-- 	return cmd
+-- end
 
-function spells.QueueSpell(state, spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
-	table.insert(History, { spell=spell, targetid=target_id, timestamp=os.clock() })
-	if not AmBard then
-		local cmd = dbcq_queue_cmd(false, spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
-		mq.cmd(cmd)
-	else
-		spells.BardCast(state, spell, gem, target_id)
-	end
-end
+-- function spells.QueueSpell(state, spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
+-- 	table.insert(History, { spell=spell, targetid=target_id, timestamp=os.clock() })
+-- 	if not AmBard then
+-- 		local cmd = dbcq_queue_cmd(false, spell, gem, target_id, min_mana_pct, min_target_hp_pct, max_tries, priority)
+-- 		mq.cmd(cmd)
+-- 	else
+-- 		spells.BardCast(state, spell, gem, target_id)
+-- 	end
+-- end
 
-function spells.QueueSpellIfNotQueued(state, spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
-	if not in_history(spell, target_id) then
-		table.insert(History, { spell=spell, targetid=target_id, timestamp=os.clock() })
+-- function spells.QueueSpellIfNotQueued(state, spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
+-- 	if not in_history(spell, target_id) then
+-- 		table.insert(History, { spell=spell, targetid=target_id, timestamp=os.clock() })
 
-		if not AmBard then
-			local cmd = dbcq_queue_cmd(true, spell, gem, target_id, msg, min_mana_pct, min_target_hp_pct, max_tries, priority)
-			mq.cmd(cmd)
-		else
-			if type(gem) == 'string' then
-				if gem:find('^gem') ~= nil then
-					spells.BardCast(state, spell, tonumber(gem:sub(4, gem:len())), target_id)
-				else
-					print('Unexpected string for gem: ' .. gem)
-				end
-			else
-				spells.BardCast(state, spell, gem, target_id)
-			end
-		end
-	end
-end
+-- 		if not AmBard then
+-- 			local cmd = dbcq_queue_cmd(true, spell, gem, target_id, min_mana_pct, min_target_hp_pct, max_tries, priority)
+-- 			mq.cmd(cmd)
+-- 		else
+-- 			if type(gem) == 'string' then
+-- 				if gem:find('^gem') ~= nil then
+-- 					spells.BardCast(state, spell, tonumber(gem:sub(4, gem:len())), target_id)
+-- 				else
+-- 					print('Unexpected string for gem: ' .. gem)
+-- 				end
+-- 			else
+-- 				spells.BardCast(state, spell, gem, target_id)
+-- 			end
+-- 		end
+-- 	end
+-- end
 
-function spells.WipeQueue()
-	while #History > 0 do table.remove(History) end
-	mq.cmd('/dbcq removeall')
-end
+-- function spells.WipeQueue()
+-- 	while #History > 0 do table.remove(History) end
+-- 	mq.cmd('/drive queue wipe')
+-- end
 
 function spells.KnownSpells()
 	local spell_book = {}
@@ -166,13 +164,13 @@ function spells.WriteReferences(ini, section_name)
 
 	local section = ini:Section(section_name)
 	for i, spell in ipairs(references) do
-		if section:IsMissing(spell.key) then
+		if section.IsMissing(spell.key) then
 			local name_pad = 18 - string.len(spell.key)
 
 			local reference = spell.reference
 			for j=1,name_pad do reference = str.Insert(reference, ' ', 0) end
 
-			section:WriteString(spell.key, reference)
+			section.WriteString(spell.key, reference)
 		end
 	end
 
@@ -205,9 +203,9 @@ function spells.DumpSpellBook(ini, section_name, spell_book)
 
 	local section = ini:Section(section_name)
 	for i, spell in ipairs(spell_book) do
-		if section:IsMissing(spell.key) then
-			local name_pad = 18 - string.len(spell.key)
-			local comment_pad = 35 - string.len(spell.name)
+		if section.IsMissing(spell.key) then
+			local name_pad = 18 - spell.key:len()
+			local comment_pad = 35 - spell.name:len()
 
 			local name = spell.name
 			local comment = ';' .. spell.category .. ',' .. spell.subcategory .. ',' .. spell.type
@@ -215,15 +213,62 @@ function spells.DumpSpellBook(ini, section_name, spell_book)
 			for j=1,name_pad do name = str.Insert(name, ' ', 0) end
 			for j=1,comment_pad do comment = str.Insert(comment, ' ', 0) end
 
-			section:WriteString(spell.key, name .. comment)
+			section.WriteString(spell.key, name .. comment)
 		end
 	end
 
 	print('Wrote ' .. (#spell_book) .. ' spells to ini')
 end
 
+function spells.DumpAAs(ini, section_name, aas)
+	local section = ini:Section(section_name)
+	local size = #aas
+	for i = 1, size do
+		local name = mq.TLO.AltAbility(aas[i]).Name()
+		local parts = str.Split(name, ' ')
+		name = 'Alt,' .. name
+		local key = 'a_' .. string.lower(parts[#parts]):gsub('`', '') .. aas[i]
+
+		if section.IsMissing(key) then
+			local name_pad = 18 - key:len()
+			local comment_pad = 35 - name:len()
+
+			local comment = ';' .. mq.TLO.AltAbility(aas[i]).Spell() .. ',' .. mq.TLO.AltAbility(aas[i]).Type()
+
+			for j=1,name_pad do name = str.Insert(name, ' ', 0) end
+			for j=1,comment_pad do comment = str.Insert(comment, ' ', 0) end
+
+			section.WriteString(key, name .. comment)
+		end
+	end
+
+	print('Wrote ' .. (#aas) .. ' AAs to ini')
+end
+
+function spells.DumpItems(ini, section_name, items)
+	local section = ini:Section(section_name)
+	local size = #items
+	for i = 1, size do
+		local name = items[i].name
+		local parts = str.Split(name, ' ')
+		name = 'Item,' .. name .. ',' .. items[i].spell
+		local key = 'i_' .. string.lower(parts[#parts]):gsub('`', '')
+
+		if section.IsMissing(key) then
+			local name_pad = 18 - key:len()
+
+			for j=1,name_pad do name = str.Insert(name, ' ', 0) end
+
+			section.WriteString(key, name)
+		end
+	end
+
+	print('Wrote ' .. (#items) .. ' items to ini')
+end
+
 function spells.FindSpell(category, subcategory, target, depth)
     local i = 1
+	local f = 1
     local found = {}
     local done = false
 	local dpth = depth or 1
@@ -237,18 +282,19 @@ function spells.FindSpell(category, subcategory, target, depth)
 				--print(spell .. ':' .. mq.TLO.Me.Spell(spell).TargetType())
 			--end
 			if target == mq.TLO.Spell(spell).TargetType() and category == mq.TLO.Spell(spell).Category() and subcategory == mq.TLO.Spell(spell).Subcategory() then
-				table.insert(found, 1, {spell=spell, level = mq.TLO.Spell(spell).Level()})
+				found[f] = {spell=spell, level = mq.TLO.Spell(spell).Level()}
+				f = f + 1
 			end
 			i = i + 1
 		end
     end
-	table.sort(
-		found,
-		function (spell1, spell2)
-			return spell1.level > spell2.level
-		end
-	)
 	if #found > 0 then
+		table.sort(
+			found,
+			function (spell1, spell2)
+				return spell1.level > spell2.level
+			end
+		)
 		return table.remove(found, dpth).spell
 	else
 		return ''
@@ -260,7 +306,7 @@ function spells.ReferenceSpell(spell_or_csv)
 		local parts = str.Split(spell_or_csv, ',')
 		if parts[1]:lower() == 'item' then
 			return parts[2]
-		elseif parts[1]:lower() == 'aa' then
+		elseif parts[1]:lower() == 'alt' then
 			return parts[2]
 		else
 			if #parts == 3 then

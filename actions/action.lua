@@ -2,6 +2,7 @@ local mq = require('mq')
 
 function Action(name, blocking, ready_timeout, finish_timeout)
 	local self = {}
+	self.__type__ = 'Action'
 
 	self.Name = name or ''
 	self.Blocking = blocking

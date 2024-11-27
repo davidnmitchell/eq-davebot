@@ -28,14 +28,14 @@ local function log(msg)
 end
 
 local function CastPet()
-	local gem = Config:SpellBar():FirstOpenGem()
+	local gem = Config.SpellBar.FirstOpenGem()
 	if gem ~= 0 then
-		local spell = spells.ReferenceSpell('Pet,Sum: ' .. Config:Pet():Type() .. ',Self')
+		local spell = spells.ReferenceSpell('Pet,Sum: ' .. Config.Pet.Type() .. ',Self')
 		actionqueue.AddUnique(
 			ScpCast(
 				spell,
 				'gem' .. gem,
-				Config:Pet():MinMana(),
+				Config.Pet.MinMana(),
 				1,
 				nil,
 				0,
@@ -52,13 +52,13 @@ local function hps_in_range()
 	---@diagnostic disable-next-line: undefined-field
 	local pct_hps = mq.TLO.Me.GroupAssistTarget.PctHPs()
 	---@diagnostic disable-next-line: undefined-field
-	return pct_hps and pct_hps < Config:Pet():EngageTargetHPs() and not mq.TLO.Me.GroupAssistTarget.Dead()
+	return pct_hps and pct_hps < Config.Pet.EngageTargetHPs() and not mq.TLO.Me.GroupAssistTarget.Dead()
 end
 
 local function engage_in_range()
 	---@diagnostic disable-next-line: undefined-field
 	local distance = mq.TLO.Me.GroupAssistTarget.Distance()
-	return distance and distance < Config:Pet():EngageTargetDistance()
+	return distance and distance < Config.Pet.EngageTargetDistance()
 end
 
 local function pet_has_wrong_target()
@@ -69,11 +69,11 @@ end
 local function do_pet()
 	local i_have_a_pet = mq.TLO.Pet() ~= 'NO PET'
 
-	if not i_have_a_pet and Config:Pet():AutoCast() and not mychar.InCombat() then
+	if not i_have_a_pet and Config.Pet.AutoCast() and not mychar.InCombat() then
 		CastPet()
 	end
 
-	if i_have_a_pet and Config:Pet():AutoAttack() and mychar.InCombat() and not mq.TLO.Pet.Combat() and mq.TLO.Me.GroupAssistTarget() ~= nil and hps_in_range() and engage_in_range() then
+	if i_have_a_pet and Config.Pet.AutoAttack() and mychar.InCombat() and not mq.TLO.Pet.Combat() and mq.TLO.Me.GroupAssistTarget() ~= nil and hps_in_range() and engage_in_range() then
 		actionqueue.AddUnique(
 			ScpPetEngage(
 				---@diagnostic disable-next-line: undefined-field
@@ -83,7 +83,7 @@ local function do_pet()
 		)
 	end
 	---@diagnostic disable-next-line: undefined-field
-	if i_have_a_pet and Config:Pet():AutoAttack() and mychar.InCombat() and mq.TLO.Pet.Combat() and (pet_has_wrong_target() or not hps_in_range()) then
+	if i_have_a_pet and Config.Pet.AutoAttack() and mychar.InCombat() and mq.TLO.Pet.Combat() and (pet_has_wrong_target() or not hps_in_range()) then
 		log('Telling pet to back off')
 		mq.cmd('/pet back')
 	end

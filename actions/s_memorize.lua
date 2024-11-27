@@ -33,19 +33,19 @@ function ScpMemorize(
     end
 
     local self = Script(
-        'memorize',
         'memorize ' .. spell_name,
         queue,
         timeout,
         priority,
         true
     )
+    self.__type__ = 'ScpMemorize'
 
     self._spell_name = spell_name
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.IsSame = function(script)
-        return script ~= nil and 'memorize' == script.Type and spell_name == script._spell_name
+        return script ~= nil and self.__type__ == script.__type__ and spell_name == script._spell_name
     end
 
     ---@diagnostic disable-next-line: duplicate-set-field

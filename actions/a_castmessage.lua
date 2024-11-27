@@ -7,6 +7,7 @@ function ActCastMessage(spell_name, target_id)
     target_id = target_id or 0
 
     local self = Action('CastMessage')
+    self.__type__ = 'ActCastMessage'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)

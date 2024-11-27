@@ -13,7 +13,7 @@ local function name_of_caster()
 end
 
 local function send_spell(caster)
-    mq.cmd('/squelch /bct ' .. caster .. ' //dbcq queue -spell|Utility Beneficial,Conversions,Self')
+    mq.cmd('/squelch /bct ' .. caster .. ' //drive cast -spell|Utility Beneficial,Conversions,Self')
 end
 
 local function cannibalize(times)

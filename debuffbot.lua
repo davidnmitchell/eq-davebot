@@ -39,10 +39,10 @@ local function CastDebuffOn(spell_name, gem, id, order)
 				ScpCast(
 					spell_name,
 					'gem' .. gem,
-					Config:Debuff():MinMana(),
+					Config.Debuff.MinMana(),
 					2,
 					id,
-					Config:Debuff():MinTargetHpPct(),
+					Config.Debuff.MinTargetHpPct(),
 					nil,
 					priority
 				)
@@ -53,8 +53,8 @@ local function CastDebuffOn(spell_name, gem, id, order)
 			-- 	'gem' .. gem,
 			-- 	id,
 			-- 	'Debuffing ' .. mq.TLO.Spawn(id).Name() .. ' with ' .. spell_name,
-			-- 	Config:Debuff():MinMana(),
-			-- 	Config:Debuff():MinTargetHpPct(),
+			-- 	Config.Debuff.MinMana(),
+			-- 	Config.Debuff.MinTargetHpPct(),
 			-- 	2,
 			-- 	priority
 			-- )
@@ -64,18 +64,18 @@ end
 
 local function do_debuffs()
 	local i = 1
-	for pct,spell_key in pairs(Config:Debuff():AtTargetHpPcts()) do
-		local spell = Config:Spells():Spell(spell_key)
-		local gem, err = Config:SpellBar():GemBySpell(spell)
-		if gem < 1 then
-			log(err)
+	for pct,spell_key in pairs(Config.Debuff.AtTargetHpPcts()) do
+		local castable = Config.Spells.Spell(spell_key)
+		local res = Config.SpellBar.GemBySpell(castable)
+		if res.gem < 1 then
+			log(res.msg)
 		else
 			---@diagnostic disable-next-line: undefined-field
 			local group_target_id = mq.TLO.Me.GroupAssistTarget.ID()
 			local group_target_pct_hps = mq.TLO.Spawn(group_target_id).PctHPs()
 
-			if group_target_id and not target.IsInGroup(group_target_id) and group_target_pct_hps and group_target_pct_hps < pct and group_target_pct_hps >= Config:Debuff():MinTargetHpPct() and not HasDebuff(spell, group_target_id) then
-				CastDebuffOn(spell.Name, gem, group_target_id, i)
+			if group_target_id and not target.IsInGroup(group_target_id) and group_target_pct_hps and group_target_pct_hps < pct and group_target_pct_hps >= Config.Debuff.MinTargetHpPct() and not HasDebuff(castable, group_target_id) then
+				CastDebuffOn(castable.Name, res.gem, group_target_id, i)
 			end
 		end
 		i = i + 1

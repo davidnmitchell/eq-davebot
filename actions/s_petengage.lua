@@ -14,7 +14,6 @@ function ScpPetEngage(target_id, priority)
     priority = tonumber(priority) or 99
 
     local self = Script(
-        'petengage',
         'petengage ' .. mq.TLO.Spawn(target_id).CleanName(),
         {
             ActWaitOnAndAcquireLock(
@@ -33,6 +32,7 @@ function ScpPetEngage(target_id, priority)
         priority,
         true
     )
+    self.__type__ = 'ScpPetEngage'
 
     return self
 end

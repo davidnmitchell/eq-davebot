@@ -28,19 +28,19 @@ function ScpBardCastAura(
     table.insert(queue, ActMarkBardCastInactive())
 
     local self = Script(
-        'cast',
         'cast ' .. spells.HumanString1(spell_name, 0),
         queue,
         timeout,
         priority,
         true
     )
+    self.__type__ = 'ScpBardCastAura'
 
     self._spell_name = spell_name
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.IsSame = function(script)
-        return script ~= nil and 'cast' == script.Type and spell_name == script._spell_name
+        return script ~= nil and self.__type__ == script.__type__ and spell_name == script._spell_name
     end
 
     ---@diagnostic disable-next-line: duplicate-set-field

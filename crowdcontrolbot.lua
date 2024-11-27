@@ -4,6 +4,8 @@ local mychar  = require('mychar')
 local netbots = require('netbots')
 local dannet  = require('dannet')
 require('eqclass')
+require('actions.s_castmez')
+
 
 local crowdcontrolbot = {}
 
@@ -122,15 +124,15 @@ end
 
 local function CCTargetByID(idx, target_id, current_targets, cast_function)
 	if WantToControl(idx, target_id, current_targets) and not IsControlled(target_id) then
-		local spell_key = Config:CrowdControl():Spell()
-		local spell = Config:Spells():Spell(spell_key)
-		local gem, err = Config:SpellBar():GemBySpell(spell)
-		if gem < 1 then
-			log(err)
+		local spell_key = Config.CrowdControl.Spell()
+		local castable = Config.Spells.Spell(spell_key)
+		local res = Config.SpellBar.GemBySpell(castable)
+		if res.gem < 1 then
+			log(res.msg)
 		else
 			local target_name = mq.TLO.Spawn(target_id).Name()
 			if target_name then
-				cast_function(spell.Name, gem, target_name)
+				cast_function(castable, res.gem, target_name)
 			end
 		end
 	end
@@ -151,14 +153,11 @@ local function EnchanterCCTargetByID(idx, target_id, current_targets)
 		current_targets,
 		function(spell, gem, name)
 			actionqueue.AddUnique(
-				ScpCast(
+				ScpCastMez(
 					spell,
 					'gem' .. gem,
-					Config:CrowdControl():MinMana(),
-					3,
+					Config.CrowdControl.MinMana(),
 					target_id,
-					1,
-					mq.TLO.Spell(spell).CastTime.Raw() + 2000,
 					10
 				)
 			)
@@ -183,14 +182,11 @@ local function BardCCTargetByID(idx, target_id, current_targets)
 		current_targets,
 		function(spell, gem, name)
 			actionqueue.AddUnique(
-				ScpCast(
+				ScpCastMez(
 					spell,
 					'gem' .. gem,
-					Config:CrowdControl():MinMana(),
-					20,
+					Config.CrowdControl.MinMana(),
 					target_id,
-					1,
-					mq.TLO.Spell(spell).CastTime.Raw() + 2000,
 					10
 				)
 			)
@@ -221,7 +217,7 @@ local function dannet_observe_pet_targets()
 end
 
 local function do_crowdcontrol(my_class)
-	local i_am_primary = Config:CrowdControl():IAmPrimary()
+	local i_am_primary = Config.CrowdControl.IAmPrimary()
 
 	local threshold = 3
 	if i_am_primary then
@@ -229,7 +225,7 @@ local function do_crowdcontrol(my_class)
 	end
 
 	if my_class == 'Enchanter' then
-		if mq.TLO.Me.XTarget() > threshold and mq.TLO.Me.PctMana() >= Config:CrowdControl():MinMana() then
+		if mq.TLO.Me.XTarget() > threshold and mq.TLO.Me.PctMana() >= Config.CrowdControl.MinMana() then
 			local current_targets = { }
 			if not CCRunning then
 				EnchanterCCMode()
@@ -314,7 +310,7 @@ end
 ---
 
 function crowdcontrolbot.Run()
-	local observe_co = ManagedCoroutine:new(
+	local observe_co = ManagedCoroutine(
 		function()
 			while true do
 				dannet_observe_pet_targets()
@@ -327,7 +323,7 @@ function crowdcontrolbot.Run()
 		if State.Mode ~= 1 and mychar.InCombat() then
 			do_crowdcontrol(MyClass.Name)
 		end
-		observe_co:Resume()
+		observe_co.Resume()
 		co.yield()
 	end
 end

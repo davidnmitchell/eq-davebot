@@ -1,351 +1,383 @@
 local mq = require('mq')
 local str = require('str')
 local co = require('co')
+require('either')
 require('ini')
 require('eqclass')
-require('spell')
-local common = require('common')
+require('castable')
+local array = require('array')
 
 MyClass = EQClass:new()
 
+if not table.unpack then table.unpack = unpack end
 
-Config = {}
-Config.__index = Config
-
-function Config:new(state, ini)
-	local mt = {}
-	setmetatable(mt, self)
-
-	mt._state = state
-	mt._ini = ini
-
-	mt._spells = SpellsConfig:new(mt._state, mt._ini)
-	mt._spellbar = SpellBarConfig:new(mt._state, mt._ini, mt._spells)
-	mt._castqueue = CastQueueConfig:new(mt._state, mt._ini)
-	mt._autosit = AutoSitConfig:new(mt._state, mt._ini)
-	mt._tether = TetherConfig:new(mt._state, mt._ini)
-	mt._twist = TwistConfig:new(mt._state, mt._ini)
-	mt._teamevents = TeamEventsConfig:new(mt._state, mt._ini)
-	mt._heal = HealConfig:new(mt._state, mt._ini)
-	mt._melee = MeleeConfig:new(mt._state, mt._ini)
-	mt._pet = PetConfig:new(mt._state, mt._ini)
-	mt._debuff = DebuffConfig:new(mt._state, mt._ini)
-	mt._cc = CrowdControlConfig:new(mt._state, mt._ini)
-	mt._buff = BuffConfig:new(mt._state, mt._ini)
-	mt._dot = DotConfig:new(mt._state, mt._ini)
-	mt._dd = DdConfig:new(mt._state, mt._ini)
-
-	mt._last_load_time = mq.gettime()
-
-	return mt
+local function pack(...)
+	return { ... }
 end
 
-function Config:Reload(min_interval)
-	if mq.gettime() >= self._last_load_time + (min_interval or 10000) then
-		self._ini:Reload()
+local function memoized1(fn)
+	local cached = nil
+	return function()
+		if cached == nil then
+			cached = fn()
+			-- cached = pack(fn())
+		end
+		return cached
+		-- return table.unpack(cached)
+	end
+end
 
-		co.yield()
+local function memoized(fn)
+	local cache = {}
 
-		self._castqueue:Calculate()
+	return function(...)
+	  local args = {...}
+	  local key = args[1]
+
+	  if key.IsCastable ~= nil and key.IsCastable then
+		key = key.AsString()
+	  end
+	  if not cache[key] then
+		cache[key] = fn(...)
+		-- cache[key] = pack(fn(...))
+	  end
+
+	  return cache[key]
+	  -- return table.unpack(cache[key])
+	end
+end
+
+
+function Config(state, ini)
+	local self = {}
+	self.__type__ = 'Config'
+
+	self.Spells = SpellsConfig(state, ini)
+	self.SpellBar = SpellBarConfig(state, ini, self.Spells)
+	self.CastQueue = CastQueueConfig(state, ini)
+	self.AutoSit = AutoSitConfig(state, ini)
+	self.Tether = TetherConfig(state, ini)
+	self.Twist = TwistConfig(state, ini)
+	self.TeamEvents = TeamEventsConfig(state, ini)
+	self.Heal = HealConfig(state, ini)
+	self.Melee = MeleeConfig(state, ini)
+	self.Pet = PetConfig(state, ini)
+	self.Debuff = DebuffConfig(state, ini)
+	self.CrowdControl = CrowdControlConfig(state, ini)
+	self.Buff = BuffConfig(state, ini)
+	self.CombatBuff = CombatBuffConfig(state, ini)
+	self.Dot = DotConfig(state, ini)
+	self.Dd = DdConfig(state, ini)
+
+	local last_load_time = mq.gettime()
+
+	self.Refresh = function()
+		self.CastQueue.RefreshFuncs()
 		co.yield()
-		self._tether:Calculate()
+		self.Tether.RefreshFuncs()
 		co.yield()
-		self._teamevents:Calculate()
+		self.TeamEvents.RefreshFuncs()
 		co.yield()
-		self._autosit:Calculate()
+		self.AutoSit.RefreshFuncs()
 		co.yield()
-		self._melee:Calculate()
+		self.Melee.RefreshFuncs()
 		co.yield()
-		self._cc:Calculate()
+		self.CrowdControl.RefreshFuncs()
 		co.yield()
-		self._debuff:Calculate()
+		self.Debuff.RefreshFuncs()
 		co.yield()
-		self._heal:Calculate()
+		self.Heal.RefreshFuncs()
 		co.yield()
-		self._pet:Calculate()
+		self.Pet.RefreshFuncs()
 		co.yield()
-		self._buff:Calculate()
+		self.Buff.RefreshFuncs()
 		co.yield()
-		self._dot:Calculate()
+		self.CombatBuff.RefreshFuncs()
 		co.yield()
-		self._dd:Calculate()
+		self.Dot.RefreshFuncs()
+		co.yield()
+		self.Dd.RefreshFuncs()
 		co.yield()
 		if MyClass.HasSpells or MyClass.IsBard then
-			self._spellbar:Calculate()
+			self.SpellBar.RefreshFuncs()
 			co.yield()
 		end
 		if MyClass.IsBard then
-			self._twist:Calculate()
+			self.Twist.RefreshFuncs()
 			co.yield()
 		end
-
-		self._last_load_time = mq.gettime()
 	end
-end
 
-function Config:Spells()
-	return self._spells
-end
+	self.Reload = function(min_interval)
+		if mq.gettime() >= last_load_time + (min_interval or 10000) then
+			ini:Reload()
 
-function Config:SpellBar()
-	return self._spellbar
-end
+			co.yield()
 
-function Config:CastQueue()
-	return self._castqueue
-end
+			self.CastQueue.Calculate()
+			co.yield()
+			self.Tether.Calculate()
+			co.yield()
+			self.TeamEvents.Calculate()
+			co.yield()
+			self.AutoSit.Calculate()
+			co.yield()
+			self.Melee.Calculate()
+			co.yield()
+			self.CrowdControl.Calculate()
+			co.yield()
+			self.Debuff.Calculate()
+			co.yield()
+			self.Heal.Calculate()
+			co.yield()
+			self.Pet.Calculate()
+			co.yield()
+			self.Buff.Calculate()
+			co.yield()
+			self.CombatBuff.Calculate()
+			co.yield()
+			self.Dot.Calculate()
+			co.yield()
+			self.Dd.Calculate()
+			co.yield()
+			if MyClass.HasSpells or MyClass.IsBard then
+				self.SpellBar.Calculate()
+				co.yield()
+			end
+			if MyClass.IsBard then
+				self.Twist.Calculate()
+				co.yield()
+			end
 
-function Config:AutoSit()
-	return self._autosit
-end
+			last_load_time = mq.gettime()
+		end
+	end
 
-function Config:Buff()
-	return self._buff
-end
-
-function Config:CrowdControl()
-	return self._cc
-end
-
-function Config:Debuff()
-	return self._debuff
-end
-
-function Config:Dot()
-	return self._dot
-end
-
-function Config:Heal()
-	return self._heal
-end
-
-function Config:Melee()
-	return self._melee
-end
-
-function Config:Dd()
-	return self._dd
-end
-
-function Config:Pet()
-	return self._pet
-end
-
-function Config:Twist()
-	return self._twist
-end
-
-function Config:Tether()
-	return self._tether
-end
-
-function Config:TeamEvents()
-	return self._teamevents
+	return self
 end
 
 
-SpellsConfig = {}
-SpellsConfig.__index = SpellsConfig
+--
+-- Spells
+--
 
-function SpellsConfig:new(state, ini)
-	local mt = {}
-	setmetatable(mt, self)
+function SpellsConfig(state, ini)
+	local self = {}
+	self.__type__ = 'SpellsConfig'
 
-	mt._ini = ini
-	mt._state = state
+	self.Spell = function(spell_key_or_ref)
+		assert(spell_key_or_ref ~= nil, 'Tried to look up spell with nil value')
 
-	return mt
-end
-
-function SpellsConfig:Spell(spell_key)
-	return Spell:new(spell_key, self._ini:String('Spells', spell_key, ''))
-end
-
-
-SpellBarConfig = {}
-SpellBarConfig.__index = SpellBarConfig
-
-function SpellBarConfig:new(state, ini, spells_config)
-	local mt = {}
-	setmetatable(mt, self)
-
-	mt._defaults = {}
-	mt._mode_overlays = {}
-	mt._flag_overlays = {}
-	mt._flag_overlays_open_fills = {}
-	mt._mode_flag_overlays = {}
-	mt._mode_flag_overlays_open_fills = {}
-	mt._state = state
-	mt._ini = ini
-	mt._spells_config = spells_config
-	mt:Calculate()
-
-	return mt
-end
-
-function SpellBarConfig:_split_gems(spell_bar)
-	local value = {}
-	local to_fill = {}
-	local gems = str.Split(spell_bar, ',')
-	for i, gem in ipairs(gems) do
-		local idx = gem:find(':')
-		local slot = gem:sub(1, idx - 1)
-		local ref = gem:sub(idx + 1, -1)
-		if slot == 'O' or slot == '0' then
-			table.insert(to_fill, ref)
+		local spell_value = ini:String('Spells', spell_key_or_ref, '')
+		if #spell_value > 0 then
+			return CastableFromKey(spell_key_or_ref, spell_value)
 		else
-			value[tonumber(slot)] = ref
+			return CastableFromRef(spell_key_or_ref)
 		end
 	end
-	return value, to_fill
+
+	return self
 end
 
-function SpellBarConfig:_defaults_from_ini()
-	local defaults, to_fill = self:_split_gems(self._ini:String('Default', 'SpellBar', ''))
-	for i=1,mq.TLO.Me.NumGems() do
-		if not defaults[i] then defaults[i] = 'OPEN' end
-	end
-	return defaults
-end
 
-function SpellBarConfig:_flag_overlays_from_ini()
-	local overlays = {}
-	local open_fills = {}
-	for i, name in ipairs(self._ini:SectionNames()) do
-		if str.StartsWith(name, 'Flag:') then
-			local parts = str.Split(name, ':')
-			if #parts == 2 and not tonumber(parts[2]) then
-				local to_fill = {}
-				overlays[parts[2]], open_fills[parts[2]] = self:_split_gems(self._ini:String(name, 'SpellBar', ''))
-			end
-		end
-	end
-	return overlays, open_fills
-end
+--
+-- SpellBar
+--
 
-function SpellBarConfig:_mode_flag_overlays_from_ini(mode)
-	local overlays = {}
-	local open_fills = {}
-	for i, section_name in ipairs(self._ini:SectionNames()) do
-		if str.StartsWith(section_name, 'Flag:' .. mode .. ':') then
-			local parts = str.Split(section_name, ':')
-			if #parts == 3 then
-				local to_fill = {}
-				overlays[parts[3]], open_fills[parts[3]] = self:_split_gems(self._ini:String(section_name, 'SpellBar', ''))
-			end
-		end
-	end
-	return overlays, open_fills
-end
+function SpellBarConfig(state, ini, spells_config)
+	local self = {}
+	self.__type__ = 'SpellBarConfig'
 
-function SpellBarConfig:_mode_overlays_from_ini(mode)
-	local overlays, to_fill = self:_split_gems(self._ini:String('Mode:' .. mode, 'SpellBar', ''))
-	return overlays
-end
+	local defaults = {}
+	local mode_overlays = {}
+	local flag_overlays = {}
+	local flag_overlays_open_fills = {}
+	local mode_flag_overlays = {}
+	local mode_flag_overlays_open_fills = {}
+	local last_load_time = mq.gettime()
 
-function SpellBarConfig:Calculate()
-	local start = mq.gettime()
-	self._defaults = self:_defaults_from_ini()
-	self._flag_overlays, self._flag_overlays_open_fills = self:_flag_overlays_from_ini()
-	for i=1,4 do
-		self._mode_overlays[i] = self:_mode_overlays_from_ini(i)
-		self._mode_flag_overlays[i], self._mode_flag_overlays_open_fills[i] = self:_mode_flag_overlays_from_ini(i)
-	end
-	self._last_load_time = mq.gettime()
-end
-
-function SpellBarConfig:Gems()
-	local mode = self._state.Mode
-
-	local overlaid = {}
-	local open_overlaid = {}
-	for k,v in pairs(self._defaults) do
-		if k ~= 0 then
-			overlaid[k] = v
-		end
-	end
-	for k,v in pairs(self._mode_overlays[mode] or {}) do
-		if k ~= 0 then
-			overlaid[k] = v
-		end
-	end
-	for i, flag in ipairs(self._state.Flags) do
-		local flag_overlay = self._flag_overlays[flag] or {}
-		local flag_overlay_open_fills = self._flag_overlays_open_fills[flag] or {}
-		for k, v in pairs(flag_overlay) do
-			overlaid[k] = v
-		end
-		for k, ref in ipairs(flag_overlay_open_fills) do
-			table.insert(open_overlaid, ref)
-		end
-		local mode_flag_overlay = self._mode_flag_overlays[mode][flag] or {}
-		local mode_flag_overlay_open_fills = self._mode_flag_overlays_open_fills[mode][flag] or {}
-		for k, v in pairs(mode_flag_overlay) do
-			overlaid[k] = v
-		end
-		for k, ref in ipairs(mode_flag_overlay_open_fills) do
-			table.insert(open_overlaid, ref)
-		end
-	end
-	for i, open_ref in ipairs(open_overlaid) do
-		for j, ref in ipairs(overlaid) do
-			if ref:upper() == 'OPEN' then
-				overlaid[j] = open_ref
-				break
-			end
-		end
-	end
-	return overlaid
-end
-
-function SpellBarConfig:GemBySpell(spell)
-	if spell.Error ~= nil then
-		return -1, spell.Error
-	else
-		if spell.Name == '' then
-			return -2, 'Spell not defined'
-		else
-			local gem = self:GemBySpellKey(spell.Key)
-			if gem == 0 then gem = self:FirstOpenGem() end
-			if gem == 0 then
-				return 0, 'Cannot find gem for key: ' .. spell.Key
+	local function split_gems(spell_bar)
+		local value = {}
+		local to_fill = {}
+		local gems = str.Split(spell_bar, ',')
+		for i, gem in ipairs(gems) do
+			local idx = gem:find(':')
+			local slot = gem:sub(1, idx - 1)
+			local ref = gem:sub(idx + 1, -1)
+			if slot == 'O' or slot == '0' then
+				table.insert(to_fill, ref)
 			else
-				return gem, ''
+				value[tonumber(slot)] = ref
+			end
+		end
+		return value, to_fill
+	end
+
+	local function defaults_from_ini()
+		local values, to_fill = split_gems(ini:String('Default', 'SpellBar', ''))
+		for i=1,mq.TLO.Me.NumGems() do
+			if not values[i] then values[i] = 'OPEN' end
+		end
+		return values
+	end
+
+	local function flag_overlays_from_ini()
+		local overlays = {}
+		local open_fills = {}
+		for i, name in ipairs(ini:SectionNames()) do
+			if str.StartsWith(name, 'Flag:') then
+				local parts = str.Split(name, ':')
+				if #parts == 2 and not tonumber(parts[2]) then
+					local to_fill = {}
+					overlays[parts[2]], open_fills[parts[2]] = split_gems(ini:String(name, 'SpellBar', ''))
+				end
+			end
+		end
+		return overlays, open_fills
+	end
+
+	local function mode_flag_overlays_from_ini(mode)
+		local overlays = {}
+		local open_fills = {}
+		for i, section_name in ipairs(ini:SectionNames()) do
+			if str.StartsWith(section_name, 'Flag:' .. mode .. ':') then
+				local parts = str.Split(section_name, ':')
+				if #parts == 3 then
+					local to_fill = {}
+					overlays[parts[3]], open_fills[parts[3]] = split_gems(ini:String(section_name, 'SpellBar', ''))
+				end
+			end
+		end
+		return overlays, open_fills
+	end
+
+	local function mode_overlays_from_ini(mode)
+		local overlays, to_fill = split_gems(ini:String('Mode:' .. mode, 'SpellBar', ''))
+		return overlays
+	end
+
+	local function gems()
+		local mode = state.Mode
+
+		local overlaid = {}
+		local open_overlaid = {}
+		for k,v in pairs(defaults) do
+			if k ~= 0 then
+				overlaid[k] = v
+			end
+		end
+		for k,v in pairs(mode_overlays[mode] or {}) do
+			if k ~= 0 then
+				overlaid[k] = v
+			end
+		end
+		for i, flag in ipairs(state.Flags) do
+			local flag_overlay = flag_overlays[flag] or {}
+			local flag_overlay_open_fills = flag_overlays_open_fills[flag] or {}
+			for k, v in pairs(flag_overlay) do
+				overlaid[k] = v
+			end
+			for k, ref in ipairs(flag_overlay_open_fills) do
+				table.insert(open_overlaid, ref)
+			end
+			local mode_flag_overlay = mode_flag_overlays[mode][flag] or {}
+			local mode_flag_overlay_open_fills = mode_flag_overlays_open_fills[mode][flag] or {}
+			for k, v in pairs(mode_flag_overlay) do
+				overlaid[k] = v
+			end
+			for k, ref in ipairs(mode_flag_overlay_open_fills) do
+				table.insert(open_overlaid, ref)
+			end
+		end
+		for i, open_ref in ipairs(open_overlaid) do
+			for j, ref in ipairs(overlaid) do
+				if ref:upper() == 'OPEN' then
+					overlaid[j] = open_ref
+					break
+				end
+			end
+		end
+		return overlaid
+	end
+
+	local function spell_key_by_gem(gem)
+		local spell_bar = self.Gems()
+		return spell_bar[gem]
+	end
+
+	local function gem_by_spell_key(spell_key)
+		local spell_bar = self.Gems()
+		for k,v in pairs(spell_bar) do
+			if spell_key == v then return k end
+		end
+		return 0
+	end
+
+	local function gem_by_spell(spell)
+		if spell.Error ~= nil then
+			return { gem = -1, msg = spell.Error }
+		else
+			if spell.Name == '' then
+				return { gem = -2, msg = 'Spell not defined' }
+			else
+				local gem = 0
+				if spell.Key ~= nil then
+					gem = self.GemBySpellKey(spell.Key)
+				else
+					gem = self.GemBySpellName(spell.Name)
+				end
+				if gem == 0 then gem = self.FirstOpenGem() end
+				if gem == 0 then
+					return { gem = 0, msg = 'Cannot find gem for key: ' .. spell.Key }
+				else
+					return { gem = gem, msg = '' }
+				end
 			end
 		end
 	end
-end
 
-function SpellBarConfig:SpellKeyByGem(gem)
-	local spell_bar = self:Gems()
-	return spell_bar[gem]
-end
-
-function SpellBarConfig:GemBySpellKey(spell_key)
-	local spell_bar = self:Gems()
-	for k,v in pairs(spell_bar) do
-		if spell_key == v then return k end
+	local function gem_by_spell_name(spell_name)
+		local spell_bar = self.Gems()
+		for gem, spell_key in pairs(spell_bar) do
+			if spells_config.Spell(spell_key).Name == spell_name then return gem end
+		end
+		return 0
 	end
-	return 0
-end
 
-function SpellBarConfig:GemBySpellName(spell_name)
-	local spell_bar = self:Gems()
-	for gem, spell_key in pairs(spell_bar) do
-		if self._spells_config:Spell(spell_key).Name == spell_name then return gem end
+	local function first_open_gem()
+		local spell_bar = self.Gems()
+		for k,v in pairs(spell_bar) do
+			if 'OPEN' == v then return k end
+		end
+		return 0
 	end
-	return 0
-end
 
-function SpellBarConfig:FirstOpenGem()
-	local spell_bar = self:Gems()
-	for k,v in pairs(spell_bar) do
-		if 'OPEN' == v then return k end
+	self.Calculate = function()
+		local start = mq.gettime()
+		defaults = defaults_from_ini()
+		flag_overlays, flag_overlays_open_fills = flag_overlays_from_ini()
+		for i=1,4 do
+			mode_overlays[i] = mode_overlays_from_ini(i)
+			mode_flag_overlays[i], mode_flag_overlays_open_fills[i] = mode_flag_overlays_from_ini(i)
+		end
+		last_load_time = mq.gettime()
+
+		self.RefreshFuncs()
 	end
-	return 0
+
+	self.RefreshFuncs = function()
+		self.Gems = memoized1(gems)
+		self.GemBySpell = memoized(gem_by_spell)
+		self.SpellKeyByGem = memoized(spell_key_by_gem)
+		self.GemBySpellKey = memoized(gem_by_spell_key)
+		self.GemBySpellName = memoized(gem_by_spell_name)
+		self.FirstOpenGem = memoized1(first_open_gem)
+	end
+
+	self.Calculate()
+
+	return self
 end
-
-
 
 
 local function mode_flag_overlays_from_ini(ini, type, mode)
@@ -354,7 +386,7 @@ local function mode_flag_overlays_from_ini(ini, type, mode)
 		if str.StartsWith(section_name, 'Flag:' .. mode .. ':') and str.EndsWith(section_name, ':' .. type) then
 			local parts = str.Split(section_name, ':')
 			if #parts == 4 then
-				overlays[parts[3]] = ini:Section(section_name):ToTable() or {}
+				overlays[parts[3]] = ini:Section(section_name).ToTable() or {}
 			end
 		end
 	end
@@ -367,7 +399,7 @@ local function flag_overlays_from_ini(ini, type)
 		if str.StartsWith(section_name, 'Flag:') and str.EndsWith(section_name, ':' .. type) then
 			local parts = str.Split(section_name, ':')
 			if #parts == 3 and not tonumber(parts[2]) then
-				overlays[parts[2]] = ini:Section(section_name):ToTable() or {}
+				overlays[parts[2]] = ini:Section(section_name).ToTable() or {}
 			end
 		end
 	end
@@ -375,11 +407,11 @@ local function flag_overlays_from_ini(ini, type)
 end
 
 local function mode_overlays_from_ini(ini, type, mode)
-	return ini:Section('Mode:' .. mode .. ':' .. type):ToTable() or {}
+	return ini:Section('Mode:' .. mode .. ':' .. type).ToTable() or {}
 end
 
 local function defaults_from_ini(ini, type)
-	return ini:Section('Default:' .. type):ToTable() or {}
+	return ini:Section('Default:' .. type).ToTable() or {}
 end
 
 local function mode_value(state, defaults, mode_overlays, flag_overlays, mode_flag_overlays, key, default)
@@ -456,49 +488,69 @@ end
 
 
 --
+-- Base
+--
+
+function GenericConfig(state, ini, ini_key)
+	local self = {}
+	self.__type__ = 'GenericConfig'
+
+	local defaults = {}
+	local mode_overlays = {}
+	local flag_overlays = {}
+	local mode_flag_overlays = {}
+	local last_load_time = mq.gettime()
+
+	self._value = function(key, default)
+		return mode_value(state, defaults, mode_overlays, flag_overlays, mode_flag_overlays, key, default)
+	end
+
+	self._csv_value = function(key)
+		return csv_mode_value(state, defaults, mode_overlays, flag_overlays, mode_flag_overlays, key, {})
+	end
+
+	self.RefreshFuncs = function() end
+
+	self.Calculate = function()
+		defaults = defaults_from_ini(ini, ini_key)
+		flag_overlays = flag_overlays_from_ini(ini, ini_key)
+		for i=2,4 do
+			mode_overlays[i] = mode_overlays_from_ini(ini, ini_key, i)
+			mode_flag_overlays[i] = mode_flag_overlays_from_ini(ini, ini_key, i)
+		end
+		last_load_time = mq.gettime()
+
+		self.RefreshFuncs()
+	end
+
+	return self
+end
+
+
+--
 -- Cast Queue
 --
 
-CastQueueConfig = {}
-CastQueueConfig.__index = CastQueueConfig
+function CastQueueConfig(state, ini)
+	local self = GenericConfig(state, ini, 'CastQueue')
+	self.__type__ = 'CastQueueConfig'
 
-function CastQueueConfig:new(state, ini)
-	local mt = {}
-	setmetatable(mt, self)
-
-	mt._defaults = {}
-	mt._mode_overlays = {}
-	mt._flag_overlays = {}
-	mt._mode_flag_overlays = {}
-
-	mt._state = state
-	mt._ini = ini
-	mt:Calculate()
-
-	return mt
-end
-
-function CastQueueConfig:Calculate()
-	local type = 'CastQueue'
-	self._defaults = defaults_from_ini(self._ini, type)
-	self._flag_overlays = flag_overlays_from_ini(self._ini, type)
-	for i=2,4 do
-		self._mode_overlays[i] = mode_overlays_from_ini(self._ini, type, i)
-		self._mode_flag_overlays[i] = mode_flag_overlays_from_ini(self._ini, type, i)
+	local function print()
+		return self._value('Print', false)
 	end
-	self._last_load_time = mq.gettime()
-end
 
-function CastQueueConfig:_mode_value(key, default)
-	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
-end
+	local function print_timer()
+		return tonumber(self._value('PrintTimer', '10'))
+	end
 
-function CastQueueConfig:Print()
-	return self:_mode_value('Print', false)
-end
+	self.RefreshFuncs = function()
+		self.Print = memoized1(print)
+		self.PrintTimer = memoized1(print_timer)
+	end
 
-function CastQueueConfig:PrintTimer()
-	return tonumber(self:_mode_value('PrintTimer', '10'))
+	self.Calculate()
+
+	return self
 end
 
 
@@ -506,58 +558,36 @@ end
 -- Autosit
 --
 
-AutoSitConfig = {}
-AutoSitConfig.__index = AutoSitConfig
+function AutoSitConfig(state, ini)
+	local self = GenericConfig(state, ini, 'AutoSit')
+	self.__type__ = 'AutoSitConfig'
 
-function AutoSitConfig:new(state, ini)
-	local mt = {}
-	setmetatable(mt, self)
-
-	mt._defaults = {}
-	mt._mode_overlays = {}
-	mt._flag_overlays = {}
-	mt._mode_flag_overlays = {}
-
-	mt._state = state
-	mt._ini = ini
-	mt:Calculate()
-
-	return mt
-end
-
-function AutoSitConfig:Calculate()
-	local type = 'AutoSit'
-	self._defaults = defaults_from_ini(self._ini, type)
-	self._flag_overlays = flag_overlays_from_ini(self._ini, type)
-	for i=2,4 do
-		self._mode_overlays[i] = mode_overlays_from_ini(self._ini, type, i)
-		self._mode_flag_overlays[i] = mode_flag_overlays_from_ini(self._ini, type, i)
+	local function enabled()
+		return self._value('Enabled', false)
 	end
-	self._last_load_time = mq.gettime()
-end
+	local function min_hps()
+		return self._value('MinHPs', 95)
+	end
+	local function min_mana()
+		return self._value('MinMana', 95)
+	end
+	local function override_on_move()
+		return self._value('OverrideOnMove', false)
+	end
+	local function override_seconds()
+		return self._value('OverrideSeconds', 10)
+	end
+	self.RefreshFuncs = function()
+		self.Enabled = memoized1(enabled)
+		self.MinHPs = memoized1(min_hps)
+		self.MinMana = memoized1(min_mana)
+		self.OverrideOnMove = memoized1(override_on_move)
+		self.OverrideSeconds = memoized1(override_seconds)
+	end
 
-function AutoSitConfig:_mode_value(key, default)
-	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
-end
+	self.Calculate()
 
-function AutoSitConfig:Enabled()
-	return self:_mode_value('Enabled', false)
-end
-
-function AutoSitConfig:MinHPs()
-	return self:_mode_value('MinHPs', 95)
-end
-
-function AutoSitConfig:MinMana()
-	return self:_mode_value('MinMana', 95)
-end
-
-function AutoSitConfig:OverrideOnMove()
-	return self:_mode_value('OverrideOnMove', false)
-end
-
-function AutoSitConfig:OverrideSeconds()
-	return self:_mode_value('OverrideSeconds', 10)
+	return self
 end
 
 
@@ -565,304 +595,250 @@ end
 -- Buff
 --
 
-BuffConfig = {}
-BuffConfig.__index = BuffConfig
+function BuffConfig(state, ini)
+	local self = GenericConfig(state, ini, 'Buff')
+	self.__type__ = 'BuffConfig'
 
-function BuffConfig:new(state, ini)
-	local mt = {}
-	setmetatable(mt, self)
+	self.RefreshFuncs = function()
+		self.Enabled = memoized1(function()
+			return self._value('Enabled', false)
+		end)
 
-	mt._defaults = {}
-	mt._mode_overlays = {}
-	mt._flag_overlays = {}
-	mt._mode_flag_overlays = {}
+		self.MinMana = memoized1(function()
+			return self._value('MinMana', 45)
+		end)
 
-	mt._state = state
-	mt._ini = ini
-	mt:Calculate()
+		self.Backoff = memoized1(function()
+			return self._value('Backoff', true)
+		end)
 
-	return mt
-end
+		self.BackoffTimer = memoized1(function()
+			return self._value('BackoffTimer', 300) * 1000
+		end)
 
-function BuffConfig:Calculate()
-	local type = 'Buff'
-	self._defaults = defaults_from_ini(self._ini, type)
-	self._flag_overlays = flag_overlays_from_ini(self._ini, type)
-	for i=2,4 do
-		self._mode_overlays[i] = mode_overlays_from_ini(self._ini, type, i)
-		self._mode_flag_overlays[i] = mode_flag_overlays_from_ini(self._ini, type, i)
+		self.PackageByName = memoized(function(name)
+			return self._csv_value(name)
+		end)
 	end
-	self._last_load_time = mq.gettime()
-end
 
-function BuffConfig:_mode_value(key, default)
-	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
-end
+	self.Calculate()
 
-function BuffConfig:Enabled()
-	return self:_mode_value('Enabled', false)
-end
-
-function BuffConfig:MinMana()
-	return self:_mode_value('MinMana', 45)
-end
-
-function BuffConfig:Backoff()
-	return self:_mode_value('Backoff', true)
-end
-
-function BuffConfig:BackoffTimer()
-	return self:_mode_value('BackoffTimer', 300) * 1000
-end
-
-function BuffConfig:PackageByName(name)
-	return csv_mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, name, {})
-	-- return str.Split(self:_mode_value(name, ''), ',')
+	return self
 end
 
 
-CrowdControlConfig = {}
-CrowdControlConfig.__index = CrowdControlConfig
+--
+-- CombatBuff
+--
 
-function CrowdControlConfig:new(state, ini)
-	local mt = {}
-	setmetatable(mt, self)
+function CombatBuffConfig(state, ini)
+	local self = GenericConfig(state, ini, 'CombatBuff')
+	self.__type__ = 'CombatBuffConfig'
 
-	mt._defaults = {}
-	mt._mode_overlays = {}
-	mt._flag_overlays = {}
-	mt._mode_flag_overlays = {}
+	self.RefreshFuncs = function()		
+		self.Enabled = memoized1(function()
+			return self._value('Enabled', false)
+		end)
 
-	mt._state = state
-	mt._ini = ini
-	mt:Calculate()
+		self.MinMana = memoized1(function()
+			return self._value('MinMana', 45)
+		end)
 
-	return mt
-end
+		self.Backoff = memoized1(function()
+			return self._value('Backoff', true)
+		end)
 
-function CrowdControlConfig:Calculate()
-	local type = 'CrowdControl'
-	self._defaults = defaults_from_ini(self._ini, type)
-	self._flag_overlays = flag_overlays_from_ini(self._ini, type)
-	for i=2,4 do
-		self._mode_overlays[i] = mode_overlays_from_ini(self._ini, type, i)
-		self._mode_flag_overlays[i] = mode_flag_overlays_from_ini(self._ini, type, i)
+		self.BackoffTimer = memoized1(function()
+			return self._value('BackoffTimer', 300) * 1000
+		end)
+
+		self.PackageByName = memoized(function(name)
+			return self._csv_value(name)
+		end)
 	end
-	self._last_load_time = mq.gettime()
-end
 
-function CrowdControlConfig:_mode_value(key, default)
-	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
-end
+	self.Calculate()
 
-function CrowdControlConfig:Enabled()
-	return self:_mode_value('Enabled', false)
-end
-
-function CrowdControlConfig:MinMana()
-	return self:_mode_value('MinMana', 10)
-end
-
-function CrowdControlConfig:IAmPrimary()
-	return self:_mode_value('IAmPrimary', false)
-end
-
-function CrowdControlConfig:Spell()
-	return self:_mode_value('Spell', '')
+	return self
 end
 
 
-DebuffConfig = {}
-DebuffConfig.__index = DebuffConfig
+--
+-- Crowd Control
+--
 
-function DebuffConfig:new(state, ini)
-	local mt = {}
-	setmetatable(mt, self)
+function CrowdControlConfig(state, ini)
+	local self = GenericConfig(state, ini, 'CrowdControl')
+	self.__type__ = 'CrowdControlConfig'
 
-	mt._defaults = {}
-	mt._mode_overlays = {}
-	mt._flag_overlays = {}
-	mt._mode_flag_overlays = {}
+	self.RefreshFuncs = function()
+		self.Enabled = memoized1(function()
+			return self._value('Enabled', false)
+		end)
 
-	mt._state = state
-	mt._ini = ini
-	mt:Calculate()
+		self.MinMana = memoized1(function()
+			return self._value('MinMana', 10)
+		end)
 
-	return mt
-end
+		self.IAmPrimary = memoized1(function()
+			return self._value('IAmPrimary', false)
+		end)
 
-function DebuffConfig:Calculate()
-	local type = 'Debuff'
-	self._defaults = defaults_from_ini(self._ini, type)
-	self._flag_overlays = flag_overlays_from_ini(self._ini, type)
-	for i=2,4 do
-		self._mode_overlays[i] = mode_overlays_from_ini(self._ini, type, i)
-		self._mode_flag_overlays[i] = mode_flag_overlays_from_ini(self._ini, type, i)
+		self.Spell = memoized1(function()
+			return self._value('Spell', '')
+		end)
 	end
-	self._last_load_time = mq.gettime()
+
+	self.Calculate()
+
+	return self
 end
 
-function DebuffConfig:_mode_value(key, default)
-	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
-end
 
-function DebuffConfig:Enabled()
-	return self:_mode_value('Enabled', false)
-end
+--
+-- Debuff
+--
 
-function DebuffConfig:MinMana()
-	return self:_mode_value('MinMana', 45)
-end
+function DebuffConfig(state, ini)
+	local self = GenericConfig(state, ini, 'Debuff')
+	self.__type__ = 'DebuffConfig'
 
-function DebuffConfig:MinTargetHpPct()
-	return self:_mode_value('MinTargetHpPct', 65)
-end
+	self.RefreshFuncs = function()
+		self.Enabled = memoized1(function()
+			return self._value('Enabled', false)
+		end)
 
-function DebuffConfig:AtTargetHpPcts()
-	local csv = csv_mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, 'Pcts', {})
-	local pcts = {}
-	for i,s in ipairs(csv) do
-		local parts = str.Split(s, ':')
-		pcts[tonumber(parts[2])] = parts[1]
+		self.MinMana = memoized1(function()
+			return self._value('MinMana', 45)
+		end)
+
+		self.MinTargetHpPct = memoized1(function()
+			return self._value('MinTargetHpPct', 65)
+		end)
+
+		self.AtTargetHpPcts = memoized1(function()
+			local csv = self._csv_value('Pcts')
+			local pcts = {}
+			for i,s in ipairs(csv) do
+				local parts = str.Split(s, ':')
+				pcts[tonumber(parts[2])] = parts[1]
+			end
+			return pcts
+		end)
 	end
-	return pcts
+
+	self.Calculate()
+
+	return self
 end
 
 
-DotConfig = {}
-DotConfig.__index = DotConfig
+--
+-- Dot
+--
 
-function DotConfig:new(state, ini)
-	local mt = {}
-	setmetatable(mt, self)
+function DotConfig(state, ini)
+	local self = GenericConfig(state, ini, 'Dot')
+	self.__type__ = 'DotConfig'
 
-	mt._defaults = {}
-	mt._mode_overlays = {}
-	mt._flag_overlays = {}
-	mt._mode_flag_overlays = {}
+	self.RefreshFuncs = function()
+		self.Enabled = memoized1(function()
+			return self._value('Enabled', false)
+		end)
 
-	mt._state = state
-	mt._ini = ini
-	mt:Calculate()
+		self.MinMana = memoized1(function()
+			return self._value('MinMana', 50)
+		end)
 
-	return mt
-end
+		self.MinTargetHpPct = memoized1(function()
+			return self._value('MinTargetHpPct', 65)
+		end)
 
-function DotConfig:Calculate()
-	local type = 'Dot'
-	self._defaults = defaults_from_ini(self._ini, type)
-	self._flag_overlays = flag_overlays_from_ini(self._ini, type)
-	for i=2,4 do
-		self._mode_overlays[i] = mode_overlays_from_ini(self._ini, type, i)
-		self._mode_flag_overlays[i] = mode_flag_overlays_from_ini(self._ini, type, i)
+		self.AtTargetHpPcts = memoized1(function()
+			local csv = self._csv_value('Pcts')
+			local pcts = {}
+			for i,s in ipairs(csv) do
+				local parts = str.Split(s, ':')
+				pcts[tonumber(parts[2])] = parts[1]
+			end
+			return pcts
+		end)
 	end
-	self._last_load_time = mq.gettime()
+
+	self.Calculate()
+
+	return self
 end
 
-function DotConfig:_mode_value(key, default)
-	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
-end
 
-function DotConfig:Enabled()
-	return self:_mode_value('Enabled', false)
-end
+--
+-- Heal
+--
 
-function DotConfig:MinMana()
-	return self:_mode_value('MinMana', 50)
-end
+function HealConfig(state, ini)
+	local self = GenericConfig(state, ini, 'Heal')
+	self.__type__ = 'HealConfig'
 
-function DotConfig:MinTargetHpPct()
-	return self:_mode_value('MinTargetHpPct', 65)
-end
-
-function DotConfig:AtTargetHpPcts()
-	local csv = csv_mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, 'Pcts', {})
-	local pcts = {}
-	for i,s in ipairs(csv) do
-		local parts = str.Split(s, ':')
-		pcts[tonumber(parts[2])] = parts[1]
+	local function at_hp_pct(type)
+		local parts = str.Split(self._value(type, ''), ':')
+		if #parts == 2 then
+			return { pct = tonumber(parts[2]), key = parts[1] }
+		else
+			return { pct = 0, key = '' }
+		end
 	end
-	return pcts
-end
 
-
-HealConfig = {}
-HealConfig.__index = HealConfig
-
-function HealConfig:new(state, ini)
-	local mt = {}
-	setmetatable(mt, self)
-
-	mt._defaults = {}
-	mt._mode_overlays = {}
-	mt._flag_overlays = {}
-	mt._mode_flag_overlays = {}
-
-	mt._state = state
-	mt._ini = ini
-	mt:Calculate()
-
-	return mt
-end
-
-function HealConfig:Calculate()
-	local type = 'Heal'
-	self._defaults = defaults_from_ini(self._ini, type)
-	self._flag_overlays = flag_overlays_from_ini(self._ini, type)
-	for i=2,4 do
-		self._mode_overlays[i] = mode_overlays_from_ini(self._ini, type, i)
-		self._mode_flag_overlays[i] = mode_flag_overlays_from_ini(self._ini, type, i)
+	local function enabled()
+		return self._value('Enabled', false)
 	end
-	self._last_load_time = mq.gettime()
-end
 
-function HealConfig:_mode_value(key, default)
-	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
-end
-
-function HealConfig:Enabled()
-	return self:_mode_value('Enabled', false)
-end
-
-function HealConfig:MinMana()
-	return self:_mode_value('MinMana', 0)
-end
-
-function HealConfig:AtHpPct(type)
-	local parts = str.Split(self:_mode_value(type, ''), ':')
-	if #parts == 2 then
-		return tonumber(parts[2]), parts[1]
-	else
-		return 0, ''
+	local function min_mana()
+		return self._value('MinMana', 0)
 	end
-end
 
-function HealConfig:GroupAtHpPct()
-	return self:AtHpPct('Group')
-end
+	local function group_at_hp_pct()
+		return at_hp_pct('Group')
+	end
 
-function HealConfig:TankAtHpPct()
-	return self:AtHpPct('Tank')
-end
+	local function tank_at_hp_pct()
+		return at_hp_pct('Tank')
+	end
 
-function HealConfig:MeleeAtHpPct()
-	return self:AtHpPct('Melee')
-end
+	local function melee_at_hp_pct()
+		return at_hp_pct('Melee')
+	end
 
-function HealConfig:CasterAtHpPct()
-	return self:AtHpPct('Caster')
-end
+	local function caster_at_hp_pct()
+		return at_hp_pct('Caster')
+	end
 
-function HealConfig:PetAtHpPct()
-	return self:AtHpPct('Pet')
-end
+	local function pet_at_hp_pct()
+		return at_hp_pct('Pet')
+	end
 
-function HealConfig:SelfAtHpPct()
-	return self:AtHpPct('Self')
-end
+	local function self_at_hp_pct()
+		return at_hp_pct('Self')
+	end
 
-function HealConfig:SelfpetAtHpPct()
-	return self:AtHpPct('Selfpet')
+	local function selfpet_at_hp_pct()
+		return at_hp_pct('Selfpet')
+	end
+
+	self.RefreshFuncs = function()
+		self.Enabled = memoized1(enabled)
+		self.MinMana = memoized1(min_mana)
+		self.GroupAtHpPct = memoized1(group_at_hp_pct)
+		self.TankAtHpPct = memoized1(tank_at_hp_pct)
+		self.MeleeAtHpPct = memoized1(melee_at_hp_pct)
+		self.CasterAtHpPct = memoized1(caster_at_hp_pct)
+		self.PetAtHpPct = memoized1(pet_at_hp_pct)
+		self.SelfAtHpPct = memoized1(self_at_hp_pct)
+		self.SelfpetAtHpPct = memoized1(selfpet_at_hp_pct)
+	end
+
+	self.Calculate()
+
+	return self
 end
 
 
@@ -870,50 +846,36 @@ end
 -- Melee
 --
 
-MeleeConfig = {}
-MeleeConfig.__index = MeleeConfig
+function MeleeConfig(state, ini)
+	local self = GenericConfig(state, ini, 'Melee')
+	self.__type__ = 'MeleeConfig'
 
-function MeleeConfig:new(state, ini)
-	local mt = {}
-	setmetatable(mt, self)
-
-	mt._defaults = {}
-	mt._mode_overlays = {}
-	mt._flag_overlays = {}
-	mt._mode_flag_overlays = {}
-
-	mt._state = state
-	mt._ini = ini
-	mt:Calculate()
-
-	return mt
-end
-
-function MeleeConfig:Calculate()
-	local type = 'Melee'
-	self._defaults = defaults_from_ini(self._ini, type)
-	self._flag_overlays = flag_overlays_from_ini(self._ini, type)
-	for i=2,4 do
-		self._mode_overlays[i] = mode_overlays_from_ini(self._ini, type, i)
-		self._mode_flag_overlays[i] = mode_flag_overlays_from_ini(self._ini, type, i)
+	local function at_hp_pct(type)
+		local parts = str.Split(self._value(type, ''), ':')
+		if #parts == 2 then
+			return tonumber(parts[2]), parts[1]
+		else
+			return 0, ''
+		end
 	end
-	self._last_load_time = mq.gettime()
-end
 
-function MeleeConfig:_mode_value(key, default)
-	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
-end
+	self.RefreshFuncs = function()
+		self.Enabled = memoized1(function()
+			return self._value('Enabled', false)
+		end)
 
-function MeleeConfig:Enabled()
-	return self:_mode_value('Enabled', false)
-end
+		self.EngageTargetHPs = memoized1(function()
+			return self._value('EngageTargetHPs', 95)
+		end)
 
-function MeleeConfig:EngageTargetHPs()
-	return self:_mode_value('EngageTargetHPs', 95)
-end
+		self.EngageTargetDistance = memoized1(function()
+			return self._value('EngageTargetDistance', 75)
+		end)
+	end
 
-function MeleeConfig:EngageTargetDistance()
-	return self:_mode_value('EngageTargetDistance', 75)
+	self.Calculate()
+
+	return self
 end
 
 
@@ -921,60 +883,37 @@ end
 -- DD
 --
 
-DdConfig = {}
-DdConfig.__index = DdConfig
+function DdConfig(state, ini)
+	local self = GenericConfig(state, ini, 'DD')
+	self.__type__ = 'DdConfig'
 
-function DdConfig:new(state, ini)
-	local mt = {}
-	setmetatable(mt, self)
+	self.RefreshFuncs = function()
+		self.Enabled = memoized1(function()
+			return self._value('Enabled', false)
+		end)
 
-	mt._defaults = {}
-	mt._mode_overlays = {}
-	mt._flag_overlays = {}
-	mt._mode_flag_overlays = {}
+		self.MinMana = memoized1(function()
+			return self._value('MinMana', 50)
+		end)
 
-	mt._state = state
-	mt._ini = ini
-	mt:Calculate()
+		self.MinTargetHpPct = memoized1(function()
+			return self._value('MinTargetHpPct', 0)
+		end)
 
-	return mt
-end
-
-function DdConfig:Calculate()
-	local type = 'DD'
-	self._defaults = defaults_from_ini(self._ini, type)
-	self._flag_overlays = flag_overlays_from_ini(self._ini, type)
-	for i=2,4 do
-		self._mode_overlays[i] = mode_overlays_from_ini(self._ini, type, i)
-		self._mode_flag_overlays[i] = mode_flag_overlays_from_ini(self._ini, type, i)
+		self.AtTargetHpPcts = memoized1(function()
+			local csv = self._csv_value('Pcts')
+			local pcts = {}
+			for i,s in ipairs(csv) do
+				local parts = str.Split(s, ':')
+				pcts[tonumber(parts[2])] = parts[1]
+			end
+			return pcts
+		end)
 	end
-	self._last_load_time = mq.gettime()
-end
 
-function DdConfig:_mode_value(key, default)
-	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
-end
+	self.Calculate()
 
-function DdConfig:Enabled()
-	return self:_mode_value('Enabled', false)
-end
-
-function DdConfig:MinMana()
-	return self:_mode_value('MinMana', 50)
-end
-
-function DdConfig:MinTargetHpPct()
-	return self:_mode_value('MinTargetHpPct', 0)
-end
-
-function DdConfig:AtTargetHpPcts()
-	local csv = csv_mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, 'Pcts', {})
-	local pcts = {}
-	for i,s in ipairs(csv) do
-		local parts = str.Split(s, ':')
-		pcts[tonumber(parts[2])] = parts[1]
-	end
-	return pcts
+	return self
 end
 
 
@@ -982,84 +921,39 @@ end
 -- Pet
 --
 
-PetConfig = {}
-PetConfig.__index = PetConfig
+function PetConfig(state, ini)
+	local self = GenericConfig(state, ini, 'Pet')
+	self.__type__ = 'PetConfig'
 
-local function default_pet_type()
-	local type = ''
-	if MyClass.Name == 'Magician' then
-		type = 'Water'
-	elseif MyClass.Name == 'Shaman' then
-		type = 'Warder'
-	elseif MyClass.Name == 'Shadow Knight' then
-		type = 'Undead'
-	elseif MyClass.Name == 'Necromancer' then
-		type = 'Undead'
-	elseif MyClass.Name == 'Beastlord' then
-		print('Need Beastlord Code')
-	elseif MyClass.Name == 'Enchanter' then
-		type = 'Animation'
-	elseif MyClass.Name == 'Wizard' then
-		type = 'Familiar'
+	self.RefreshFuncs = function()
+		self.AutoCast = memoized1(function()
+			return self._value('AutoCast', false)
+		end)
+
+		self.AutoAttack = memoized1(function()
+			return self._value('AutoAttack', false)
+		end)
+
+		self.Type = memoized1(function()
+			return self._value('Type', self.DefaultPetType)
+		end)
+
+		self.MinMana = memoized1(function()
+			return self._value('MinMana', 50)
+		end)
+
+		self.EngageTargetHPs = memoized1(function()
+			return self._value('EngageTargetHPs', 95)
+		end)
+
+		self.EngageTargetDistance = memoized1(function()
+			return self._value('EngageTargetDistance', 75)
+		end)
 	end
-	return type
-end
 
-function PetConfig:new(state, ini)
-	local mt = {}
-	setmetatable(mt, self)
+	self.Calculate()
 
-	mt.DefaultPetType = default_pet_type()
-
-	mt._defaults = {}
-	mt._mode_overlays = {}
-	mt._flag_overlays = {}
-	mt._mode_flag_overlays = {}
-
-	mt._state = state
-	mt._ini = ini
-	mt:Calculate()
-
-	return mt
-end
-
-function PetConfig:Calculate()
-	local type = 'Pet'
-	self._defaults = defaults_from_ini(self._ini, type)
-	self._flag_overlays = flag_overlays_from_ini(self._ini, type)
-	for i=2,4 do
-		self._mode_overlays[i] = mode_overlays_from_ini(self._ini, type, i)
-		self._mode_flag_overlays[i] = mode_flag_overlays_from_ini(self._ini, type, i)
-	end
-	self._last_load_time = mq.gettime()
-end
-
-function PetConfig:_mode_value(key, default)
-	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
-end
-
-function PetConfig:AutoCast()
-	return self:_mode_value('AutoCast', false)
-end
-
-function PetConfig:AutoAttack()
-	return self:_mode_value('AutoAttack', false)
-end
-
-function PetConfig:Type()
-	return self:_mode_value('Type', self.DefaultPetType)
-end
-
-function PetConfig:MinMana()
-	return self:_mode_value('MinMana', 50)
-end
-
-function PetConfig:EngageTargetHPs()
-	return self:_mode_value('EngageTargetHPs', 95)
-end
-
-function PetConfig:EngageTargetDistance()
-	return self:_mode_value('EngageTargetDistance', 75)
+	return self
 end
 
 
@@ -1067,50 +961,27 @@ end
 -- Twist
 --
 
-TwistConfig = {}
-TwistConfig.__index = TwistConfig
+function TwistConfig(state, ini)
+	local self = GenericConfig(state, ini, 'Twist')
+	self.__type__ = 'TetherConfig'
 
-function TwistConfig:new(state, ini)
-	local mt = {}
-	setmetatable(mt, self)
+	self.RefreshFuncs = function()
+		self.Enabled = memoized1(function()
+			return self._value('Enabled', false)
+		end)
 
-	mt._defaults = {}
-	mt._mode_overlays = {}
-	mt._flag_overlays = {}
-	mt._mode_flag_overlays = {}
+		self.Order = memoized1(function()
+			return str.Split(self._value('Order', ''), ',')
+		end)
 
-	mt._state = state
-	mt._ini = ini
-	mt:Calculate()
-
-	return mt
-end
-
-function TwistConfig:Calculate()
-	local type = 'Twist'
-	self._defaults = defaults_from_ini(self._ini, type)
-	self._flag_overlays = flag_overlays_from_ini(self._ini, type)
-	for i=2,4 do
-		self._mode_overlays[i] = mode_overlays_from_ini(self._ini, type, i)
-		self._mode_flag_overlays[i] = mode_flag_overlays_from_ini(self._ini, type, i)
+		self.CombatOrder = memoized1(function()
+			return str.Split(self._value('CombatOrder', ''), ',')
+		end)
 	end
-	self._last_load_time = mq.gettime()
-end
 
-function TwistConfig:_mode_value(key, default)
-	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
-end
+	self.Calculate()
 
-function TwistConfig:Enabled()
-	return self:_mode_value('Enabled', false)
-end
-
-function TwistConfig:Order()
-	return str.Split(self:_mode_value('Order', ''), ',')
-end
-
-function TwistConfig:CombatOrder()
-	return str.Split(self:_mode_value('CombatOrder', ''), ',')
+	return self
 end
 
 
@@ -1118,62 +989,39 @@ end
 -- Tether
 --
 
-TetherConfig = {}
-TetherConfig.__index = TetherConfig
+function TetherConfig(state, ini)
+	local self = GenericConfig(state, ini, 'Tether')
+	self.__type__ = 'TetherConfig'
 
-function TetherConfig:new(state, ini)
-	local mt = {}
-	setmetatable(mt, self)
+	self.RefreshFuncs = function()
+		self.Mode = memoized1(function()
+			return self._value('Mode', 'ACTIVE')
+		end)
 
-	mt._defaults = {}
-	mt._mode_overlays = {}
-	mt._flag_overlays = {}
-	mt._mode_flag_overlays = {}
+		self.ModeIsActive = memoized1(function()
+			return self.Mode():lower() == 'active'
+		end)
 
-	mt._state = state
-	mt._ini = ini
-	mt:Calculate()
+		self.ModeIsPassive = memoized1(function()
+			return self.Mode():lower() == 'passive'
+		end)
 
-	return mt
-end
+		self.CampMaxDistance = memoized1(function()
+			return self._value('CampMaxDistance', 40)
+		end)
 
-function TetherConfig:Calculate()
-	local type = 'Tether'
-	self._defaults = defaults_from_ini(self._ini, type)
-	self._flag_overlays = flag_overlays_from_ini(self._ini, type)
-	for i=2,4 do
-		self._mode_overlays[i] = mode_overlays_from_ini(self._ini, type, i)
-		self._mode_flag_overlays[i] = mode_flag_overlays_from_ini(self._ini, type, i)
+		self.FollowMaxDistance = memoized1(function()
+			return self._value('FollowMaxDistance', 15)
+		end)
+
+		self.ReturnTimer = memoized1(function()
+			return self._value('ReturnTimer', 5)
+		end)
 	end
-	self._last_load_time = mq.gettime()
-end
 
-function TetherConfig:_mode_value(key, default)
-	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
-end
+	self.Calculate()
 
-function TetherConfig:Mode()
-	return self:_mode_value('Mode', 'ACTIVE')
-end
-
-function TetherConfig:ModeIsActive()
-	return self:Mode():lower() == 'active'
-end
-
-function TetherConfig:ModeIsPassive()
-	return self:Mode():lower() == 'passive'
-end
-
-function TetherConfig:CampMaxDistance()
-	return self:_mode_value('CampMaxDistance', 40)
-end
-
-function TetherConfig:FollowMaxDistance()
-	return self:_mode_value('FollowMaxDistance', 15)
-end
-
-function TetherConfig:ReturnTimer()
-	return self:_mode_value('ReturnTimer', 5)
+	return self
 end
 
 
@@ -1181,52 +1029,29 @@ end
 -- TeamEvents
 --
 
-TeamEventsConfig = {}
-TeamEventsConfig.__index = TeamEventsConfig
+function TeamEventsConfig(state, ini)
+	local self = GenericConfig(state, ini, 'TeamEvents')
+	self.__type__ = 'TeamEventsConfig'
 
-function TeamEventsConfig:new(state, ini)
-	local mt = {}
-	setmetatable(mt, self)
+	self.RefreshFuncs = function()
+		self.OnPullStart = memoized1(function()
+			return self._value('OnPullStart', '')
+		end)
 
-	mt._defaults = {}
-	mt._mode_overlays = {}
-	mt._flag_overlays = {}
-	mt._mode_flag_overlays = {}
+		self.OnPullEnd = memoized1(function()
+			return self._value('OnPullEnd', '')
+		end)
 
-	mt._state = state
-	mt._ini = ini
-	mt:Calculate()
+		self.OnPreEngage = memoized1(function()
+			return self._value('OnPreEngage', '')
+		end)
 
-	return mt
-end
-
-function TeamEventsConfig:Calculate()
-	local type = 'TeamEvents'
-	self._defaults = defaults_from_ini(self._ini, type)
-	self._flag_overlays = flag_overlays_from_ini(self._ini, type)
-	for i=2,4 do
-		self._mode_overlays[i] = mode_overlays_from_ini(self._ini, type, i)
-		self._mode_flag_overlays[i] = mode_flag_overlays_from_ini(self._ini, type, i)
+		self.OnEngage = memoized1(function()
+			return self._value('OnEngage', '')
+		end)
 	end
-	self._last_load_time = mq.gettime()
-end
 
-function TeamEventsConfig:_mode_value(key, default)
-	return mode_value(self._state, self._defaults, self._mode_overlays, self._flag_overlays, self._mode_flag_overlays, key, default)
-end
+	self.Calculate()
 
-function TeamEventsConfig:OnPullStart()
-	return self:_mode_value('OnPullStart', '')
-end
-
-function TeamEventsConfig:OnPullEnd()
-	return self:_mode_value('OnPullEnd', '')
-end
-
-function TeamEventsConfig:OnPreEngage()
-	return self:_mode_value('OnPreEngage', '')
-end
-
-function TeamEventsConfig:OnEngage()
-	return self:_mode_value('OnEngage', '')
+	return self
 end

@@ -29,7 +29,7 @@ end
 
 local function callback_pull_start(line, who, mob)
 	if group.IsPuller(who) then
-		local cmd = str.Trim(Config:TeamEvents():OnPullStart() or '')
+		local cmd = str.Trim(Config.TeamEvents.OnPullStart() or '')
 		if cmd:len() > 0 then
 			mq.cmd(cmd)
 		end
@@ -42,7 +42,7 @@ end
 
 local function callback_pull_end(line, who, mob)
 	if group.IsPuller(who) then
-		local cmd = str.Trim(Config:TeamEvents():OnPullEnd() or '')
+		local cmd = str.Trim(Config.TeamEvents.OnPullEnd() or '')
 		if cmd:len() > 0 then
 			mq.cmd(cmd)
 		end
@@ -55,7 +55,7 @@ end
 
 local function callback_pre_engage(line, who, mob)
 	if group.IsMainAssist(who) then
-		local cmd = str.Trim(Config:TeamEvents():OnPreEngage() or '')
+		local cmd = str.Trim(Config.TeamEvents.OnPreEngage() or '')
 		if cmd:len() > 0 then
 			mq.cmd(cmd)
 		end
@@ -68,7 +68,7 @@ end
 
 local function callback_engaging(line, who, mob)
 	if group.IsMainAssist(who) then
-		local cmd = str.Trim(Config:TeamEvents():OnEngage() or '')
+		local cmd = str.Trim(Config.TeamEvents.OnEngage() or '')
 		if cmd:len() > 0 then
 			mq.cmd(cmd)
 		end

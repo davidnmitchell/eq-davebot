@@ -6,6 +6,7 @@ function ActPetEngageMessage(target_id)
     assert(target_id ~= nil and target_id ~= 0)
 
     local self = Action('PetEngageMessage')
+    self.__type__ = 'ActPetEngageMessage'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.ShouldSkip = function(state, cfg, ctx)
@@ -14,7 +15,7 @@ function ActPetEngageMessage(target_id)
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)
         self.log('Telling pet to attack')
-        self.announce('Pet is engaging ' .. mq.TLO.Spawn(target_id).CleanName())
+        self.announce('Pet is engaging ' .. tostring(mq.TLO.Spawn(target_id).CleanName()))
     end
 
     return self

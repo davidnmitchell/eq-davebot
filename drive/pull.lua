@@ -15,10 +15,17 @@ local Config = {}
 
 
 local function shd_pull()
+    print('Pull script start')
+    if State.TetherStatus ~= 'C' then
+        print('Camp is not made')
+        State.MarkEarlyCombatInactive()
+        return
+    end
+
     local snare = spells.FindSpell('Damage Over Time', 'Snare', 'Single')
 
     State.MarkEarlyCombatActive()
-    co.delay(100)
+    --co.delay(100)
 
     local last_npc = State.LastTargetOf(
         function(id)
@@ -32,7 +39,7 @@ local function shd_pull()
         return
     end
 
-    print('Pulling ' .. mq.TLO.Spawn(last_npc).CleanName())
+    print('Targeting ' .. mq.TLO.Spawn(last_npc).CleanName())
 
     local locked, lock = State.WaitOnAndAcquireLock('target', 'pull', 2000, 2000)
     if not locked then
@@ -63,6 +70,8 @@ local function shd_pull()
 
     State.ReleaseLock('target', 'pull')
 
+    print('Wiping Queue')
+
     actionqueue.Wipe()
 
     ---@diagnostic disable-next-line: undefined-field
@@ -74,18 +83,14 @@ local function shd_pull()
         return
     end
 
-    if State.TetherStatus ~= 'C' then
-        print('Camp is not made')
-        State.MarkEarlyCombatInactive()
-        return
-    end
+    print('Pulling ' .. mq.TLO.Spawn(last_npc).CleanName())
 
     teamevents.PullStart(mq.TLO.Spawn(target_id).Name())
     local done_casting = false
     actionqueue.Add(
         ScpCast(
             snare,
-            'gem' .. Config:SpellBar():GemBySpellName(snare),
+            'gem' .. Config.SpellBar.GemBySpellName(snare),
             0,
             1,
             target_id,

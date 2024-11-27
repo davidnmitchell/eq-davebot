@@ -20,6 +20,7 @@ function ActMemorize(
         finish_timeout = (mq.TLO.Spell(spell_name).RecastTime() or 5000) + 10000
     end
     local self = Action('Memorize', true, ready_timeout, finish_timeout)
+    self.__type__ = 'ActMemorize'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.ShouldSkip = function(state, cfg, ctx)

@@ -6,6 +6,7 @@ local spells = require('spells')
 
 function ActClearTwist()
     local self = Action('ClearTwist')
+    self.__type__ = 'ActClearTwist'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)

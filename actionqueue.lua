@@ -1,10 +1,10 @@
 local mq = require('mq')
 local str = require('str')
+local array = require('array')
 local spells = require('spells')
 local co = require('co')
 require('eqclass')
 require('actions.s_cast')
-local mychar = require('mychar')
 
 --
 -- Priorities
@@ -44,6 +44,7 @@ local function log(msg)
 	mq.cmd.echo(string.format('\a-y(actionqueue) \a-w%s', msg))
 end
 
+
 function actionqueue.Add(script)
 	log('Queueing \ay' .. script.Name .. ' \axwith priority \aw' .. script.Priority)
 	script.Context = {}
@@ -59,6 +60,7 @@ function actionqueue.Add(script)
 			end
 		end
 	)
+	script.NotDead = function() return coroutine.status(script.Coroutine) ~= 'dead' end
 	table.insert(
 		Queue,
 		script
@@ -77,23 +79,19 @@ function actionqueue.Add(script)
 end
 
 function actionqueue.AddUnique(script)
-	for i, r_script in ipairs(Running) do
-		if script.IsSame(r_script) then
-			return
-		end
-	end
-	for i, q_script in ipairs(Queue) do
-		if script.IsSame(q_script) then
-			return
-		end
-	end
+	local function is_same(s) return script.IsSame(s) end
+	if array.Any(Running, is_same) then return end
+	if array.Any(Queue, is_same) then return end
 	actionqueue.Add(script)
 end
+
 
 local function highest_priority_ready_script_idx()
 	local idx = 0
 	local priority = 9999
-	for i, script in ipairs(Queue) do
+	local size = #Queue
+	for i = 1, size do
+		local script = Queue[i]
 		if script.Priority < priority then
 			local skip, reason = script.ShouldSkip(State, Config, script.Context)
 			if not skip and script.IsReady(State, Config, script.Context) then
@@ -105,9 +103,21 @@ local function highest_priority_ready_script_idx()
 	return idx
 end
 
--- local function has_script_in_queue()
--- 	return #Queue > 0
--- end
+local function lowest_priority_running_script_priority()
+	local running_priority = 99999
+	local size = #Running
+	for i = 1, size do
+		local script = Running[i]
+		if script.Priority < running_priority and script.NotDead() then
+			running_priority = script.Priority
+		end
+	end
+	if running_priority == 99999 then
+		return -1
+	else
+		return running_priority
+	end
+end
 
 local function next_ready_script()
 	local idx = highest_priority_ready_script_idx()
@@ -129,11 +139,13 @@ end
 local function find_skippable()
 	local idx = 0
 	local msg = ''
-	for i, q_script in ipairs(Queue) do
-		local skip, reason = q_script.ShouldSkip(State, Config, {})
+	local size = #Queue
+	for i = 1, size do
+		local skip, reason = Queue[i].ShouldSkip(State, Config, {})
 		if skip then
 			idx = i
 			msg = reason
+			break
 		end
 	end
 	return idx, msg
@@ -152,10 +164,12 @@ local function prune_skippable()
 end
 
 local function done_running()
-	for i, script in ipairs(Running) do
-		if coroutine.status(script.Coroutine) ~= 'dead' then return false end
-	end
-	return true
+	return array.None(
+		Running,
+		function(script)
+			return script.NotDead()
+		end
+	)
 end
 
 local function should_interrupt()
@@ -165,19 +179,14 @@ local function should_interrupt()
 	end
 	local idx = highest_priority_ready_script_idx()
 	if idx > 0 then
-		local running_priority = 99999
-		for i, script in ipairs(Running) do
-			if script.Priority < running_priority and coroutine.status(script.Coroutine) ~= 'dead' then
-				running_priority = script.Priority
-			end
-		end
+		local running_priority = lowest_priority_running_script_priority()
 		if Queue[idx] == nil then
 			print('nil 1')
 		end
 		if Queue[idx].Priority == nil then
 			print('nil 2')
 		end
-		return running_priority ~= 99999 and running_priority > 30 and Queue[idx].Priority <= 30 and Queue[idx].Priority < running_priority
+		return running_priority > 30 and Queue[idx].Priority <= 30 and Queue[idx].Priority < running_priority
 	end
 	return false
 end
@@ -186,10 +195,11 @@ local function do_runs()
 	local has_script, script = next_ready_script()
 	if has_script then
 		table.insert(Running, script)
-		-- log('Running ' .. script.Name)
 		while not done_running() do
-			for i, r_script in ipairs(Running) do
-				if coroutine.status(r_script.Coroutine) ~= 'dead' then
+			local size = #Running
+			for i = 1, size do
+				local r_script = Running[i]
+				if r_script.NotDead() then
 					local r, err = coroutine.resume(r_script.Coroutine)
 					if not r then
 						print(r_script.Name .. ': ' .. err)
@@ -221,37 +231,48 @@ local function do_runs()
 	end
 end
 
+local split = str.Split
+local starts_with = str.StartsWith
+local trim = str.Trim
+local filtered = array.Filtered
+
+local function split_key_value(kv)
+	local parts = str.Split(kv, '|')
+	return str.Trim(parts[1]), str.Trim(parts[2])
+end
+
 local function parse_line(line)
 	local parsed = {
 		gem=0,
 		unique=false
 	}
-	local parts = str.Split(line, '-')
+	local parts = filtered(split(line, '-'), function(s) return #s > 0 end)
 	for i=1,#parts do
-		if str.StartsWith(parts[i], 'priority|') then
-			parsed.priority = tonumber(str.Trim(str.Split(parts[i], '|')[2]))
-		elseif str.StartsWith(parts[i], 'target_id|') then
-			parsed.target_id = tonumber(str.Trim(str.Split(parts[i], '|')[2]))
-		elseif str.StartsWith(parts[i], 'gem|') then
-			parsed.gem = str.Trim(str.Split(parts[i], '|')[2])
-		elseif str.StartsWith(parts[i], 'spell|') then
-			parsed.spell = spells.ReferenceSpell(str.Trim(str.Split(parts[i], '|')[2]))
-		elseif str.StartsWith(parts[i], 'message|') then
-			parsed.message = str.Trim(str.Split(parts[i], '|')[2])
-		elseif str.StartsWith(parts[i], 'min_mana|') then
-			parsed.min_mana = tonumber(str.Trim(str.Split(parts[i], '|')[2]))
-		elseif str.StartsWith(parts[i], 'min_target_hps|') then
-			parsed.min_target_hps = tonumber(str.Trim(str.Split(parts[i], '|')[2]))
-		elseif str.StartsWith(parts[i], 'max_tries|') then
-			parsed.max_tries = tonumber(str.Trim(str.Split(parts[i], '|')[2]))
-		elseif str.StartsWith(parts[i], 'unique|') then
-			parsed.unique = str.Trim(str.Split(parts[i], '|')[2]):lower() == 'true'
+		local key, value = split_key_value(parts[i])
+		if key == 'priority' then
+			parsed.priority = tonumber(value)
+		elseif key == 'target_id' then
+			parsed.target_id = tonumber(value)
+		elseif key == 'gem' then
+			parsed.gem = value
+		elseif key == 'spell' then
+			parsed.spell = spells.ReferenceSpell(value)
+		elseif key == 'message' then
+			parsed.message = value
+		elseif key == 'min_mana' then
+			parsed.min_mana = tonumber(value)
+		elseif key == 'min_target_hps' then
+			parsed.min_target_hps = tonumber(value)
+		elseif key == 'max_tries' then
+			parsed.max_tries = tonumber(value)
+		elseif key == 'unique' then
+			parsed.unique = value:lower() == 'true'
 		end
 	end
 	if parsed.gem == 0 then
-		parsed.gem = Config:SpellBar():GemBySpellName(parsed.spell)
+		parsed.gem = Config.SpellBar.GemBySpellName(parsed.spell.Name)
 		if parsed.gem == 0 then
-			parsed.gem = Config:SpellBar():FirstOpenGem()
+			parsed.gem = Config.SpellBar.FirstOpenGem()
 		end
 	end
 	if tonumber(parsed.gem) then
@@ -300,14 +321,14 @@ end
 -- Coroutines
 --
 
-local print_co = ManagedCoroutine:new(
+local print_co = ManagedCoroutine(
 	function()
-		local nextprint = mq.gettime() + Config:CastQueue():PrintTimer() * 1000
+		local nextprint = mq.gettime() + Config.CastQueue.PrintTimer() * 1000
 		while true do
 			local time = mq.gettime()
-			if Config:CastQueue():Print() and time >= nextprint then
+			if Config.CastQueue.Print() and time >= nextprint then
 				print_queue()
-				nextprint = time + Config:CastQueue():PrintTimer() * 1000
+				nextprint = time + Config.CastQueue.PrintTimer() * 1000
 			end
 
 			co.yield()
@@ -315,7 +336,7 @@ local print_co = ManagedCoroutine:new(
 	end
 )
 
-local runs_co = ManagedCoroutine:new(
+local runs_co = ManagedCoroutine(
 	function()
 		while true do
 			do_runs()
@@ -326,7 +347,7 @@ local runs_co = ManagedCoroutine:new(
 	end
 )
 
-local prune_co = ManagedCoroutine:new(
+local prune_co = ManagedCoroutine(
 	function()
 		while true do
 
@@ -348,10 +369,10 @@ local function do_scripts()
 	end
 
 	if not Paused then
-		print_co:Resume()
-		runs_co:Resume()
+		print_co.Resume()
+		runs_co.Resume()
 	else
-		prune_co:Resume()
+		prune_co.Resume()
 		if mq.gettime() >= PauseUntil then
 			Paused = false
 			PauseUntil = 0
@@ -369,31 +390,31 @@ function actionqueue.Init(state, cfg)
 	State = state
 	Config = cfg
 
-	mq.event('queuespell2', '#*#COMMAND QUEUESPELL #1# #2# #3# #4#', command_queue_spell)
-	mq.bind(
-		'/dbcq',
-		function(...)
-			local args = { ... }
-			if #args > 0 then
-				if args[1] == 'pause' then
-					local timer = tonumber(args[2]) or 20
-					PauseUntil = mq.gettime() + timer * 1000
-				elseif args[1] == 'removeall' then
-					actionqueue.Wipe()
-				elseif args[1] == 'queue' then
-					local line = str.Join(args, 2)
-					local script, unique = parse_line(line)
-					if unique then
-						actionqueue.AddUnique(script)
-					else
-						actionqueue.Add(script)
-					end
-				end
-			else
-				log('Print is ' .. tostring(Config:CastQueue():Print()) .. ', PrintTimer is ' .. Config:CastQueue():PrintTimer())
-			end
-		end
-	)
+	-- mq.event('queuespell2', '#*#COMMAND QUEUESPELL #1# #2# #3# #4#', command_queue_spell)
+	-- mq.bind(
+	-- 	'/dbcq',
+	-- 	function(...)
+	-- 		local args = { ... }
+	-- 		if #args > 0 then
+	-- 			if args[1] == 'pause' then
+	-- 				local timer = tonumber(args[2]) or 20
+	-- 				PauseUntil = mq.gettime() + timer * 1000
+	-- 			elseif args[1] == 'removeall' then
+	-- 				actionqueue.Wipe()
+	-- 			elseif args[1] == 'queue' then
+	-- 				local line = str.Join(args, ' ', 2)
+	-- 				local script, unique = parse_line(line)
+	-- 				if unique then
+	-- 					actionqueue.AddUnique(script)
+	-- 				else
+	-- 					actionqueue.Add(script)
+	-- 				end
+	-- 			end
+	-- 		else
+	-- 			log('Print is ' .. tostring(Config.CastQueue.Print()) .. ', PrintTimer is ' .. Config.CastQueue.PrintTimer())
+	-- 		end
+	-- 	end
+	-- )
 end
 
 

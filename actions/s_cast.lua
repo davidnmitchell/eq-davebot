@@ -13,7 +13,7 @@ require('actions.a_memorize')
 
 
 function ScpCast(
-    spell_name,
+    spell,
     preferred_gem,
     min_mana_required,
     max_tries,
@@ -23,9 +23,20 @@ function ScpCast(
     priority,
     callback
 )
+    local spell_name = spell
+    if type(spell) == 'table' then
+        spell_name = spell.Name
+    end
     assert(spell_name and spell_name:len() > 0, 'Blank spell_name')
+
+    local spell_type = 'spell'
+    if type(spell) == 'table' then
+        spell_type = spell.Type
+    end
+
     preferred_gem = preferred_gem or 'gem5'
     min_mana_required = min_mana_required or 0
+    max_tries = max_tries or 1
     target_id = target_id or 0
     skip_if_target_hp_below = skip_if_target_hp_below or 0
     timeout = timeout or ((mq.TLO.Spell(spell_name).CastTime.Raw() or 5000) + (1000 * max_tries) + 1000)
@@ -35,19 +46,22 @@ function ScpCast(
         table.insert(queue, ActMarkBardCastActive())
         table.insert(queue, ActCastMessage(spell_name, target_id))
         table.insert(queue, ActClearTwist())
-        table.insert(queue, ActMemorize(spell_name, preferred_gem, true))
+        if spell_type == 'spell' then
+            table.insert(queue, ActMemorize(spell_name, preferred_gem, true))
+        end
         if target_id > 0 and target_id ~= mq.TLO.Me.ID() then table.insert(queue, ScpFace(target_id, nil, false)) end
         table.insert(queue, ActCast(spell_name, preferred_gem, max_tries, target_id))
         table.insert(queue, ActMarkBardCastInactive())
     else
         table.insert(queue, ActCastMessage(spell_name, target_id))
-        table.insert(queue, ActMemorize(spell_name, preferred_gem, true))
+        if spell_type == 'spell' then
+            table.insert(queue, ActMemorize(spell_name, preferred_gem, true))
+        end
         if target_id > 0 and target_id ~= mq.TLO.Me.ID() then table.insert(queue, ScpFace(target_id, nil, false)) end
         table.insert(queue, ActCast(spell_name, preferred_gem, max_tries, target_id))
     end
 
     local self = Script(
-        'cast',
         'cast ' .. spells.HumanString1(spell_name, target_id),
         queue,
         timeout,
@@ -55,6 +69,7 @@ function ScpCast(
         true,
         callback
     )
+    self.__type__ = 'ScpCast'
 
     self._spell_name = spell_name
     self._target_id = target_id
@@ -92,7 +107,7 @@ function ScpCast(
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.IsSame = function(script)
-        return script ~= nil and 'cast' == script.Type and spell_name == script._spell_name and target_id == script._target_id
+        return script ~= nil and self.__type__ == script.__type__ and spell_name == script._spell_name and target_id == script._target_id
     end
 
     ---@diagnostic disable-next-line: duplicate-set-field

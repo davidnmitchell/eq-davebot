@@ -11,6 +11,7 @@ end
 
 function BotState(ini)
 	local self = {}
+	self.__type__ = 'BotState'
 
 	self.Mode = 1
 	self.Flags = {}
@@ -82,6 +83,7 @@ function BotState(ini)
 		if flag ~= nil then
 			if not common.ArrayHasValue(self.Flags, flag) then
 				table.insert(self.Flags, flag)
+				table.sort(self.Flags)
 				local csv = common.TableAsCsv(self.Flags)
 				ini:WriteString('State', 'Flags', csv)
 				log('Set Flag ' .. flag)
@@ -219,6 +221,7 @@ end
 
 function Lock(process_name, release_at)
 	local self = {}
+	self.__type__ = 'Lock'
 
 	self.ProcessName = process_name
 	self.ReleaseAt = release_at

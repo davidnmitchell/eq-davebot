@@ -1,22 +1,22 @@
 local mq = require('mq')
-local common = require('common')
-local co = require('co')
+local array = require('array')
 local str = require('str')
 
 local netbots = {}
 
 function netbots.Peers()
 	---@diagnostic disable-next-line: missing-parameter
-	return str.Split(mq.TLO.NetBots.Client(), ' ')
+	local peers = str.Split(mq.TLO.NetBots.Client(), ' ')
+	return peers
+end
+
+function netbots.IsPeer(name)
+	return array.HasValue(netbots.Peers(), name)
 end
 
 function netbots.PeerIds()
-	local value = {}
-	for i, name in ipairs(netbots.Peers()) do
-		---@diagnostic disable-next-line: undefined-field
-		table.insert(value, tonumber(mq.TLO.NetBots(name).ID()))
-	end
-	return value
+	---@diagnostic disable-next-line: undefined-field
+	return array.Mapped(netbots.Peers(), function(name) return tonumber(mq.TLO.NetBots(name).ID()) end)
 end
 
 function netbots.PeerPetIds()
@@ -31,13 +31,8 @@ function netbots.PeerPetIds()
 end
 
 function netbots.PeerById(id)
-	for i, name in ipairs(netbots.Peers()) do
-		---@diagnostic disable-next-line: undefined-field
-		if id == mq.TLO.NetBots(name).ID() then
-			return name
-		end
-	end
-	return ''
+	---@diagnostic disable-next-line: undefined-field
+	return array.FirstOrNil(netbots.Peers(), function(name) return id == mq.TLO.NetBots(name).ID() end)
 end
 
 function netbots.PeerByName(name)
@@ -60,18 +55,10 @@ end
 
 function netbots.TargetIdByPeerId(id)
 	local peer = netbots.PeerById(id)
-	if peer:len() > 0 then
+	if peer ~= nil then
 		return mq.TLO.NetBots(peer).TargetID()
 	end
 	return 0
 end
-
--- function netbots.PetTargetIdByPeerId(id)
--- 	local peer = netbots.PeerById(id)
--- 	if peer:len() > 0 then
--- 		return mq.TLO.NetBots(peer).TargetID
--- 	end
--- 	return 0
--- end
 
 return netbots

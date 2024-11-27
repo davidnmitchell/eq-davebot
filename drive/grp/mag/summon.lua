@@ -16,6 +16,7 @@ local Config = {}
 
 function ActDestroyOnCursor()
     local self = Action('DestroyOnCursor')
+    self.__type__ = 'ActDestroyOnCursor'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)
@@ -41,18 +42,18 @@ function ScpDestroyOnCursor(
 
     local self = Script(
         'destroyoncursor',
-        'destroyoncursor',
         queue,
         nil,
         99,
         nil,
         callback
     )
+    self.__type__ = 'ScpDestroyOnCursor'
 
-    ---@diagnostic disable-next-line: duplicate-set-field
-    self.IsSame = function(script)
-        return script.Type == 'destroyoncursor'
-    end
+    -- ---@diagnostic disable-next-line: duplicate-set-field
+    -- self.IsSame = function(script)
+    --     return script.Type == 'destroyoncursor'
+    -- end
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.IsReady = function(state, cfg, ctx)
@@ -99,6 +100,7 @@ return {
                         local count = 0
                         if mq.TLO.Group.Member(i).Pet.Equipment('primary')() == 0 then count = count + 1 end
                         if mq.TLO.Group.Member(i).Pet.Equipment('offhand')() == 0 then count = count + 1 end
+                        print(mq.TLO.Group.Member(i).Name() .. "'s Pet needs " .. count .. ' weapons')
                         for j = 1, count do
                             local target = mq.TLO.Group.Member(i).Pet.ID()
                             do_cmd('/drive summon weapon ' .. target)

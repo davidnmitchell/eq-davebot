@@ -37,13 +37,18 @@ function ScpSit(priority, blocking)
 
     local self = Script(
         'sit',
-        'sit',
         {
             sit_action
         },
         priority,
         blocking
     )
+    self.__type__ = 'ScpSit'
+
+    -- ---@diagnostic disable-next-line: duplicate-set-field
+    -- self.IsSame = function(script)
+    --     return script ~= nil and 'sit' == script.Type
+    -- end
 
     return self
 end

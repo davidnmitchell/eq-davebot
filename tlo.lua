@@ -59,6 +59,7 @@ local modeType = mq.DataType.new('ModeType', {
 					local csv = common.TableAsCsv(mode.Flags)
 					Ini:WriteString('State', 'Flags', csv)
 					log('Set Flag ' .. flag)
+					Config.Refresh()
 				end
 			else
 				log('Tried to set nil Flag')
@@ -72,6 +73,7 @@ local modeType = mq.DataType.new('ModeType', {
 					local csv = common.TableAsCsv(mode.Flags)
 					Ini:WriteString('State', 'Flags', csv)
 					log('Unset Flag ' .. flag)
+					Config.Refresh()
 				end
 			else
 				log('Tried to unset nil Flag')

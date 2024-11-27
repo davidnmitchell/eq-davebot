@@ -21,6 +21,7 @@ function ActGive(target_id)
     assert(target_id and target_id > 0)
 
     local self = Action('Give')
+    self.__type__ = 'ActGive'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)
@@ -37,6 +38,7 @@ end
 
 function ActCloseInventory()
     local self = Action('Cleanup')
+    self.__type__ = 'ActCloseInventory'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)
@@ -65,7 +67,6 @@ function ScpSummonAndGiveSingle(
     table.insert(queue, ActCloseInventory())
 
     local self = Script(
-        'summonandgive',
         'summonandgive ' .. item,
         queue,
         mq.TLO.Spell(spell_name).CastTime() + 10000,
@@ -73,6 +74,7 @@ function ScpSummonAndGiveSingle(
         true,
         callback
     )
+    self.__type__ = 'ScpSummonAndGiveSingle'
 
     self._spell_name = spell_name
     self._target_id = target_id
@@ -83,7 +85,7 @@ function ScpSummonAndGiveSingle(
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.IsSame = function(script)
-        return script ~= nil and 'summonandgive' == script.Type and spell_name == script._spell_name and target_id == script._target_id
+        return script ~= nil and self.__type == script.__type__ and spell_name == script._spell_name and target_id == script._target_id
     end
 
     ---@diagnostic disable-next-line: duplicate-set-field
@@ -119,7 +121,7 @@ local function summon(spell, item, put_in_inventory)
             ScpSummon(
                 spell,
                 item,
-                Config:SpellBar():FirstOpenGem(),
+                Config.SpellBar.FirstOpenGem(),
                 40,
                 put_in_inventory,
                 summon_callback
@@ -140,9 +142,9 @@ local function summoned_count(item)
 end
 
 local function spell_from_arg(arg)
-    local spell = Config:Spells():Spell(arg)
-    if spell.Error == nil then
-        return spell.Name
+    local castable = Config.Spells.Spell(arg)
+    if castable.Error == nil then
+        return castable.Name
     end
     local name = spells.ReferenceSpell(arg)
     if name ~= nil then return name end
@@ -211,7 +213,7 @@ return {
                         ScpSummonAndGiveSingle(
                             spell,
                             item,
-                            Config:SpellBar():FirstOpenGem(),
+                            Config.SpellBar.FirstOpenGem(),
                             target,
                             40
                         )
@@ -234,7 +236,7 @@ return {
                         ScpSummonAndGiveSingle(
                             spell,
                             item,
-                            Config:SpellBar():FirstOpenGem(),
+                            Config.SpellBar.FirstOpenGem(),
                             target,
                             40
                         )

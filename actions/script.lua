@@ -3,7 +3,7 @@ local co = require('co')
 local common = require('common')
 require('actions.action')
 
-function Script(script_type, name, queue, timeout, priority, blocking, callback)
+function Script(name, queue, timeout, priority, blocking, callback)
     assert(name ~= nil and name:len() > 0)
     queue = queue or {}
     timeout = timeout or 10000
@@ -13,8 +13,8 @@ function Script(script_type, name, queue, timeout, priority, blocking, callback)
     local context = {}
 
     local self = Action(name, blocking)
+    self.__type__ = 'Script'
 
-    self.Type = script_type
     self.Timeout = timeout
     self.Priority = priority
     self.Callback = callback
@@ -24,7 +24,7 @@ function Script(script_type, name, queue, timeout, priority, blocking, callback)
     -- end
 
     self.IsSame = function(script)
-        return script_type == script.Type and name == script.Name
+        return script ~= nil and self.__type__ == script.__type__ and name == script.Name
     end
 
     self.Add = function(action)

@@ -3,7 +3,9 @@ local co = require('co')
 local mychar = require('mychar')
 require('eqclass')
 require('actions.s_cast')
+require('actions.s_castheal')
 require('actions.s_lifetap')
+local common = require('common')
 
 
 local healbot = {}
@@ -25,14 +27,14 @@ local MyClass = EQClass:new()
 --
 
 local function log(msg)
-	print('(healbot) ' .. msg)
+	print('(healbot) ' .. tostring(msg))
 end
 
 local function ClassAtHpPct(class)
 	if class.IsCaster or class.IsHealer then
-		return Config:Heal():CasterAtHpPct()
+		return Config.Heal.CasterAtHpPct()
 	else
-		return Config:Heal():MeleeAtHpPct()
+		return Config.Heal.MeleeAtHpPct()
 	end
 end
 
@@ -43,15 +45,16 @@ local function LowestHPsGroupMember()
 		local pct_hps = mq.TLO.Group.Member(i).PctHPs()
 		if pct_hps ~= nil then
 			local class = EQClass:new(mq.TLO.Group.Member(i).Class.Name())
-			local pct, spell_key = ClassAtHpPct(class)
-			if pct_hps < lowestMember.hps and pct_hps <= pct then
+			local h = ClassAtHpPct(class)
+			if pct_hps < lowestMember.hps and pct_hps <= h.pct then
 				lowestMember = {
 					id=mq.TLO.Group.Member(i).ID(),
 					name=mq.TLO.Group.Member(i).Name(),
 					idx=i,
 					hps=pct_hps,
+					threshold=h.pct,
 					class=class,
-					spell_key=spell_key
+					spell_key=h.key
 				}
 			end
 		end
@@ -60,25 +63,23 @@ local function LowestHPsGroupMember()
 end
 
 local function CheckTank()
-	local pct, spell_key = Config:Heal():TankAtHpPct()
-	if pct ~= 0 then
+	local h = Config.Heal.TankAtHpPct()
+	if h.pct ~= 0 then
 		if mq.TLO.Group.MainTank() ~= nil then
 			local pct_hps = mq.TLO.Group.MainTank.PctHPs()
-			if pct_hps ~= nil and pct_hps <= pct then
-				local spell = Config:Spells():Spell(spell_key)
-				local gem, err = Config:SpellBar():GemBySpell(spell)
-				if gem < 1 then
-					log(err)
+			if pct_hps ~= nil and pct_hps <= h.pct then
+				local castable = Config.Spells.Spell(h.key)
+				local res = Config.SpellBar.GemBySpell(castable)
+				if res.gem < 1 then
+					log(res.msg)
 				else
 					actionqueue.AddUnique(
-						ScpCast(
-							spell.Name,
-							'gem' .. gem,
-							Config:Heal():MinMana(),
-							3,
+						ScpCastHeal(
+							castable,
+							'gem' .. res.gem,
+							Config.Heal.MinMana(),
 							mq.TLO.Group.MainTank.ID(),
-							0,
-							nil,
+							h.pct,
 							30
 						)
 					)
@@ -91,20 +92,18 @@ end
 local function CheckGroupMembers()
 	local to_heal = LowestHPsGroupMember()
 	if to_heal.id ~= 0 then
-		local spell = Config:Spells():Spell(to_heal.spell_key)
-		local gem, err = Config:SpellBar():GemBySpell(spell)
-		if gem < 1 then
-			log(err)
+		local castable = Config.Spells.Spell(to_heal.spell_key)
+		local res = Config.SpellBar.GemBySpell(castable)
+		if res.gem < 1 then
+			log(res.msg)
 		else
 			actionqueue.AddUnique(
-				ScpCast(
-					spell.Name,
-					'gem' .. gem,
-					Config:Heal():MinMana(),
-					3,
+				ScpCastHeal(
+					castable,
+					'gem' .. res.gem,
+					Config.Heal.MinMana(),
 					to_heal.id,
-					0,
-					nil,
+					to_heal.threshold,
 					30
 				)
 			)
@@ -113,17 +112,17 @@ local function CheckGroupMembers()
 end
 
 local function GroupHeal(pct, spell_key)
-	local spell = Config:Spells():Spell(spell_key)
-	local gem, err = Config:SpellBar():GemBySpell(spell_key)
-	if gem < 1 then
-		log(err)
+	local castable = Config.Spells.Spell(spell_key)
+	local res = Config.SpellBar.GemBySpell(spell_key)
+	if res.gem < 1 then
+		log(res.msg)
 	else
-		if mq.TLO.Me.CurrentMana() > mq.TLO.Spell(spell.Name).Mana() then
+		if mq.TLO.Me.CurrentMana() > mq.TLO.Spell(castable.Name).Mana() then
 			actionqueue.AddUnique(
 				ScpCast(
-					spell.Name,
-					'gem' .. gem,
-					Config:Heal():MinMana(),
+					castable,
+					'gem' .. res.gem,
+					Config.Heal.MinMana(),
 					3,
 					mq.TLO.Me.ID(),
 					0,
@@ -136,26 +135,24 @@ local function GroupHeal(pct, spell_key)
 end
 
 local function CheckPets()
-	local pct, spell_key = Config:Heal():PetAtHpPct()
-	if pct ~= 0 then
+	local h = Config.Heal.PetAtHpPct()
+	if h.pct ~= 0 then
 		local group_size = mq.TLO.Group.Members()
 		for i=0,group_size do
 			if not mq.TLO.Group.Member(i).Pet() == nil then
-				if mq.TLO.Group.Member(i).Pet.PctHPs() < pct then
-					local spell = Config:Spells():Spell(spell_key)
-					local gem, err = Config:SpellBar():GemBySpell(spell_key)
-					if gem < 1 then
-						log(err)
+				if mq.TLO.Group.Member(i).Pet.PctHPs() < h.pct then
+					local castable = Config.Spells.Spell(h.key)
+					local res = Config.SpellBar.GemBySpell(castable)
+					if res.gem < 1 then
+						log(res.msg)
 					else
 						actionqueue.AddUnique(
-							ScpCast(
-								spell.Name,
-								'gem' .. gem,
-								Config:Heal():MinMana(),
-								1,
+							ScpCastHeal(
+								castable,
+								'gem' .. res.gem,
+								Config.Heal.MinMana(),
 								mq.TLO.Group.Member(i).Pet.ID(),
-								0,
-								nil,
+								h.pct,
 								60
 							)
 						)
@@ -167,24 +164,24 @@ local function CheckPets()
 end
 
 local function CheckSelf()
-	local pct, spell_key = Config:Heal():SelfAtHpPct()
-	if pct ~= 0 then
+	local h = Config.Heal.SelfAtHpPct()
+	if h.pct ~= 0 then
 		local pct_hps = mq.TLO.Me.PctHPs()
-		if pct_hps ~= nil and pct_hps <= pct then
-			local spell = Config:Spells():Spell(spell_key)
-			local gem, err = Config:SpellBar():GemBySpellKey(spell_key)
-			if gem < 1 then
-				log(err)
+		if pct_hps ~= nil and pct_hps <= h.pct then
+			local castable = Config.Spells.Spell(h.key)
+			local res = Config.SpellBar.GemBySpell(castable)
+			if res.gem < 1 then
+				log(res.msg)
 			else
-				local spell_target = mq.TLO.Spell(spell.Name).TargetType()
+				local spell_target = mq.TLO.Spell(castable.Name).TargetType()
 				if spell_target == 'LifeTap' then
 					local target_id = mq.TLO.Target.ID() or 0
 					if mychar.InCombat() and target_id ~= 0 and mq.TLO.Spawn(target_id).Type() == 'NPC' then
 						actionqueue.AddUnique(
 							ScpLifetap(
-								spell.Name,
-								'gem' .. gem,
-								Config:Heal():MinMana(),
+								castable.Name,
+								'gem' .. res.gem,
+								Config.Heal.MinMana(),
 								3,
 								target_id,
 								0,
@@ -195,14 +192,12 @@ local function CheckSelf()
 					end
 				else
 					actionqueue.AddUnique(
-						ScpCast(
-							spell.Name,
-							'gem' .. gem,
-							Config:Heal():MinMana(),
-							3,
+						ScpCastHeal(
+							castable,
+							'gem' .. res.gem,
+							Config.Heal.MinMana(),
 							mq.TLO.Me.ID(),
-							0,
-							nil,
+							h.pct,
 							30
 						)
 					)
@@ -213,24 +208,22 @@ local function CheckSelf()
 end
 
 local function CheckMyPet()
-	local pct, spell_key = Config:Heal():SelfpetAtHpPct()
-	if pct ~= 0 then
+	local h = Config.Heal.SelfpetAtHpPct()
+	if h.pct ~= 0 then
 		local pct_hps = mq.TLO.Pet.PctHPs()
-		if pct_hps and pct_hps <= pct then
-			local spell = Config:Spells():Spell(spell_key)
-			local gem, err = Config:SpellBar():GemBySpell(spell_key)
-			if gem < 1 then
-				log(err)
+		if pct_hps and pct_hps <= h.pct then
+			local castable = Config.Spells.Spell(h.key)
+			local res = Config.SpellBar.GemBySpell(castable)
+			if res.gem < 1 then
+				log(res.msg)
 			else
 				actionqueue.AddUnique(
-					ScpCast(
-						spell.Name,
-						'gem' .. gem,
-						Config:Heal():MinMana(),
-						1,
+					ScpCastHeal(
+						castable.Name,
+						'gem' .. res.gem,
+						Config.Heal.MinMana(),
 						mq.TLO.Pet.ID(),
-						0,
-						nil,
+						h.pct,
 						60
 					)
 				)
@@ -244,9 +237,9 @@ local function CheckHitPoints()
 		CheckTank()
 
 		if MyClass.HasGroupHeals then
-			local pct, spell_key = Config:Heal():GroupAtHpPct()
-			if mq.TLO.Group.Injured(pct)() > 2 then
-				GroupHeal(pct, spell_key)
+			local h = Config.Heal.GroupAtHpPct()
+			if mq.TLO.Group.Injured(h.pct)() > 2 then
+				GroupHeal(h.pct, h.key)
 			end
 		end
 

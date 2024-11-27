@@ -9,6 +9,7 @@ function ActBardCastAura(gem)
     local gem_number = tonumber(gem:sub(4,4)) or 5
 
     local self = Action('BardCastAura')
+    self.__type__ = 'ActBardCastAura'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.IsReady = function(state, cfg, ctx)

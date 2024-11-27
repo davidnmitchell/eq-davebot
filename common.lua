@@ -18,6 +18,14 @@ function common.ArrayHasValue(T, value)
 	return false
 end
 
+function common.ArrayMap(T, func)
+	local mapped = {}
+	for _, v in ipairs(T) do
+		table.insert(mapped, func(v))
+	end
+	return mapped
+end
+
 function common.MapHasKey(T, key)
 	for k,_ in pairs(T) do
 		if k == key then

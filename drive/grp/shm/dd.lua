@@ -14,7 +14,7 @@ local function name_of_caster()
 end
 
 local function send_spell(caster, type, target_id)
-    mq.cmd('/squelch /bct ' .. caster .. ' //dbcq queue -spell|Direct Damage,' .. type .. ',Single -target_id|' .. target_id .. ' -max_tries|10')
+    mq.cmd('/squelch /bct ' .. caster .. ' //drive cast -spell|Direct Damage,' .. type .. ',Single -target|' .. target_id .. ' -max_tries|10')
 end
 
 local function dd_target_id(type, id)
@@ -26,7 +26,12 @@ end
 
 local function dd_main_assist_target(type)
     ---@diagnostic disable-next-line: undefined-field
-    dd_target_id(type, mq.TLO.Me.GroupAssistTarget.ID())
+    local target_id = mq.TLO.Me.GroupAssistTarget.ID()
+    -- if target_id == nil or target_id == 0 then
+    --     print('No main assist target')
+    --     return
+    -- end
+    dd_target_id(type, target_id)
 end
 
 return {

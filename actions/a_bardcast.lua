@@ -13,6 +13,7 @@ function ActBardCast(
     assert(gem and gem:len() > 0)
 
     local self = Action('BardCast')
+    self.__type__ = 'ActBardCast'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)

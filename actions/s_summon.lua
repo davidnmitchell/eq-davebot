@@ -28,7 +28,6 @@ function ScpSummon(
     if put_in_inventory then table.insert(queue, ActCursorToInventory()) end
 
     local self = Script(
-        'summon',
         'summon ' .. item,
         queue,
         mq.TLO.Spell(spell_name).CastTime() + 10000,
@@ -36,6 +35,7 @@ function ScpSummon(
         true,
         callback
     )
+    self.__type__ = 'ScpSummon'
 
     self._spell_name = spell_name
 
@@ -45,7 +45,7 @@ function ScpSummon(
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.IsSame = function(script)
-        return script ~= nil and 'cast' == script.Type and spell_name == script._spell_name
+        return script ~= nil and self.__type__ == script.__type__ and spell_name == script._spell_name
     end
 
     ---@diagnostic disable-next-line: duplicate-set-field

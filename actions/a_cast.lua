@@ -16,6 +16,7 @@ function ActCast(
     target_id = target_id or 0
 
     local self = Action('Cast')
+    self.__type__ = 'ActCast'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.IsReady = function(state, cfg, ctx)
@@ -29,6 +30,7 @@ function ActCast(
         if target_id > 0 then
             cmd = cmd .. ' -targetid|' .. target_id
         end
+        -- print(cmd)
         mq.cmd(cmd)
     end
 

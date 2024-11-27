@@ -13,6 +13,7 @@ function ActClearWrongGem(
     local gem_number = tonumber(preferred_gem:sub(4,4)) or 1
 
     local self = Action('ClearWrongGem')
+    self.__type__ = 'ActClearWrongGem'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.ShouldSkip = function(state, cfg, ctx)

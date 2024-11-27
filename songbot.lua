@@ -38,7 +38,7 @@ local function check_twist(order)
 	if not State.IsCrowdControlActive and not State.IsBardCastActive then
 		local gem_order = {}
 		for i,spell_key in ipairs(order) do
-			gem_order[i] = Config:SpellBar():GemBySpellKey(spell_key)
+			gem_order[i] = Config.SpellBar.GemBySpellKey(spell_key)
 		end
 
 		local not_what_we_want = false
@@ -83,9 +83,9 @@ end
 
 local function do_twisting()
 	if mychar.InCombat() then
-		check_twist(Config:Twist():CombatOrder())
+		check_twist(Config.Twist.CombatOrder())
 	else
-		check_twist(Config:Twist():Order())
+		check_twist(Config.Twist.Order())
 	end
 end
 

@@ -24,7 +24,6 @@ function ScpNavToCamp(priority, blocking, callback)
 
     local self = Script(
         'nav_to_camp',
-        'nav_to_camp',
         {
             nav_action
         },
@@ -33,6 +32,7 @@ function ScpNavToCamp(priority, blocking, callback)
         blocking,
         callback
     )
+    self.__type__ = 'ScpNavToCamp'
 
     return self
 end

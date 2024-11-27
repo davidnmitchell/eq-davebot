@@ -2,6 +2,7 @@ require('actions.action')
 
 function ActMarkBardCastActive()
     local self = Action('MarkBardCastActive')
+    self.__type__ = 'ActMarkBardCastActive'
 
     ---@diagnostic disable-next-line: duplicate-set-field
     self.Run = function(state, cfg, ctx)

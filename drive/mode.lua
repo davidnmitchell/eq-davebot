@@ -11,6 +11,7 @@ local Config = {}
 
 local function set_mode(mode)
     State.ChangeMode(mode)
+    Config.Refresh()
 end
 
 return {

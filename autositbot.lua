@@ -25,12 +25,12 @@ local function log(msg)
 end
 
 local function do_check()
-	local min_mana = Config:AutoSit():MinMana()
-	local min_hps = Config:AutoSit():MinHPs()
-	local override_on_move = Config:AutoSit():OverrideOnMove()
+	local min_mana = Config.AutoSit.MinMana()
+	local min_hps = Config.AutoSit.MinHPs()
+	local override_on_move = Config.AutoSit.OverrideOnMove()
 
 	if mq.TLO.Me.Moving() and State.NoSitUntil <= mq.gettime() then
-		local seconds = Config:AutoSit():OverrideSeconds()
+		local seconds = Config.AutoSit.OverrideSeconds()
 		State.NoSitUntil = mq.gettime() + (1000 * seconds)
 	end
 
@@ -41,7 +41,7 @@ local function do_check()
 	if override_on_move and mychar.Standing() and State.Sitting then
 		State.Sitting = false
 		if mq.TLO.Me.PctMana() < min_mana or mq.TLO.Me.PctHPs() < min_hps then
-			local seconds = Config:AutoSit():OverrideSeconds()
+			local seconds = Config.AutoSit.OverrideSeconds()
 			log('Overriding sit for ' .. seconds .. ' seconds')
 			State.NoSitUntil = mq.gettime() + (1000 * seconds)
 		end
