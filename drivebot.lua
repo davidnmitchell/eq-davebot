@@ -94,6 +94,10 @@ end
 ---
 
 function drivebot.Run()
+	mq.cmd('/netbots on')
+	mq.cmd('/netbots grab=on')
+	mq.cmd('/netbots send=on')
+	mq.cmd('/netbots ext=on')
 	log('Up and running')
 	while true do
 		do_drive()

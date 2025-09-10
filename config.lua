@@ -9,11 +9,11 @@ local array = require('array')
 
 MyClass = EQClass:new()
 
-if not table.unpack then table.unpack = unpack end
+-- if not table.unpack then table.unpack = unpack end
 
-local function pack(...)
-	return { ... }
-end
+-- local function pack(...)
+-- 	return { ... }
+-- end
 
 local function memoized1(fn)
 	local cached = nil

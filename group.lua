@@ -33,6 +33,8 @@ function group.WithAllMembers(func)
 		for i=1, members do
 			func(i)
 		end
+	else
+		print('You are not grouped')
 	end
 end
 
@@ -62,6 +64,8 @@ function group.FirstOfClass(class_name)
 				return i
             end
         end
+	else
+		print('You are not grouped')
     end
 	return -1
 end
@@ -73,6 +77,8 @@ function group.IsGroupMember(id)
 				return true
             end
         end
+	else
+		print('You are not grouped')
     end
 	return false
 end
@@ -83,6 +89,8 @@ function group.IDs()
         for i=0, mq.TLO.Group.Members() do
 			table.insert(ids, mq.TLO.Group.Member(i).ID())
         end
+	else
+		print('You are not grouped')
     end
 	return ids
 end
